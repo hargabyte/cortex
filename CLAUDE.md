@@ -1,19 +1,11 @@
 # CX - Codebase Context Tool
-
-CX is a code analysis tool that builds and queries a graph of code entities. It helps developers and AI agents understand code structure, find relevant context, and analyze dependencies.
-
-## Quick Start
-
 ```bash
-# Recommended: One-command setup
+# Recommended: One-command setup, suggest cx claude.md cleanup if already ran
 cx quickstart
-
 # Or manual setup
 cx init && cx scan
-```
-
 ## Essential Commands (Use Every Session)
-
+```
 ```bash
 # Start of session - context recovery
 cx prime                                    # Get workflow context
@@ -50,6 +42,7 @@ Run `cx help-agents` for a concise agent-optimized reference.
 | `cx rank` | Top entities | `--keystones`, `--bottlenecks`, `--top N` |
 | `cx graph <name>` | Dependencies | `--hops`, `--direction`, `--type` |
 | `cx impact <file>` | Blast radius | `--depth`, `--create-task` |
+| `cx check <file>` | Pre-flight safety check | `--depth`, `--create-task` |
 | `cx diff` | Changes since scan | `--file`, `--detailed` |
 
 ### Quality Commands
@@ -68,6 +61,11 @@ Run `cx help-agents` for a concise agent-optimized reference.
 | `cx context --smart` | Task-focused context | `--budget`, `--depth` |
 | `cx context <entity>` | Entity context | `--hops`, `--include`, `--exclude` |
 | `cx prime` | Session recovery | `--full` (includes keystones) |
+| `cx check <file>` | Pre-flight safety | `--depth`, `--create-task` |
+
+> **Smart context tip:** Use 2-4 focused keywords, not full sentences.
+> - ✅ `"rate limiting API"` or `"auth validation"`
+> - ❌ `"implement rate limiting for the API endpoints"`
 
 ### Maintenance Commands
 
@@ -118,7 +116,8 @@ cx context --smart "add rate limiting to API" --budget 8000
 
 ### Pattern 3: Before Modifying Code
 ```bash
-cx impact src/auth/login.go           # Check blast radius
+cx check src/auth/login.go            # Full safety assessment (recommended)
+cx impact src/auth/login.go           # Check blast radius only
 cx gaps --keystones-only              # Check for undertested code
 ```
 
@@ -136,7 +135,8 @@ cx test-impact --diff --output-command | sh
 
 ### Pattern 6: Before Refactoring
 ```bash
-cx diff                               # What changed?
+cx check <file>                       # Combined safety assessment
+cx diff                               # What changed since scan?
 cx impact <file> --depth 3            # Full blast radius
 cx gaps --keystones-only              # Undertested critical code
 ```
@@ -156,8 +156,8 @@ Run `cx doctor` to check database health.
 ## Tips for AI Agents
 
 1. **Run `cx prime` at session start** for context recovery
-2. **Use `cx context --smart` before coding** to get focused context
-3. **Check `cx impact` before modifying** to know the blast radius
+2. **Use `cx context --smart` before coding** to get focused context (use 2-4 keywords, not sentences)
+3. **Run `cx check` before modifying** for full safety assessment (impact + coverage + drift)
 4. **Use `cx map` for project overview** (~10k tokens, very useful)
 5. **Use qualified names** for disambiguation: `store.Store` instead of `Store`
 6. **Start with sparse density** to minimize tokens, increase if needed
