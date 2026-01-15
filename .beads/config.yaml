@@ -1,0 +1,5 @@
+prefix: Cortex
+db: .beads/beads.db
+sync:
+  auto_commit: true
+  auto_push: false
