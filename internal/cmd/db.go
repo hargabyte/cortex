@@ -52,24 +52,15 @@ var (
 	exportOutput          string
 )
 
-// dbDoctorCmd is the doctor subcommand under db
+// dbDoctorCmd is an alias for the top-level doctor command
 var dbDoctorCmd = &cobra.Command{
 	Use:   "doctor",
-	Short: "Check database health",
+	Short: "Check database health (alias for 'cx doctor')",
 	Long: `Run health checks on the .cx/cortex.db database.
 
-Checks:
-  - Database integrity (SQLite integrity_check)
-  - Orphan dependencies (referencing deleted entities)
-  - Stale entities (in files that no longer exist)
-
-Examples:
-  cx db doctor        # Run all checks
-  cx db doctor --fix  # Run checks and auto-fix issues`,
+This is an alias for 'cx doctor'. See 'cx doctor --help' for full documentation.`,
 	RunE: runDoctor,
 }
-
-var dbDoctorFix bool
 
 func init() {
 	rootCmd.AddCommand(dbCmd)
@@ -82,7 +73,10 @@ func init() {
 	dbCompactCmd.Flags().BoolVar(&compactRemoveArchived, "remove-archived", false, "Remove archived entities before compacting")
 	dbCompactCmd.Flags().BoolVar(&compactDryRun, "dry-run", false, "Show what would be done without making changes")
 	dbExportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output file (default: stdout)")
-	dbDoctorCmd.Flags().BoolVar(&dbDoctorFix, "fix", false, "Auto-fix issues found")
+	// db doctor shares flags with top-level doctor command
+	dbDoctorCmd.Flags().BoolVar(&doctorFix, "fix", false, "Auto-fix issues found")
+	dbDoctorCmd.Flags().BoolVar(&doctorDeep, "deep", false, "Run deep checks including archived entity ratio")
+	dbDoctorCmd.Flags().BoolVar(&doctorYes, "yes", false, "Auto-confirm fixes without prompting")
 
 	// Deprecate top-level status command
 	DeprecateCommand(dbStatusCmd, DeprecationInfo{

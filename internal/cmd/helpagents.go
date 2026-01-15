@@ -17,7 +17,7 @@ Unlike --help or --for-agents, this command outputs a curated reference
 optimized for AI agent context windows (~1500 tokens).
 
 The output is organized by workflow with the 9 core commands:
-  - show, find, check, context, test, map, scan, db, serve
+  - show, find, safe, context, test, map, scan, db, serve
 
 Examples:
   cx help-agents              # YAML output (default)
@@ -48,7 +48,7 @@ func generateAgentReference() string {
 |---------|---------|-----------|
 | cx show | Understand code | --related, --graph, --coverage |
 | cx find | Discover code | --important, --keystones, "multi word" |
-| cx check | Pre-change safety | --quick, --coverage, --drift, --changes |
+| cx safe | Pre-change safety | --quick, --coverage, --drift, --changes |
 | cx context | Get context | --smart "<task>", --budget N |
 | cx test | Smart testing | --diff, --gaps, --coverage, --run |
 | cx map | Project overview | --filter F/T/M, --lang |
@@ -66,8 +66,8 @@ cx context                    # Session recovery
 cx context --smart "<task>" --budget 8000
 
 # Before modifying code
-cx check <file>               # Full safety assessment
-cx check <file> --quick       # Just blast radius
+cx safe <file>                # Full safety assessment
+cx safe <file> --quick        # Just blast radius
 
 # New project setup
 cx scan --overview
@@ -91,13 +91,13 @@ cx find --important --top 10  # Top by importance (was: cx rank)
 cx find --keystones           # Critical entities
 ` + "```" + `
 
-### cx check - Pre-Change Safety
+### cx safe - Pre-Change Safety
 ` + "```bash" + `
-cx check <file>               # Full assessment (impact + coverage + drift)
-cx check <file> --quick       # Just blast radius (was: cx impact)
-cx check --coverage           # Coverage gaps (was: cx gaps)
-cx check --drift              # Staleness check (was: cx verify)
-cx check --changes            # What changed (was: cx diff)
+cx safe <file>                # Full assessment (impact + coverage + drift)
+cx safe <file> --quick        # Just blast radius (was: cx impact)
+cx safe --coverage            # Coverage gaps (was: cx gaps)
+cx safe --drift               # Staleness check (was: cx verify)
+cx safe --changes             # What changed (was: cx diff)
 ` + "```" + `
 
 ### cx context - Get Context
@@ -113,7 +113,7 @@ cx test                       # Tests for uncommitted changes
 cx test --diff                # Same as above, explicit
 cx test <file>                # Tests for specific file
 cx test --run                 # Actually run the tests
-cx test --gaps                # Coverage gaps (uses cx check --coverage)
+cx test --gaps                # Coverage gaps (uses cx safe --coverage)
 cx test coverage import <file> # Import coverage data
 ` + "```" + `
 
@@ -131,13 +131,13 @@ cx test coverage import <file> # Import coverage data
 cx map && cx find --keystones --top 10
 
 # Before refactoring
-cx check <file>
+cx safe <file>
 
 # Smart testing
 cx test --diff --run
 
 # Find critical untested code
-cx check --coverage --keystones-only
+cx safe --coverage --keystones-only
 ` + "```" + `
 
 ## Supported Languages
@@ -162,11 +162,11 @@ func generateAgentReferenceJSON() string {
       "note": "Multi-word query = concept search",
       "replaces": ["cx search", "cx rank"]
     },
-    "check": {
+    "safe": {
       "purpose": "Pre-change safety",
-      "usage": "cx check <file>",
+      "usage": "cx safe <file>",
       "flags": ["--quick", "--coverage", "--drift", "--changes"],
-      "replaces": ["cx impact", "cx gaps", "cx verify", "cx diff"]
+      "replaces": ["cx impact", "cx gaps", "cx verify", "cx diff", "cx check"]
     },
     "context": {
       "purpose": "Get context",
@@ -208,10 +208,10 @@ func generateAgentReferenceJSON() string {
   "patterns": {
     "session_start": "cx context",
     "before_task": "cx context --smart \"<task>\" --budget 8000",
-    "before_modify": "cx check <file>",
+    "before_modify": "cx safe <file>",
     "understand": "cx map && cx find --keystones --top 10",
     "smart_test": "cx test --diff --run",
-    "find_untested": "cx check --coverage --keystones-only"
+    "find_untested": "cx safe --coverage --keystones-only"
   },
   "output": {
     "formats": ["yaml", "json", "jsonl"],

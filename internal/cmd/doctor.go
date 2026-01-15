@@ -25,17 +25,17 @@ Examples:
 	RunE: runDoctor,
 }
 
-var doctorFix bool
+var (
+	doctorFix  bool
+	doctorDeep bool
+	doctorYes  bool
+)
 
 func init() {
 	rootCmd.AddCommand(doctorCmd)
 	doctorCmd.Flags().BoolVar(&doctorFix, "fix", false, "Auto-fix issues found")
-
-	// Deprecate standalone doctor command in favor of cx db doctor
-	DeprecateCommand(doctorCmd, DeprecationInfo{
-		OldCommand: "cx doctor",
-		NewCommand: "cx db doctor",
-	})
+	doctorCmd.Flags().BoolVar(&doctorDeep, "deep", false, "Run deep checks including archived entity ratio")
+	doctorCmd.Flags().BoolVar(&doctorYes, "yes", false, "Auto-confirm fixes without prompting")
 }
 
 type doctorResult struct {
@@ -54,8 +54,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	db := st.DB()
 
-	// Check if --fix was passed from either standalone doctor or db doctor
-	shouldFix := doctorFix || dbDoctorFix
+	shouldFix := doctorFix
 
 	fmt.Println("# cx doctor")
 	totalIssues := 0
@@ -95,6 +94,19 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		fmt.Printf("#   ⚠ Found %d stale entities\n", result.issueCount)
 		for _, detail := range result.issueDetails {
 			fmt.Printf("#     - %s\n", detail)
+		}
+		totalIssues += result.issueCount
+	}
+
+	// Check 4: Archived entity ratio (always run, warn if high)
+	fmt.Println("# Checking entity archive ratio...")
+	result = checkArchivedRatio(st, shouldFix, doctorYes)
+	if result.passed {
+		fmt.Println("#   ✓ Entity archive ratio is healthy")
+	} else {
+		fmt.Printf("#   ⚠ %s\n", result.issueDetails[0])
+		for _, detail := range result.issueDetails[1:] {
+			fmt.Printf("#     %s\n", detail)
 		}
 		totalIssues += result.issueCount
 	}
@@ -273,4 +285,86 @@ func checkStaleEntities(st *store.Store, fix bool) doctorResult {
 		issueCount:   len(staleEntities),
 		issueDetails: details,
 	}
+}
+
+// checkArchivedRatio detects when archived entities vastly outnumber active ones
+// This indicates a potentially stale database that should be reset
+func checkArchivedRatio(st *store.Store, fix bool, autoConfirm bool) doctorResult {
+	activeCount, err := st.CountEntities(store.EntityFilter{Status: "active"})
+	if err != nil {
+		return doctorResult{
+			passed:       false,
+			issueCount:   1,
+			issueDetails: []string{fmt.Sprintf("query error: %v", err)},
+		}
+	}
+
+	archivedCount, err := st.CountEntities(store.EntityFilter{Status: "archived"})
+	if err != nil {
+		return doctorResult{
+			passed:       false,
+			issueCount:   1,
+			issueDetails: []string{fmt.Sprintf("query error: %v", err)},
+		}
+	}
+
+	// No archived entities is fine
+	if archivedCount == 0 {
+		return doctorResult{passed: true}
+	}
+
+	// If active count is very low but archived is high, that's a problem
+	// Threshold: archived > 10x active AND archived > 100
+	if archivedCount > activeCount*10 && archivedCount > 100 {
+		details := []string{
+			fmt.Sprintf("High archived-to-active ratio: %d archived vs %d active", archivedCount, activeCount),
+			"This usually indicates the database needs to be reset.",
+			"Run 'cx reset' to reinitialize, or 'cx db compact --remove-archived' to clean up.",
+		}
+
+		if fix {
+			if !autoConfirm {
+				fmt.Printf("#   This will remove %d archived entities. Continue? [y/N] ", archivedCount)
+				var response string
+				fmt.Scanln(&response)
+				if response != "y" && response != "Y" {
+					return doctorResult{
+						passed:       false,
+						issueCount:   1,
+						issueDetails: []string{"Fix cancelled by user"},
+					}
+				}
+			}
+
+			// Remove archived entities
+			fmt.Printf("#   Removing %d archived entities...\n", archivedCount)
+			archivedEntities, err := st.QueryEntities(store.EntityFilter{Status: "archived"})
+			if err != nil {
+				return doctorResult{
+					passed:       false,
+					issueCount:   1,
+					issueDetails: []string{fmt.Sprintf("query error: %v", err)},
+				}
+			}
+
+			deletedCount := 0
+			for _, e := range archivedEntities {
+				if err := st.DeleteEntity(e.ID); err != nil {
+					fmt.Fprintf(os.Stderr, "#     Warning: failed to delete %s: %v\n", e.ID, err)
+				} else {
+					deletedCount++
+				}
+			}
+			fmt.Printf("#   ✓ Removed %d archived entities\n", deletedCount)
+			return doctorResult{passed: true}
+		}
+
+		return doctorResult{
+			passed:       false,
+			issueCount:   1,
+			issueDetails: details,
+		}
+	}
+
+	return doctorResult{passed: true}
 }
