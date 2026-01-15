@@ -328,8 +328,32 @@ func runScan(cmd *cobra.Command, args []string) error {
 		}
 
 		// Create call graph extractor with global entities for cross-file resolution
-		extractor := extract.NewCallGraphExtractor(fr.parseResult, allCallGraphEntities)
-		deps, err := extractor.ExtractDependencies()
+		// Dispatch to language-specific extractor
+		var deps []extract.Dependency
+		var extractErr error
+
+		switch fr.parseResult.Language {
+		case parser.Go:
+			extractor := extract.NewCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
+		case parser.TypeScript, parser.JavaScript:
+			extractor := extract.NewTypeScriptCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
+		case parser.Python:
+			extractor := extract.NewPythonCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
+		case parser.Java:
+			extractor := extract.NewJavaCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
+		case parser.Rust:
+			extractor := extract.NewRustCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
+		default:
+			// Unsupported language for call graph extraction
+			continue
+		}
+
+		err := extractErr
 		if err != nil {
 			if verbose {
 				w.WriteComment(fmt.Sprintf("Warning: call graph extraction failed for %s: %v", fr.relPath, err))
