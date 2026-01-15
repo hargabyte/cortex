@@ -10,6 +10,7 @@ import (
 	"github.com/anthropics/cx/internal/config"
 	"github.com/anthropics/cx/internal/extract"
 	"github.com/anthropics/cx/internal/output"
+	"github.com/anthropics/cx/internal/semdiff"
 	"github.com/anthropics/cx/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -23,8 +24,14 @@ var diffCmd = &cobra.Command{
 Shows entities that have been added, modified, or removed since the last scan.
 This is useful for understanding what has changed before running a new scan.
 
+Use --semantic for deeper analysis that distinguishes:
+  - Signature changes (breaking) vs body changes (non-breaking)
+  - Affected callers for each changed entity
+  - Safe removals (entities with 0 callers)
+
 Examples:
   cx diff                    # Show all changes since last scan
+  cx diff --semantic         # Show semantic analysis of changes
   cx diff --file src/auth    # Show changes only in specific path
   cx diff --detailed         # Show hash values for modified entities`,
 	RunE: runDiff,
@@ -33,6 +40,7 @@ Examples:
 var (
 	diffFile     string
 	diffDetailed bool
+	diffSemantic bool
 )
 
 func init() {
@@ -40,6 +48,7 @@ func init() {
 
 	diffCmd.Flags().StringVar(&diffFile, "file", "", "Show changes for specific file/directory only")
 	diffCmd.Flags().BoolVar(&diffDetailed, "detailed", false, "Show hash changes for modified entities")
+	diffCmd.Flags().BoolVar(&diffSemantic, "semantic", false, "Show semantic analysis (signature vs body changes, affected callers)")
 }
 
 // DiffOutput represents the diff command output
@@ -83,6 +92,11 @@ func runDiff(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to open store: %w", err)
 	}
 	defer storeDB.Close()
+
+	// Use semantic diff if requested
+	if diffSemantic {
+		return runSemanticDiff(cmd, storeDB, projectRoot)
+	}
 
 	// Get all file entries from last scan
 	fileEntries, err := storeDB.GetAllFileEntries()
@@ -253,4 +267,40 @@ func hasPrefix(path, prefix string) bool {
 		prefix = prefix + string(filepath.Separator)
 	}
 	return len(path) >= len(prefix) && path[:len(prefix)] == prefix
+}
+
+// runSemanticDiff performs semantic diff analysis.
+func runSemanticDiff(cmd *cobra.Command, storeDB *store.Store, projectRoot string) error {
+	// Load config
+	cfg, err := config.Load(projectRoot)
+	if err != nil {
+		// Use default config if not found
+		cfg = config.DefaultConfig()
+	}
+
+	// Create semantic diff analyzer
+	analyzer := semdiff.NewAnalyzer(storeDB, projectRoot, cfg)
+
+	// Run analysis
+	result, err := analyzer.Analyze(diffFile)
+	if err != nil {
+		return err
+	}
+
+	// Format output
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return err
+	}
+	density, err := output.ParseDensity(outputDensity)
+	if err != nil {
+		return err
+	}
+
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return err
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), result, density)
 }

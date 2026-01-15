@@ -331,6 +331,12 @@ func (e *Entity) formatLocation() string {
 	return fmt.Sprintf("%s:%d", e.File, e.StartLine)
 }
 
+// FormatSignature formats the (params) -> returns signature string.
+// This is the public version for use by other packages.
+func (e *Entity) FormatSignature() string {
+	return e.formatSignature()
+}
+
 // formatSignature formats the (params) -> returns signature string.
 func (e *Entity) formatSignature() string {
 	var sb strings.Builder
