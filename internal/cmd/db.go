@@ -12,7 +12,15 @@ import (
 var dbCmd = &cobra.Command{
 	Use:   "db",
 	Short: "Database management commands",
-	Long:  `Commands for managing the .cx/cortex.db database.`,
+	Long: `Commands for managing the .cx/cortex.db database.
+
+Examples:
+  cx db info                      # Show database statistics
+  cx db doctor                    # Check database health
+  cx db doctor --fix              # Auto-fix health issues
+  cx db compact                   # Reclaim unused space
+  cx db compact --remove-archived # Remove archived entities first
+  cx db export -o backup.jsonl    # Export to JSONL file`,
 }
 
 var dbInfoCmd = &cobra.Command{

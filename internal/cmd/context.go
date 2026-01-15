@@ -951,17 +951,18 @@ func generateSessionRecoveryContent(stats sessionRecoveryDBStats, full bool) str
 
 ` + "```bash" + `
 # Start of session
-cx context                                  # This context
+cx                                          # This context (or cx context)
 
 # Before ANY coding task
 cx context --smart "<task>" --budget 8000   # Focused context
 
 # Before modifying code
-cx impact <file>                            # Blast radius
+cx safe <file>                              # Full safety assessment
+cx safe <file> --quick                      # Just blast radius
 
 # Project overview
 cx map                                      # Skeleton (~10k tokens)
-cx rank --keystones                         # Critical entities
+cx find --keystones                         # Critical entities
 ` + "```" + `
 
 ## Discovery & Analysis
@@ -969,39 +970,43 @@ cx rank --keystones                         # Critical entities
 | Command | Purpose |
 |---------|---------|
 | ` + "`cx find <name>`" + ` | Name search (--type=F/T/M, --exact) |
-| ` + "`cx search \"query\"`" + ` | Concept search (--top N) |
+| ` + "`cx find \"query\"`" + ` | Concept search (multi-word = FTS) |
+| ` + "`cx find --keystones`" + ` | Find critical entities |
 | ` + "`cx show <name>`" + ` | Entity details (--density dense) |
-| ` + "`cx near <name>`" + ` | Neighborhood (--depth N) |
-| ` + "`cx graph <name>`" + ` | Dependencies (--hops N) |
-| ` + "`cx impact <file>`" + ` | Blast radius (--depth N) |
-| ` + "`cx diff`" + ` | Changes since scan |
+| ` + "`cx show <name> --related`" + ` | Neighborhood (calls, callers) |
+| ` + "`cx show <name> --graph`" + ` | Dependencies (--hops N) |
 
-## Quality & Testing
+## Safety & Testing
 
 | Command | Purpose |
 |---------|---------|
+| ` + "`cx safe <file>`" + ` | Full safety check (impact + coverage + drift) |
+| ` + "`cx safe <file> --quick`" + ` | Just blast radius |
+| ` + "`cx safe --coverage`" + ` | Coverage gaps |
+| ` + "`cx safe --drift`" + ` | Check for staleness |
+| ` + "`cx test --diff --run`" + ` | Smart test selection |
 | ` + "`cx coverage import`" + ` | Import coverage.out |
-| ` + "`cx gaps --keystones-only`" + ` | Undertested critical code |
-| ` + "`cx test-impact --diff`" + ` | Smart test selection |
-| ` + "`cx verify --strict`" + ` | Check drift (CI) |
 
 ## Quick Patterns
 
 ` + "```bash" + `
 # Understand codebase
-cx map && cx rank --keystones --top 10
+cx map && cx find --keystones --top 10
 
 # Before refactoring
-cx impact <file> && cx gaps --keystones-only
+cx safe <file>
 
 # Smart testing
-cx test-impact --diff --output-command
+cx test --diff --run
+
+# Find critical untested code
+cx safe --coverage --keystones-only
 ` + "```" + `
 
 ## Notes
 - Supports: Go, TypeScript, JavaScript, Java, Rust, Python
 - Run ` + "`cx scan`" + ` after major code changes
-- Run ` + "`cx help-agents`" + ` for full agent reference
+- Run ` + "`cx help-agents`" + ` for full command reference
 `
 
 	return content

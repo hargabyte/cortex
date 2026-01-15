@@ -30,6 +30,8 @@ var rootCmd = &cobra.Command{
 	Short: "Context graph CLI for codebase analysis",
 	Long: `cx is a codebase context tool that builds and queries a graph of code entities.
 
+Run 'cx' with no arguments for session recovery context (same as 'cx context').
+
 It helps developers and AI agents understand code structure, find relevant context,
 and analyze dependencies across a codebase. cx scans source files, builds a graph
 of symbols and their relationships, and provides commands to explore and query
@@ -64,6 +66,11 @@ Examples:
 
 See 'cx <command> --help' for command-specific options.`,
 	Version: Version,
+	// Run cx with no args → session recovery (same as 'cx context')
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Delegate to context command for session recovery
+		return contextCmd.RunE(contextCmd, []string{})
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
