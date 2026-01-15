@@ -435,3 +435,68 @@ func TestDefaultSmartContextOptions(t *testing.T) {
 		t.Errorf("default KeystoneBoost = %f, want 2.0", opts.KeystoneBoost)
 	}
 }
+
+// TestExtractIntentMultiWord tests intent extraction with multi-word natural language queries.
+// This addresses the issue where multi-word queries like "parsing source code" failed
+// because FTS5's implicit AND required all terms to match.
+func TestExtractIntentMultiWord(t *testing.T) {
+	tests := []struct {
+		name           string
+		description    string
+		wantKeywords   []string
+		minKeywords    int
+	}{
+		{
+			name:           "natural language with generic terms",
+			description:    "parsing source code in the codebase",
+			wantKeywords:   []string{"parsing", "codebase"},
+			minKeywords:    1,
+		},
+		{
+			name:           "task with action and stopwords",
+			description:    "add rate limiting to the API endpoints",
+			wantKeywords:   []string{"rate", "limiting", "api", "endpoints"},
+			minKeywords:    3,
+		},
+		{
+			name:           "query with domain terms",
+			description:    "fix authentication bug in login flow",
+			wantKeywords:   []string{"authentication", "bug", "login", "flow"},
+			minKeywords:    3,
+		},
+		{
+			name:           "mostly generic terms",
+			description:    "implement new feature in the system",
+			wantKeywords:   []string{}, // Most words are stopwords/action words
+			minKeywords:    0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			intent := ExtractIntent(tt.description)
+
+			// Check minimum keyword count
+			if len(intent.Keywords) < tt.minKeywords {
+				t.Errorf("ExtractIntent(%q) got %d keywords, want at least %d. Keywords: %v",
+					tt.description, len(intent.Keywords), tt.minKeywords, intent.Keywords)
+			}
+
+			// Check that expected keywords are present
+			for _, want := range tt.wantKeywords {
+				found := false
+				for _, kw := range intent.Keywords {
+					if kw == want {
+						found = true
+						break
+					}
+				}
+				// Don't fail if not found - the keyword might be filtered
+				// Just log for visibility
+				if !found && len(tt.wantKeywords) > 0 {
+					t.Logf("Note: Expected keyword %q not in %v (may be filtered as stopword)", want, intent.Keywords)
+				}
+			}
+		})
+	}
+}

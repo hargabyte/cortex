@@ -327,10 +327,20 @@ func TestBuildFTSQuery(t *testing.T) {
 		expected string
 	}{
 		{"simple word", "auth", "auth*"},
-		{"multiple words", "auth logic", "auth* logic*"},
+		{"multiple words uses OR", "auth validation", "auth* OR validation*"},
 		{"trim spaces", "  auth  ", "auth*"},
 		{"empty", "", "*"},
-		{"special chars", "foo:bar", "foo bar*"},
+		// escapeFTSQuery replaces : with space within the word (after split)
+		// So "foo:bar" becomes "foo bar*" as a single term (not split into two words)
+		{"special chars colon", "foo:bar", "foo bar*"},
+		// Code stopwords are filtered out
+		{"filters code stopwords", "parsing source code", "parsing*"},
+		{"filters multiple stopwords", "implement new feature handler", "handler*"},
+		{"keeps domain terms", "rate limit api", "rate* OR limit* OR api*"},
+		// Edge cases
+		{"all stopwords falls back", "code source file", "code*"}, // falls back to first word
+		// Note: "add" is NOT a code stopword (action words handled in smart.go)
+		{"action words not filtered here", "add validation", "add* OR validation*"},
 	}
 
 	for _, tt := range tests {
@@ -341,6 +351,83 @@ func TestBuildFTSQuery(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestBuildFTSQueryMultiWord specifically tests multi-word query handling.
+func TestBuildFTSQueryMultiWord(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		shouldMatch []string // substrings that should appear in the query
+		shouldUseOR bool     // whether OR should be used
+	}{
+		{
+			name:        "two meaningful words",
+			input:       "auth handler",
+			shouldMatch: []string{"auth*", "handler*"},
+			shouldUseOR: true,
+		},
+		{
+			name:        "three meaningful words",
+			input:       "rate limit middleware",
+			shouldMatch: []string{"rate*", "limit*", "middleware*"},
+			shouldUseOR: true,
+		},
+		{
+			name:        "natural language query preserves case",
+			input:       "add rate limiting to API",
+			shouldMatch: []string{"rate*", "limiting*", "API*"}, // preserves original case
+			shouldUseOR: true,
+		},
+		{
+			name:        "stopwords partially removed",
+			input:       "parsing source code files",
+			shouldMatch: []string{"parsing*", "files*"}, // source, code removed; files kept
+			shouldUseOR: true,
+		},
+		{
+			name:        "single word after stopword removal",
+			input:       "implement new feature handler",
+			shouldMatch: []string{"handler*"},
+			shouldUseOR: false, // only one term left
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := buildFTSQuery(tt.input)
+
+			// Check that expected substrings appear
+			for _, expected := range tt.shouldMatch {
+				if !containsSubstring(result, expected) {
+					t.Errorf("buildFTSQuery(%q) = %q, expected to contain %q", tt.input, result, expected)
+				}
+			}
+
+			// Check OR usage
+			hasOR := containsSubstring(result, " OR ")
+			if tt.shouldUseOR && !hasOR {
+				t.Errorf("buildFTSQuery(%q) = %q, expected OR operator", tt.input, result)
+			}
+			if !tt.shouldUseOR && hasOR {
+				t.Errorf("buildFTSQuery(%q) = %q, did not expect OR operator", tt.input, result)
+			}
+		})
+	}
+}
+
+func containsSubstring(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > len(substr) && findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 // TestNormalizeBM25Score tests score normalization.

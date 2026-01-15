@@ -176,11 +176,37 @@ func (s *Store) CountFTSEntries() (int, error) {
 	return count, nil
 }
 
+// codeStopWords are generic terms that add noise in code search contexts.
+// These are filtered out to improve search precision.
+var codeStopWords = map[string]bool{
+	"code":      true,
+	"source":    true,
+	"file":      true,
+	"function":  true,
+	"method":    true,
+	"class":     true,
+	"implement": true,
+	"feature":   true,
+	"new":       true,
+	"existing":  true,
+	"current":   true,
+	"project":   true,
+	"codebase":  true,
+	"logic":     true,
+	"system":    true,
+	"module":    true,
+	"component": true,
+}
+
 // buildFTSQuery converts a user query into FTS5 query syntax.
-// Supports:
-// - Simple words: "auth" -> auth*
-// - Phrases: "auth logic" -> "auth" AND "logic"
-// - Exact: starts with exact match, then falls back to prefix
+// Uses OR semantics for multi-word queries to be more forgiving with natural language.
+// Filters out code-generic stopwords that add noise.
+//
+// Examples:
+// - "auth" -> "auth*"
+// - "rate limit" -> "rate* OR limit*"
+// - "parsing source code" -> "parsing*" (source, code filtered as stopwords)
+// - Single specific term -> "term*"
 func buildFTSQuery(query string) string {
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -193,18 +219,47 @@ func buildFTSQuery(query string) string {
 		return "*"
 	}
 
-	// Build FTS5 query
-	// For each word, search with prefix matching
+	// Filter out code stopwords and build query parts
 	var parts []string
 	for _, word := range words {
 		// Escape special FTS5 characters
 		word = escapeFTSQuery(word)
+		word = strings.TrimSpace(word)
+
+		// Skip empty words and code stopwords
+		if word == "" {
+			continue
+		}
+		lowerWord := strings.ToLower(word)
+		if codeStopWords[lowerWord] {
+			continue
+		}
+
 		// Use prefix matching for flexibility
 		parts = append(parts, word+"*")
 	}
 
-	// AND all terms together
-	return strings.Join(parts, " ")
+	// If all words were filtered, return wildcard or try original first word
+	if len(parts) == 0 {
+		// Fall back to first non-empty word without filtering
+		for _, word := range words {
+			word = escapeFTSQuery(word)
+			word = strings.TrimSpace(word)
+			if word != "" {
+				return word + "*"
+			}
+		}
+		return "*"
+	}
+
+	// Single word: just use prefix match
+	if len(parts) == 1 {
+		return parts[0]
+	}
+
+	// Multiple words: use OR for more forgiving search
+	// FTS5 will still rank results with more matches higher via BM25
+	return strings.Join(parts, " OR ")
 }
 
 // escapeFTSQuery escapes special characters for FTS5 queries.

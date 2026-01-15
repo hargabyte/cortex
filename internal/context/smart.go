@@ -407,6 +407,49 @@ func (sc *SmartContext) findEntryPoints(intent *Intent) ([]*EntryPoint, error) {
 				entryPoints = append(entryPoints, ep)
 			}
 		}
+
+		// Fallback: if combined search returned few results, search individual keywords
+		// and merge results. This handles cases where terms don't co-occur but are
+		// individually relevant.
+		minResultsThreshold := 3
+		if len(entryPoints) < minResultsThreshold && len(intent.Keywords) > 1 {
+			for _, kw := range intent.Keywords {
+				// Skip short keywords that are likely noise
+				if len(kw) < 3 {
+					continue
+				}
+				kwResults, kwErr := sc.store.SearchEntities(store.SearchOptions{
+					Query: kw,
+					Limit: 5, // Limit per-keyword results
+				})
+				if kwErr != nil {
+					continue
+				}
+				for _, r := range kwResults {
+					if seenIDs[r.Entity.ID] {
+						continue
+					}
+					seenIDs[r.Entity.ID] = true
+
+					ep := &EntryPoint{
+						Entity:    r.Entity,
+						ID:        r.Entity.ID,
+						Name:      r.Entity.Name,
+						Type:      r.Entity.EntityType,
+						Location:  formatLocation(r.Entity),
+						Relevance: r.CombinedScore * 0.8, // Slightly lower score for fallback results
+						Reason:    "Keyword match: " + kw,
+						PageRank:  r.PageRank,
+					}
+
+					if r.PageRank >= 0.15 {
+						ep.IsKeystone = true
+					}
+
+					entryPoints = append(entryPoints, ep)
+				}
+			}
+		}
 	}
 
 	// Sort by relevance
