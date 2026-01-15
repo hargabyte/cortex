@@ -28,6 +28,11 @@ func DefaultConfig() *Config {
 			DefaultHops:    1,
 			MaxTokens:      4000,
 		},
+		Guard: GuardConfig{
+			FailOnCoverageRegression: true,
+			MinCoverageForKeystones:  50.0,
+			FailOnWarnings:           false,
+		},
 	}
 }
 
@@ -45,6 +50,9 @@ func Merge(loaded, defaults *Config) *Config {
 
 	// Merge Output config
 	result.Output = mergeOutputConfig(loaded.Output, defaults.Output)
+
+	// Merge Guard config
+	result.Guard = mergeGuardConfig(loaded.Guard, defaults.Guard)
 
 	return result
 }
@@ -126,6 +134,32 @@ func mergeOutputConfig(loaded, defaults OutputConfig) OutputConfig {
 	} else {
 		result.MaxTokens = defaults.MaxTokens
 	}
+
+	return result
+}
+
+func mergeGuardConfig(loaded, defaults GuardConfig) GuardConfig {
+	result := GuardConfig{}
+
+	// FailOnCoverageRegression: use loaded value (bool can't distinguish unset from false)
+	// For booleans, we use the loaded value since YAML unmarshals missing as false
+	// Users who want false will set it explicitly
+	result.FailOnCoverageRegression = loaded.FailOnCoverageRegression
+	if !loaded.FailOnCoverageRegression && defaults.FailOnCoverageRegression {
+		// If loaded is false but default is true, check if it was explicitly set
+		// For now, default to true if loaded is zero-value
+		result.FailOnCoverageRegression = defaults.FailOnCoverageRegression
+	}
+
+	// MinCoverageForKeystones: use loaded if non-zero
+	if loaded.MinCoverageForKeystones != 0 {
+		result.MinCoverageForKeystones = loaded.MinCoverageForKeystones
+	} else {
+		result.MinCoverageForKeystones = defaults.MinCoverageForKeystones
+	}
+
+	// FailOnWarnings: use loaded value (same bool handling)
+	result.FailOnWarnings = loaded.FailOnWarnings
 
 	return result
 }

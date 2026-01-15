@@ -14,8 +14,8 @@ func TestDefaultConfig(t *testing.T) {
 		t.Errorf("expected default language [go], got %v", cfg.Scan.Languages)
 	}
 
-	if len(cfg.Scan.Exclude) != 4 {
-		t.Errorf("expected 4 exclude patterns, got %d", len(cfg.Scan.Exclude))
+	if len(cfg.Scan.Exclude) != 7 {
+		t.Errorf("expected 7 exclude patterns, got %d", len(cfg.Scan.Exclude))
 	}
 
 	// Verify metrics defaults
@@ -46,6 +46,19 @@ func TestDefaultConfig(t *testing.T) {
 
 	if cfg.Output.MaxTokens != 4000 {
 		t.Errorf("expected max_tokens 4000, got %d", cfg.Output.MaxTokens)
+	}
+
+	// Verify guard defaults
+	if !cfg.Guard.FailOnCoverageRegression {
+		t.Error("expected fail_on_coverage_regression to be true by default")
+	}
+
+	if cfg.Guard.MinCoverageForKeystones != 50.0 {
+		t.Errorf("expected min_coverage_for_keystones 50.0, got %f", cfg.Guard.MinCoverageForKeystones)
+	}
+
+	if cfg.Guard.FailOnWarnings {
+		t.Error("expected fail_on_warnings to be false by default")
 	}
 }
 

@@ -53,6 +53,7 @@ Run `cx help-agents` for a concise agent-optimized reference.
 | `cx gaps` | Coverage gaps | `--keystones-only`, `--create-tasks` |
 | `cx test-impact` | Smart tests | `--diff`, `--output-command` |
 | `cx verify` | Check drift | `--strict` (CI), `--fix` |
+| `cx guard` | Pre-commit hook | `--staged`, `--all`, `--fail-on-warnings` |
 
 ### Context Commands
 
@@ -139,6 +140,18 @@ cx check <file>                       # Combined safety assessment
 cx diff                               # What changed since scan?
 cx impact <file> --depth 3            # Full blast radius
 cx gaps --keystones-only              # Undertested critical code
+```
+
+### Pattern 7: Pre-Commit Guard (Git Hook)
+```bash
+# Install as pre-commit hook
+echo 'cx guard --staged' >> .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+
+# Manual check before committing
+cx guard                              # Check staged files
+cx guard --all                        # Check all modified files
+cx guard --fail-on-warnings           # Strict mode
 ```
 
 ## Supported Languages

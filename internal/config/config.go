@@ -20,6 +20,14 @@ type Config struct {
 	Scan    ScanConfig    `yaml:"scan"`
 	Metrics MetricsConfig `yaml:"metrics"`
 	Output  OutputConfig  `yaml:"output"`
+	Guard   GuardConfig   `yaml:"guard"`
+}
+
+// GuardConfig holds configuration for the pre-commit guard
+type GuardConfig struct {
+	FailOnCoverageRegression bool    `yaml:"fail_on_coverage_regression"`
+	MinCoverageForKeystones  float64 `yaml:"min_coverage_for_keystones"`
+	FailOnWarnings           bool    `yaml:"fail_on_warnings"`
 }
 
 // ScanConfig holds configuration for code scanning
