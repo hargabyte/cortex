@@ -68,6 +68,12 @@ func init() {
 	searchCmd.Flags().Float64Var(&searchThreshold, "threshold", 0.0, "Minimum relevance score (0.0-1.0)")
 	searchCmd.Flags().StringVar(&searchLang, "lang", "", "Filter by language (go, typescript, python, rust, java)")
 	searchCmd.Flags().StringVar(&searchType, "type", "", "Filter by entity type (function, type, constant, etc.)")
+
+	// Deprecate: use 'cx find "query"' instead (multi-word queries trigger FTS)
+	DeprecateCommand(searchCmd, DeprecationInfo{
+		OldCommand: "cx search",
+		NewCommand: "cx find \"<query>\"",
+	})
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {

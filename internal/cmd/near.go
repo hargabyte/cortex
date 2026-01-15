@@ -69,6 +69,12 @@ func init() {
 	// Near-specific flags
 	nearCmd.Flags().IntVar(&nearDepth, "depth", 1, "Hop count for traversal (default: 1)")
 	nearCmd.Flags().StringVar(&nearDirection, "direction", "both", "Filter direction: in|out|both (default: both)")
+
+	// Mark as deprecated - use 'cx show --related' instead
+	DeprecateCommand(nearCmd, DeprecationInfo{
+		OldCommand: "cx near",
+		NewCommand: "cx show --related",
+	})
 }
 
 func runNear(cmd *cobra.Command, args []string) error {

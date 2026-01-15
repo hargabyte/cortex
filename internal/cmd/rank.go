@@ -81,6 +81,12 @@ func init() {
 	rankCmd.Flags().BoolVar(&rankKeystones, "keystones", false, "Top N by PageRank (most important)")
 	rankCmd.Flags().BoolVar(&rankBottlenecks, "bottlenecks", false, "Top N by betweenness (most central)")
 	rankCmd.Flags().BoolVar(&rankLeaves, "leaves", false, "Top N leaf nodes (no dependents)")
+
+	// Deprecate: use 'cx find --important' instead
+	DeprecateCommand(rankCmd, DeprecationInfo{
+		OldCommand: "cx rank",
+		NewCommand: "cx find --important",
+	})
 }
 
 // rankedEntity holds an entity with its computed metrics

@@ -44,6 +44,13 @@ func init() {
 	quickstartCmd.Flags().BoolVar(&quickstartForce, "force", false, "Reinitialize even if .cx already exists")
 	quickstartCmd.Flags().BoolVar(&quickstartWithCoverage, "with-coverage", false, "Prompt for coverage file import")
 	quickstartCmd.Flags().BoolVar(&quickstartQuiet, "quiet", false, "Minimal output (no summary)")
+
+	// Deprecate: use scan --overview instead
+	DeprecateCommand(quickstartCmd, DeprecationInfo{
+		OldCommand: "cx quickstart",
+		NewCommand: "cx scan",
+		NewFlags:   "--overview",
+	})
 }
 
 func runQuickstart(cmd *cobra.Command, args []string) error {

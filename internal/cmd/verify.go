@@ -53,6 +53,13 @@ func init() {
 	verifyCmd.Flags().BoolVar(&verifyFix, "fix", false, "Update hashes for drifted entities")
 	verifyCmd.Flags().BoolVar(&verifyDryRun, "dry-run", false, "Show what --fix would do without making changes")
 	verifyCmd.Flags().BoolVar(&verifyCreateTask, "create-task", false, "Create a beads task for verification failures")
+
+	// Deprecate this command in favor of cx check --drift
+	DeprecateCommand(verifyCmd, DeprecationInfo{
+		OldCommand: "cx verify",
+		NewCommand: "cx check",
+		NewFlags:   "--drift",
+	})
 }
 
 // verifyResult holds the categorized verification results

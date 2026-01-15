@@ -81,6 +81,13 @@ func init() {
 	impactCmd.Flags().IntVar(&impactDepth, "depth", 3, "Transitive depth")
 	impactCmd.Flags().Float64Var(&impactThreshold, "threshold", 0, "Min importance threshold (PageRank score)")
 	impactCmd.Flags().BoolVar(&impactCreateTask, "create-task", false, "Create a beads task from the impact analysis")
+
+	// Deprecate this command in favor of cx check --quick
+	DeprecateCommand(impactCmd, DeprecationInfo{
+		OldCommand: "cx impact",
+		NewCommand: "cx check",
+		NewFlags:   "--quick",
+	})
 }
 
 // impactEntry holds information about an entity in the impact analysis

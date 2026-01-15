@@ -52,16 +52,43 @@ var (
 	exportOutput          string
 )
 
+// dbDoctorCmd is the doctor subcommand under db
+var dbDoctorCmd = &cobra.Command{
+	Use:   "doctor",
+	Short: "Check database health",
+	Long: `Run health checks on the .cx/cortex.db database.
+
+Checks:
+  - Database integrity (SQLite integrity_check)
+  - Orphan dependencies (referencing deleted entities)
+  - Stale entities (in files that no longer exist)
+
+Examples:
+  cx db doctor        # Run all checks
+  cx db doctor --fix  # Run checks and auto-fix issues`,
+	RunE: runDoctor,
+}
+
+var dbDoctorFix bool
+
 func init() {
 	rootCmd.AddCommand(dbCmd)
 	rootCmd.AddCommand(dbStatusCmd) // Top-level status alias
 	dbCmd.AddCommand(dbInfoCmd)
 	dbCmd.AddCommand(dbCompactCmd)
 	dbCmd.AddCommand(dbExportCmd)
+	dbCmd.AddCommand(dbDoctorCmd)
 
 	dbCompactCmd.Flags().BoolVar(&compactRemoveArchived, "remove-archived", false, "Remove archived entities before compacting")
 	dbCompactCmd.Flags().BoolVar(&compactDryRun, "dry-run", false, "Show what would be done without making changes")
 	dbExportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output file (default: stdout)")
+	dbDoctorCmd.Flags().BoolVar(&dbDoctorFix, "fix", false, "Auto-fix issues found")
+
+	// Deprecate top-level status command
+	DeprecateCommand(dbStatusCmd, DeprecationInfo{
+		OldCommand: "cx status",
+		NewCommand: "cx db info",
+	})
 }
 
 func runDbInfo(cmd *cobra.Command, args []string) error {

@@ -40,6 +40,12 @@ func init() {
 	rootCmd.AddCommand(primeCmd)
 	primeCmd.Flags().BoolVar(&primeFull, "full", false, "Extended output with keystones and map")
 	primeCmd.Flags().BoolVar(&primeExport, "export", false, "Output default content (ignores PRIME.md override)")
+
+	// Deprecate prime command - now part of context
+	DeprecateCommand(primeCmd, DeprecationInfo{
+		OldCommand: "cx prime",
+		NewCommand: "cx context",
+	})
 }
 
 func runPrime(cmd *cobra.Command, args []string) error {

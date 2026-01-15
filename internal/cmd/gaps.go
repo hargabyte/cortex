@@ -75,6 +75,13 @@ func init() {
 	gapsCmd.Flags().BoolVar(&gapsKeystonesOnly, "keystones-only", false, "Only show keystones with gaps")
 	gapsCmd.Flags().IntVar(&gapsThreshold, "threshold", 75, "Coverage threshold percentage")
 	gapsCmd.Flags().BoolVar(&gapsCreateTasks, "create-tasks", false, "Print bd create commands for gaps")
+
+	// Deprecate this command in favor of cx check --coverage
+	DeprecateCommand(gapsCmd, DeprecationInfo{
+		OldCommand: "cx gaps",
+		NewCommand: "cx check",
+		NewFlags:   "--coverage",
+	})
 }
 
 // coverageGap represents an entity with a coverage gap

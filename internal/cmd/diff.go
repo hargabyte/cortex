@@ -49,6 +49,13 @@ func init() {
 	diffCmd.Flags().StringVar(&diffFile, "file", "", "Show changes for specific file/directory only")
 	diffCmd.Flags().BoolVar(&diffDetailed, "detailed", false, "Show hash changes for modified entities")
 	diffCmd.Flags().BoolVar(&diffSemantic, "semantic", false, "Show semantic analysis (signature vs body changes, affected callers)")
+
+	// Deprecate this command in favor of cx check --changes
+	DeprecateCommand(diffCmd, DeprecationInfo{
+		OldCommand: "cx diff",
+		NewCommand: "cx check",
+		NewFlags:   "--changes",
+	})
 }
 
 // DiffOutput represents the diff command output

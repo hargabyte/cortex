@@ -83,6 +83,12 @@ func init() {
 	graphCmd.Flags().StringVar(&graphDirection, "direction", "both", "Edge direction (out|in|both)")
 	graphCmd.Flags().IntVar(&graphHops, "hops", 2, "Traversal depth")
 	graphCmd.Flags().StringVar(&graphEdgeType, "type", "all", "Edge types (calls|uses_type|implements|all)")
+
+	// Mark as deprecated - use 'cx show --graph' instead
+	DeprecateCommand(graphCmd, DeprecationInfo{
+		OldCommand: "cx graph",
+		NewCommand: "cx show --graph",
+	})
 }
 
 // graphNode represents a node in the traversal queue

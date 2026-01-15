@@ -6,12 +6,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/anthropics/cx/internal/output"
-	"github.com/anthropics/cx/internal/store"
 	"github.com/anthropics/cx/internal/config"
 	"github.com/anthropics/cx/internal/extract"
+	"github.com/anthropics/cx/internal/graph"
+	"github.com/anthropics/cx/internal/metrics"
+	"github.com/anthropics/cx/internal/output"
 	"github.com/anthropics/cx/internal/parser"
+	"github.com/anthropics/cx/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +24,8 @@ var scanCmd = &cobra.Command{
 	Short: "Scan a codebase and build the context graph",
 	Long: `Scan traverses the specified directory (or current directory if none given),
 parses source files, and builds a context graph of all code entities.
+
+Auto-initializes the .cx directory if it doesn't exist.
 
 The scan process:
   1. Discovers all source files matching supported languages
@@ -32,8 +37,10 @@ The scan process:
 Supported languages: Go, TypeScript, JavaScript, Java, Rust, Python
 
 Examples:
-  cx scan                    # Scan current directory
+  cx scan                    # Scan current directory (auto-init if needed)
   cx scan ./src              # Scan specific directory
+  cx scan --force            # Force full rescan
+  cx scan --overview         # Scan + show project overview
   cx scan --lang go          # Scan only Go files
   cx scan --dry-run          # Show what would be created`,
 	Args: cobra.MaximumNArgs(1),
@@ -42,10 +49,11 @@ Examples:
 
 // Command-line flags
 var (
-	scanLang    string
-	scanExclude []string
-	scanDryRun  bool
-	scanForce   bool
+	scanLang     string
+	scanExclude  []string
+	scanDryRun   bool
+	scanForce    bool
+	scanOverview bool
 )
 
 func init() {
@@ -56,6 +64,7 @@ func init() {
 	scanCmd.Flags().StringSliceVar(&scanExclude, "exclude", nil, "Exclude patterns (comma-separated globs)")
 	scanCmd.Flags().BoolVar(&scanDryRun, "dry-run", false, "Show what would be created")
 	scanCmd.Flags().BoolVar(&scanForce, "force", false, "Rescan even if file unchanged")
+	scanCmd.Flags().BoolVar(&scanOverview, "overview", false, "Show project overview after scan (replaces quickstart)")
 }
 
 // scanStats tracks scan statistics for summary output
@@ -389,6 +398,16 @@ func runScan(cmd *cobra.Command, args []string) error {
 		}
 		if stats.skipped > 0 || stats.errors > 0 {
 			w.WriteComment(fmt.Sprintf("Skipped: %d, Errors: %d", stats.skipped, stats.errors))
+		}
+	}
+
+	// Show overview if requested (--overview flag)
+	if scanOverview && !scanDryRun {
+		if err := showScanOverview(storeDB, projectRoot, cfg); err != nil {
+			// Non-fatal: just log warning if overview fails
+			if !quiet {
+				fmt.Fprintf(os.Stderr, "Warning: overview failed: %v\n", err)
+			}
 		}
 	}
 
@@ -733,4 +752,131 @@ func isFileChanged(storeDB *store.Store, path, hash string) bool {
 	}
 
 	return changed
+}
+
+// showScanOverview displays a project overview after scanning (--overview flag).
+// This consolidates the quickstart functionality into scan.
+func showScanOverview(s *store.Store, projectRoot string, cfg *config.Config) error {
+	fmt.Println()
+	fmt.Println("Computing importance metrics...")
+
+	// Get all active entities for metrics computation
+	entities, err := s.QueryEntities(store.EntityFilter{Status: "active"})
+	if err != nil {
+		return fmt.Errorf("query entities: %w", err)
+	}
+
+	if len(entities) == 0 {
+		fmt.Println("No entities found.")
+		return nil
+	}
+
+	// Check if metrics need computing
+	needRecompute := false
+	for _, e := range entities {
+		if m, _ := s.GetMetrics(e.ID); m == nil {
+			needRecompute = true
+			break
+		}
+	}
+
+	if needRecompute {
+		// Build graph from store
+		g, err := graph.BuildFromStore(s)
+		if err != nil {
+			return fmt.Errorf("build graph: %w", err)
+		}
+
+		adjacency := g.Edges
+
+		// Compute PageRank
+		prConfig := metrics.PageRankConfig{
+			Damping:       cfg.Metrics.PageRankDamping,
+			MaxIterations: cfg.Metrics.PageRankIterations,
+			Tolerance:     0.0001,
+		}
+		pagerank := metrics.ComputePageRank(adjacency, prConfig)
+
+		// Compute betweenness
+		betweenness := metrics.ComputeBetweenness(adjacency)
+
+		// Compute degrees
+		inDegree, outDegree := metrics.ComputeInOutDegree(adjacency)
+
+		// Save to store
+		bulkMetrics := make([]*store.Metrics, 0, len(entities))
+		for _, e := range entities {
+			m := &store.Metrics{
+				EntityID:    e.ID,
+				PageRank:    pagerank[e.ID],
+				Betweenness: betweenness[e.ID],
+				InDegree:    inDegree[e.ID],
+				OutDegree:   outDegree[e.ID],
+				ComputedAt:  time.Now(),
+			}
+			bulkMetrics = append(bulkMetrics, m)
+		}
+
+		if err := s.SaveBulkMetrics(bulkMetrics); err != nil {
+			return fmt.Errorf("save metrics: %w", err)
+		}
+	}
+
+	// Print overview
+	fmt.Println()
+	fmt.Println("─────────────────────────────────────────")
+	printScanOverviewSummary(s, projectRoot)
+
+	return nil
+}
+
+// printScanOverviewSummary prints the project summary for --overview.
+func printScanOverviewSummary(s *store.Store, projectRoot string) {
+	// Get stats
+	activeCount, _ := s.CountEntities(store.EntityFilter{Status: "active"})
+	depCount, _ := s.CountDependencies()
+	fileCount, _ := s.CountFileIndex()
+
+	// Count by type
+	funcCount, _ := s.CountEntities(store.EntityFilter{Status: "active", EntityType: "function"})
+	methodCount, _ := s.CountEntities(store.EntityFilter{Status: "active", EntityType: "method"})
+	typeCount, _ := s.CountEntities(store.EntityFilter{Status: "active", EntityType: "struct"})
+	typeCount2, _ := s.CountEntities(store.EntityFilter{Status: "active", EntityType: "interface"})
+	typeCount += typeCount2
+
+	fmt.Printf("Project: %s\n", filepath.Base(projectRoot))
+	fmt.Printf("Entities: %d (functions: %d, methods: %d, types: %d)\n",
+		activeCount, funcCount, methodCount, typeCount)
+	fmt.Printf("Dependencies: %d\n", depCount)
+	fmt.Printf("Files indexed: %d\n", fileCount)
+	fmt.Println()
+
+	// Get top keystones by PageRank
+	topMetrics, err := s.GetTopByPageRank(5)
+	if err == nil && len(topMetrics) > 0 {
+		fmt.Println("Top Keystones:")
+		for i, m := range topMetrics {
+			e, err := s.GetEntity(m.EntityID)
+			if err != nil || e == nil {
+				continue
+			}
+			loc := formatOverviewLocation(e.FilePath, e.LineStart)
+			fmt.Printf("  %d. %s (%s) @ %s\n", i+1, e.Name, e.EntityType, loc)
+		}
+		fmt.Println()
+	}
+
+	fmt.Println("Next steps:")
+	fmt.Println("  cx context --smart \"<your task>\" --budget 8000")
+	fmt.Println("  cx impact <file-to-modify>")
+	fmt.Println("  cx map                    # project skeleton")
+}
+
+// formatOverviewLocation formats a short location string for overview output.
+func formatOverviewLocation(filePath string, line int) string {
+	parts := strings.Split(filePath, "/")
+	if len(parts) > 2 {
+		filePath = strings.Join(parts[len(parts)-2:], "/")
+	}
+	return fmt.Sprintf("%s:%d", filePath, line)
 }

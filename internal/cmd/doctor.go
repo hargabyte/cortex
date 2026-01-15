@@ -30,6 +30,12 @@ var doctorFix bool
 func init() {
 	rootCmd.AddCommand(doctorCmd)
 	doctorCmd.Flags().BoolVar(&doctorFix, "fix", false, "Auto-fix issues found")
+
+	// Deprecate standalone doctor command in favor of cx db doctor
+	DeprecateCommand(doctorCmd, DeprecationInfo{
+		OldCommand: "cx doctor",
+		NewCommand: "cx db doctor",
+	})
 }
 
 type doctorResult struct {
@@ -47,6 +53,9 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	defer st.Close()
 
 	db := st.DB()
+
+	// Check if --fix was passed from either standalone doctor or db doctor
+	shouldFix := doctorFix || dbDoctorFix
 
 	fmt.Println("# cx doctor")
 	totalIssues := 0
@@ -66,7 +75,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	// Check 2: Orphan dependencies
 	fmt.Println("# Checking for orphan dependencies...")
-	result = checkOrphanDependencies(st, db)
+	result = checkOrphanDependencies(st, db, shouldFix)
 	if result.passed {
 		fmt.Println("#   ✓ No orphan dependencies found")
 	} else {
@@ -79,7 +88,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	// Check 3: Stale entities
 	fmt.Println("# Checking for stale entities...")
-	result = checkStaleEntities(st)
+	result = checkStaleEntities(st, shouldFix)
 	if result.passed {
 		fmt.Println("#   ✓ No stale entities found")
 	} else {
@@ -96,7 +105,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		fmt.Println("# Summary: All checks passed ✓")
 	} else {
 		fmt.Printf("# Summary: %d issue(s) found\n", totalIssues)
-		if !doctorFix {
+		if !shouldFix {
 			fmt.Println("# Run with --fix to repair")
 		}
 	}
@@ -128,7 +137,7 @@ func checkIntegrity(db *sql.DB) doctorResult {
 }
 
 // checkOrphanDependencies finds dependencies referencing non-existent entities
-func checkOrphanDependencies(st *store.Store, db *sql.DB) doctorResult {
+func checkOrphanDependencies(st *store.Store, db *sql.DB, fix bool) doctorResult {
 	query := `
 		SELECT d.from_id, d.to_id, d.dep_type
 		FROM dependencies d
@@ -176,7 +185,7 @@ func checkOrphanDependencies(st *store.Store, db *sql.DB) doctorResult {
 	}
 
 	// Fix if requested
-	if doctorFix {
+	if fix {
 		fmt.Printf("#   Removing %d orphan dependencies...\n", len(orphans))
 		for _, orphan := range orphans {
 			if err := st.DeleteDependency(orphan.fromID, orphan.toID, orphan.depType); err != nil {
@@ -197,7 +206,7 @@ func checkOrphanDependencies(st *store.Store, db *sql.DB) doctorResult {
 }
 
 // checkStaleEntities finds entities in files that no longer exist
-func checkStaleEntities(st *store.Store) doctorResult {
+func checkStaleEntities(st *store.Store, fix bool) doctorResult {
 	// Get all active entities
 	entities, err := st.QueryEntities(store.EntityFilter{Status: "active"})
 	if err != nil {
@@ -247,7 +256,7 @@ func checkStaleEntities(st *store.Store) doctorResult {
 	}
 
 	// Fix if requested
-	if doctorFix {
+	if fix {
 		fmt.Printf("#   Archiving %d stale entities...\n", len(staleEntities))
 		for _, e := range staleEntities {
 			if err := st.ArchiveEntity(e.ID); err != nil {

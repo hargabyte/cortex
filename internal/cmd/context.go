@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -22,10 +23,22 @@ var contextCmd = &cobra.Command{
 	Short: "Export relevant context for AI consumption",
 	Long: `Assemble task-relevant context within a token budget in YAML format.
 
+Modes:
+  cx context                      Session recovery (workflow context)
+  cx context --smart "<task>"     Intent-aware context assembly
+  cx context <target>             Entity/file/bead context
+
 Target can be:
   - A bead ID (task context): expands linked code and dependencies
   - A file path: all entities defined in that file
   - An entity ID: single entity and its dependencies
+
+Session Recovery (no args):
+  When called without arguments or --smart, outputs essential workflow context
+  for AI agents. Designed for context recovery after compaction/clear/new session.
+
+  cx context              # Concise context (~500 tokens)
+  cx context --full       # Extended with keystones and map (~2000 tokens)
 
 Smart Context (--smart):
   Parse natural language task descriptions to find relevant code context.
@@ -77,6 +90,8 @@ Coverage Information (--with-coverage):
   - coverage_warning: Warning for keystones with <50% coverage
 
 Examples:
+  cx context                                       # Session recovery
+  cx context --full                                # Extended session recovery
   cx context bd-a7c                                # Task context, default budget
   cx context src/auth/login.go                     # File context
   cx context sa-fn-a7f9b2-LoginUser                # Entity context
@@ -105,6 +120,7 @@ var (
 	contextSmart        string
 	contextDepth        int
 	contextWithCoverage bool
+	contextFull         bool // For session recovery mode (--full)
 )
 
 func init() {
@@ -126,6 +142,9 @@ func init() {
 
 	// Coverage flag
 	contextCmd.Flags().BoolVar(&contextWithCoverage, "with-coverage", false, "Include test coverage data for each entity")
+
+	// Session recovery flags
+	contextCmd.Flags().BoolVar(&contextFull, "full", false, "Extended session recovery with keystones and map")
 }
 
 // contextEntry represents an entity in the context graph with metadata
@@ -149,9 +168,9 @@ func runContext(cmd *cobra.Command, args []string) error {
 		return runSmartContext(cmd, contextSmart)
 	}
 
-	// Standard context mode requires a target
+	// Handle no-arg session recovery mode (was: cx prime)
 	if len(args) == 0 {
-		return fmt.Errorf("target argument required (or use --smart for intent-aware context)")
+		return runSessionRecovery(cmd)
 	}
 	target := args[0]
 
@@ -831,5 +850,211 @@ func addCoverageToRelevantEntity(relEntity *output.RelevantEntity, entityID stri
 	if isKeystone && cov.CoveragePercent < 50.0 {
 		relEntity.CoverageWarning = "Keystone below 50% - add tests before modifying"
 	}
+}
+
+// runSessionRecovery outputs essential Cortex workflow context for AI agents.
+// This is the no-arg behavior of `cx context` (previously `cx prime`).
+func runSessionRecovery(cmd *cobra.Command) error {
+	// Check for custom PRIME.md override
+	cwd, _ := os.Getwd()
+	customPath := filepath.Join(cwd, ".cx", "PRIME.md")
+	if content, err := os.ReadFile(customPath); err == nil {
+		fmt.Fprint(cmd.OutOrStdout(), string(content))
+		return nil
+	}
+
+	// Get database info if available
+	dbInfo := getSessionRecoveryDBInfo()
+
+	// Output the session recovery context
+	fmt.Fprint(cmd.OutOrStdout(), generateSessionRecoveryContent(dbInfo, contextFull))
+	return nil
+}
+
+// sessionRecoveryDBStats holds database statistics for session recovery output
+type sessionRecoveryDBStats struct {
+	exists       bool
+	path         string
+	entities     int
+	active       int
+	archived     int
+	dependencies int
+	files        int
+}
+
+func getSessionRecoveryDBInfo() sessionRecoveryDBStats {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return sessionRecoveryDBStats{}
+	}
+
+	cxDir := filepath.Join(cwd, ".cx")
+
+	// Check if .cx directory exists (don't auto-create)
+	if _, err := os.Stat(cxDir); os.IsNotExist(err) {
+		return sessionRecoveryDBStats{exists: false}
+	}
+
+	dbPath := filepath.Join(cxDir, "cortex.db")
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return sessionRecoveryDBStats{exists: false}
+	}
+
+	s, err := store.Open(cxDir)
+	if err != nil {
+		return sessionRecoveryDBStats{exists: true, path: dbPath}
+	}
+	defer s.Close()
+
+	stats := sessionRecoveryDBStats{
+		exists: true,
+		path:   dbPath,
+	}
+
+	// Get entity counts using store methods
+	stats.active, _ = s.CountEntities(store.EntityFilter{Status: "active"})
+	stats.archived, _ = s.CountEntities(store.EntityFilter{Status: "archived"})
+	stats.entities = stats.active + stats.archived
+	stats.dependencies, _ = s.CountDependencies()
+	stats.files, _ = s.CountFileIndex()
+
+	return stats
+}
+
+func generateSessionRecoveryContent(stats sessionRecoveryDBStats, full bool) string {
+	content := `# Cortex (cx) Workflow Context
+
+> **Context Recovery**: Run ` + "`cx context`" + ` after compaction, clear, or new session
+
+## Status
+`
+
+	if stats.exists {
+		content += fmt.Sprintf(`- **Database**: Initialized
+- **Entities**: %d active, %d archived
+- **Dependencies**: %d tracked
+- **Files indexed**: %d
+`, stats.active, stats.archived, stats.dependencies, stats.files)
+
+		// Add keystones if --full and we have entities
+		if full && stats.active > 0 {
+			content += getSessionRecoveryKeystonesSection(stats.path)
+		}
+	} else {
+		content += `- **Database**: Not initialized
+- Run ` + "`cx quickstart`" + ` to enable code graph (or ` + "`cx init && cx scan`" + `)
+`
+	}
+
+	content += `
+## Essential Commands
+
+` + "```bash" + `
+# Start of session
+cx context                                  # This context
+
+# Before ANY coding task
+cx context --smart "<task>" --budget 8000   # Focused context
+
+# Before modifying code
+cx impact <file>                            # Blast radius
+
+# Project overview
+cx map                                      # Skeleton (~10k tokens)
+cx rank --keystones                         # Critical entities
+` + "```" + `
+
+## Discovery & Analysis
+
+| Command | Purpose |
+|---------|---------|
+| ` + "`cx find <name>`" + ` | Name search (--type=F/T/M, --exact) |
+| ` + "`cx search \"query\"`" + ` | Concept search (--top N) |
+| ` + "`cx show <name>`" + ` | Entity details (--density dense) |
+| ` + "`cx near <name>`" + ` | Neighborhood (--depth N) |
+| ` + "`cx graph <name>`" + ` | Dependencies (--hops N) |
+| ` + "`cx impact <file>`" + ` | Blast radius (--depth N) |
+| ` + "`cx diff`" + ` | Changes since scan |
+
+## Quality & Testing
+
+| Command | Purpose |
+|---------|---------|
+| ` + "`cx coverage import`" + ` | Import coverage.out |
+| ` + "`cx gaps --keystones-only`" + ` | Undertested critical code |
+| ` + "`cx test-impact --diff`" + ` | Smart test selection |
+| ` + "`cx verify --strict`" + ` | Check drift (CI) |
+
+## Quick Patterns
+
+` + "```bash" + `
+# Understand codebase
+cx map && cx rank --keystones --top 10
+
+# Before refactoring
+cx impact <file> && cx gaps --keystones-only
+
+# Smart testing
+cx test-impact --diff --output-command
+` + "```" + `
+
+## Notes
+- Supports: Go, TypeScript, JavaScript, Java, Rust, Python
+- Run ` + "`cx scan`" + ` after major code changes
+- Run ` + "`cx help-agents`" + ` for full agent reference
+`
+
+	return content
+}
+
+// getSessionRecoveryKeystonesSection returns a markdown section with top keystones
+func getSessionRecoveryKeystonesSection(dbPath string) string {
+	cxDir := filepath.Dir(dbPath)
+	s, err := store.Open(cxDir)
+	if err != nil {
+		return ""
+	}
+	defer s.Close()
+
+	// Get top 5 by PageRank
+	topMetrics, err := s.GetTopByPageRank(5)
+	if err != nil || len(topMetrics) == 0 {
+		return ""
+	}
+
+	content := "\n**Top Keystones:**\n"
+	for _, m := range topMetrics {
+		// Fetch entity details
+		e, err := s.GetEntity(m.EntityID)
+		if err != nil || e == nil {
+			continue
+		}
+
+		// Shorten the file path - keep last 2 components
+		shortPath := e.FilePath
+		parts := sessionRecoverySplitPath(shortPath)
+		if len(parts) > 2 {
+			shortPath = parts[len(parts)-2] + "/" + parts[len(parts)-1]
+		}
+		content += fmt.Sprintf("- `%s` (%s) @ %s:%d\n", e.Name, e.EntityType, shortPath, e.LineStart)
+	}
+
+	return content
+}
+
+// sessionRecoverySplitPath splits a path into components (works cross-platform)
+func sessionRecoverySplitPath(path string) []string {
+	var parts []string
+	for {
+		dir, file := filepath.Split(path)
+		if file != "" {
+			parts = append([]string{file}, parts...)
+		}
+		if dir == "" || dir == path {
+			break
+		}
+		path = filepath.Clean(dir)
+	}
+	return parts
 }
 

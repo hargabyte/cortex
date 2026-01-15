@@ -30,6 +30,13 @@ var initForce bool
 func init() {
 	rootCmd.AddCommand(initCmd)
 	initCmd.Flags().BoolVar(&initForce, "force", false, "Reinitialize even if .cx already exists")
+
+	// Deprecate: scan now auto-initializes
+	DeprecateCommand(initCmd, DeprecationInfo{
+		OldCommand: "cx init",
+		NewCommand: "cx scan",
+		Message:    "'cx init' is deprecated: 'cx scan' now auto-initializes",
+	})
 }
 
 func runInit(cmd *cobra.Command, args []string) error {

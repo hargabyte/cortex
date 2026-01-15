@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/anthropics/cx/internal/config"
 	"github.com/anthropics/cx/internal/coverage"
@@ -14,26 +15,34 @@ import (
 	"github.com/anthropics/cx/internal/integration"
 	"github.com/anthropics/cx/internal/output"
 	"github.com/anthropics/cx/internal/parser"
+	"github.com/anthropics/cx/internal/semdiff"
 	"github.com/anthropics/cx/internal/store"
 	"github.com/spf13/cobra"
 )
 
 // checkCmd represents the check command
 var checkCmd = &cobra.Command{
-	Use:   "check <file-or-entity>",
+	Use:   "check [file-or-entity]",
 	Short: "Pre-flight safety check before modifying code",
 	Long: `Comprehensive safety assessment before modifying a file or entity.
 
-This command combines impact analysis, coverage gap detection, and drift
-verification into a single actionable report. Use it before making changes
-to understand the risk and required preparations.
+This is the unified safety command that consolidates impact, coverage gaps,
+drift verification, and change detection into a single interface.
 
-The check performs three analyses:
+Modes:
+  cx check <file>           Full safety assessment (default: impact + coverage + drift)
+  cx check <file> --quick   Just blast radius (impact analysis only)
+  cx check --coverage       Just coverage gaps (no target required)
+  cx check --drift          Just staleness check (no target required)
+  cx check --changes        What changed since last scan (no target required)
+
+The full check performs four analyses:
   1. Impact Analysis - What entities are affected by changes here?
   2. Coverage Gaps - Are affected keystones adequately tested?
   3. Drift Detection - Has the code changed since last scan?
+  4. Change Detection - What has changed since last scan?
 
-Output Structure:
+Output Structure (full check):
   safety_assessment:
     target:              File or entity being checked
     risk_level:          Overall risk (low, medium, high, critical)
@@ -53,72 +62,161 @@ Risk Levels:
   low:       Isolated changes with good test coverage
 
 Examples:
-  cx check src/auth/jwt.go              # Check a file before editing
-  cx check LoginUser                    # Check an entity before refactoring
+  cx check src/auth/jwt.go              # Full safety assessment
+  cx check src/auth/jwt.go --quick      # Just blast radius (was: cx impact)
+  cx check --coverage                   # Coverage gaps report (was: cx gaps)
+  cx check --coverage --keystones-only  # Only keystone coverage gaps
+  cx check --drift                      # Staleness check (was: cx verify)
+  cx check --drift --strict             # Exit non-zero on drift (for CI)
+  cx check --changes                    # What changed since scan (was: cx diff)
   cx check --depth 5 src/core/          # Deeper transitive analysis
   cx check --format json src/api.go     # JSON output for tooling
   cx check --create-task src/auth/      # Create beads task for findings`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: runCheck,
 }
 
 var (
 	checkDepth      int
 	checkCreateTask bool
+	// Mode flags - when set, run only that specific analysis
+	checkQuick    bool // Just impact analysis (blast radius)
+	checkCoverage bool // Just coverage gaps
+	checkDrift    bool // Just drift/verify check
+	checkChanges  bool // Just diff (what changed since scan)
+	// Coverage-specific flags (from gaps command)
+	checkKeystonesOnly bool
+	checkThreshold     int
+	// Drift-specific flags (from verify command)
+	checkStrict bool
+	checkFix    bool
+	checkDryRun bool
+	// Diff-specific flags (from diff command)
+	checkFile     string
+	checkDetailed bool
+	checkSemantic bool
+	// Impact-specific flags
+	checkImpactThreshold float64
 )
 
 func init() {
 	rootCmd.AddCommand(checkCmd)
 
+	// General flags
 	checkCmd.Flags().IntVar(&checkDepth, "depth", 3, "Transitive impact depth")
 	checkCmd.Flags().BoolVar(&checkCreateTask, "create-task", false, "Create a beads task for safety findings")
+
+	// Mode flags
+	checkCmd.Flags().BoolVar(&checkQuick, "quick", false, "Quick mode: just blast radius/impact analysis")
+	checkCmd.Flags().BoolVar(&checkCoverage, "coverage", false, "Coverage mode: show coverage gaps (was: cx gaps)")
+	checkCmd.Flags().BoolVar(&checkDrift, "drift", false, "Drift mode: check staleness (was: cx verify)")
+	checkCmd.Flags().BoolVar(&checkChanges, "changes", false, "Changes mode: what changed since scan (was: cx diff)")
+
+	// Coverage-specific flags
+	checkCmd.Flags().BoolVar(&checkKeystonesOnly, "keystones-only", false, "Only show keystones with gaps (--coverage mode)")
+	checkCmd.Flags().IntVar(&checkThreshold, "threshold", 75, "Coverage threshold percentage (--coverage mode)")
+
+	// Drift-specific flags
+	checkCmd.Flags().BoolVar(&checkStrict, "strict", false, "Exit non-zero on any drift (--drift mode, for CI)")
+	checkCmd.Flags().BoolVar(&checkFix, "fix", false, "Update hashes for drifted entities (--drift mode)")
+	checkCmd.Flags().BoolVar(&checkDryRun, "dry-run", false, "Show what --fix would do without making changes")
+
+	// Diff-specific flags
+	checkCmd.Flags().StringVar(&checkFile, "file", "", "Show changes for specific file/directory only (--changes mode)")
+	checkCmd.Flags().BoolVar(&checkDetailed, "detailed", false, "Show hash changes for modified entities (--changes mode)")
+	checkCmd.Flags().BoolVar(&checkSemantic, "semantic", false, "Show semantic analysis (--changes mode)")
+
+	// Impact-specific flags
+	checkCmd.Flags().Float64Var(&checkImpactThreshold, "impact-threshold", 0, "Min importance threshold for impact analysis")
 }
 
 // CheckOutput represents the safety check results
 type CheckOutput struct {
-	SafetyAssessment *SafetyAssessment `yaml:"safety_assessment" json:"safety_assessment"`
-	Warnings         []string          `yaml:"warnings,omitempty" json:"warnings,omitempty"`
-	Recommendations  []string          `yaml:"recommendations" json:"recommendations"`
-	AffectedKeystones []KeystoneInfo   `yaml:"affected_keystones,omitempty" json:"affected_keystones,omitempty"`
+	SafetyAssessment  *SafetyAssessment `yaml:"safety_assessment" json:"safety_assessment"`
+	Warnings          []string          `yaml:"warnings,omitempty" json:"warnings,omitempty"`
+	Recommendations   []string          `yaml:"recommendations" json:"recommendations"`
+	AffectedKeystones []KeystoneInfo    `yaml:"affected_keystones,omitempty" json:"affected_keystones,omitempty"`
 }
 
 // SafetyAssessment contains the aggregate safety metrics
 type SafetyAssessment struct {
-	Target         string `yaml:"target" json:"target"`
-	RiskLevel      string `yaml:"risk_level" json:"risk_level"`
-	ImpactRadius   int    `yaml:"impact_radius" json:"impact_radius"`
-	FilesAffected  int    `yaml:"files_affected" json:"files_affected"`
-	KeystoneCount  int    `yaml:"keystone_count" json:"keystone_count"`
-	CoverageGaps   int    `yaml:"coverage_gaps" json:"coverage_gaps"`
-	DriftDetected  bool   `yaml:"drift_detected" json:"drift_detected"`
-	DriftedCount   int    `yaml:"drifted_count,omitempty" json:"drifted_count,omitempty"`
+	Target        string `yaml:"target" json:"target"`
+	RiskLevel     string `yaml:"risk_level" json:"risk_level"`
+	ImpactRadius  int    `yaml:"impact_radius" json:"impact_radius"`
+	FilesAffected int    `yaml:"files_affected" json:"files_affected"`
+	KeystoneCount int    `yaml:"keystone_count" json:"keystone_count"`
+	CoverageGaps  int    `yaml:"coverage_gaps" json:"coverage_gaps"`
+	DriftDetected bool   `yaml:"drift_detected" json:"drift_detected"`
+	DriftedCount  int    `yaml:"drifted_count,omitempty" json:"drifted_count,omitempty"`
 }
 
 // KeystoneInfo contains details about an affected keystone
 type KeystoneInfo struct {
-	Name       string  `yaml:"name" json:"name"`
-	Type       string  `yaml:"type" json:"type"`
-	Location   string  `yaml:"location" json:"location"`
-	PageRank   float64 `yaml:"pagerank" json:"pagerank"`
-	Coverage   string  `yaml:"coverage" json:"coverage"`
-	Impact     string  `yaml:"impact" json:"impact"`
-	CoverageGap bool   `yaml:"coverage_gap" json:"coverage_gap"`
+	Name        string  `yaml:"name" json:"name"`
+	Type        string  `yaml:"type" json:"type"`
+	Location    string  `yaml:"location" json:"location"`
+	PageRank    float64 `yaml:"pagerank" json:"pagerank"`
+	Coverage    string  `yaml:"coverage" json:"coverage"`
+	Impact      string  `yaml:"impact" json:"impact"`
+	CoverageGap bool    `yaml:"coverage_gap" json:"coverage_gap"`
 }
 
 // checkEntity holds entity info for check analysis
 type checkEntity struct {
-	entity     *store.Entity
-	metrics    *store.Metrics
-	coverage   *coverage.EntityCoverage
-	depth      int
-	direct     bool
-	drifted    bool
-	driftType  string
+	entity    *store.Entity
+	metrics   *store.Metrics
+	coverage  *coverage.EntityCoverage
+	depth     int
+	direct    bool
+	drifted   bool
+	driftType string
 }
 
 func runCheck(cmd *cobra.Command, args []string) error {
+	// Count how many mode flags are set
+	modeCount := 0
+	if checkCoverage {
+		modeCount++
+	}
+	if checkDrift {
+		modeCount++
+	}
+	if checkChanges {
+		modeCount++
+	}
+
+	// Validate: only one mode flag at a time (quick is different - it's a modifier)
+	if modeCount > 1 {
+		return fmt.Errorf("only one of --coverage, --drift, or --changes can be specified")
+	}
+
+	// Route to the appropriate mode handler
+	if checkCoverage {
+		return runCheckCoverage(cmd, args)
+	}
+	if checkDrift {
+		return runCheckDrift(cmd, args)
+	}
+	if checkChanges {
+		return runCheckChanges(cmd, args)
+	}
+
+	// Default mode: full check or quick (impact-only) - requires a target
+	if len(args) == 0 {
+		return fmt.Errorf("target file or entity required (or use --coverage, --drift, or --changes)")
+	}
+
 	target := args[0]
 
+	if checkQuick {
+		return runCheckQuick(cmd, target)
+	}
+
+	return runCheckFull(cmd, target)
+}
+
+// runCheckFull performs the full safety assessment (impact + coverage + drift)
+func runCheckFull(cmd *cobra.Command, target string) error {
 	// Load config
 	cfg, err := config.Load(".")
 	if err != nil {
@@ -195,6 +293,890 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// runCheckQuick performs just impact analysis (blast radius) - equivalent to old cx impact
+func runCheckQuick(cmd *cobra.Command, target string) error {
+	// Open store
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx scan' first")
+	}
+
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	// Build graph for traversal
+	g, err := graph.BuildFromStore(storeDB)
+	if err != nil {
+		return fmt.Errorf("failed to build graph: %w", err)
+	}
+
+	// Find direct entities
+	var directEntries []*impactEntry
+
+	if isFilePath(target) {
+		entities, err := storeDB.QueryEntities(store.EntityFilter{
+			FilePath: target,
+			Status:   "active",
+		})
+		if err == nil {
+			for _, e := range entities {
+				m, _ := storeDB.GetMetrics(e.ID)
+				var pr float64
+				var deps int
+				if m != nil {
+					pr = m.PageRank
+					deps = m.InDegree
+				}
+				directEntries = append(directEntries, &impactEntry{
+					entityID:   e.ID,
+					name:       e.Name,
+					location:   formatStoreLocation(e),
+					entityType: mapStoreTypeToCGF(e.EntityType),
+					pagerank:   pr,
+					deps:       deps,
+					importance: computeImportanceLevel(pr),
+				})
+			}
+		}
+	} else {
+		entity, err := storeDB.GetEntity(target)
+		if err == nil && entity != nil {
+			m, _ := storeDB.GetMetrics(entity.ID)
+			var pr float64
+			var deps int
+			if m != nil {
+				pr = m.PageRank
+				deps = m.InDegree
+			}
+			directEntries = append(directEntries, &impactEntry{
+				entityID:   entity.ID,
+				name:       entity.Name,
+				location:   formatStoreLocation(entity),
+				entityType: mapStoreTypeToCGF(entity.EntityType),
+				pagerank:   pr,
+				deps:       deps,
+				importance: computeImportanceLevel(pr),
+			})
+		} else {
+			entities, err := storeDB.QueryEntities(store.EntityFilter{
+				Name:   target,
+				Status: "active",
+				Limit:  10,
+			})
+			if err == nil {
+				for _, e := range entities {
+					m, _ := storeDB.GetMetrics(e.ID)
+					var pr float64
+					var deps int
+					if m != nil {
+						pr = m.PageRank
+						deps = m.InDegree
+					}
+					directEntries = append(directEntries, &impactEntry{
+						entityID:   e.ID,
+						name:       e.Name,
+						location:   formatStoreLocation(e),
+						entityType: mapStoreTypeToCGF(e.EntityType),
+						pagerank:   pr,
+						deps:       deps,
+						importance: computeImportanceLevel(pr),
+					})
+				}
+			}
+		}
+	}
+
+	if len(directEntries) == 0 {
+		return fmt.Errorf("no entities found matching: %s", target)
+	}
+
+	// Find affected entities using graph traversal
+	affected := make(map[string]*impactEntry)
+	recommendations := []string{}
+
+	// Add direct entities
+	for _, entry := range directEntries {
+		entry.direct = true
+		entry.depth = 0
+		affected[entry.entityID] = entry
+
+		if entry.pagerank >= 0.30 {
+			recommendations = append(recommendations, fmt.Sprintf("Review %s - keystone entity (pr=%.2f, %d direct dependents)",
+				entry.name, entry.pagerank, entry.deps))
+		}
+	}
+
+	// BFS to find transitively affected
+	for _, direct := range directEntries {
+		depth := 1
+		visited := make(map[string]int)
+		visited[direct.entityID] = 0
+
+		queue := []string{direct.entityID}
+		for len(queue) > 0 && depth <= checkDepth {
+			levelSize := len(queue)
+			for i := 0; i < levelSize; i++ {
+				current := queue[0]
+				queue = queue[1:]
+
+				preds := g.Predecessors(current)
+				for _, pred := range preds {
+					if _, seen := visited[pred]; seen {
+						continue
+					}
+					visited[pred] = depth
+
+					if depth <= checkDepth {
+						queue = append(queue, pred)
+					}
+
+					if _, inAffected := affected[pred]; inAffected {
+						continue
+					}
+
+					callerEntity, err := storeDB.GetEntity(pred)
+					if err != nil {
+						continue
+					}
+
+					m, _ := storeDB.GetMetrics(pred)
+					var pr float64
+					var deps int
+					if m != nil {
+						pr = m.PageRank
+						deps = m.InDegree
+					}
+
+					if pr >= checkImpactThreshold {
+						entry := &impactEntry{
+							entityID:   pred,
+							name:       callerEntity.Name,
+							location:   formatStoreLocation(callerEntity),
+							entityType: mapStoreTypeToCGF(callerEntity.EntityType),
+							depth:      depth,
+							direct:     false,
+							pagerank:   pr,
+							deps:       deps,
+							importance: computeImportanceLevel(pr),
+						}
+						affected[pred] = entry
+
+						if pr >= 0.30 {
+							recommendations = append(recommendations, fmt.Sprintf("Review %s - keystone caller (pr=%.2f, %d dependents)",
+								callerEntity.Name, pr, deps))
+						}
+					}
+				}
+			}
+			depth++
+		}
+	}
+
+	// Limit results
+	maxResults := 100
+	if len(affected) > maxResults {
+		sortedEntries := make([]*impactEntry, 0, len(affected))
+		for _, e := range affected {
+			sortedEntries = append(sortedEntries, e)
+		}
+		sort.Slice(sortedEntries, func(i, j int) bool {
+			if sortedEntries[i].direct != sortedEntries[j].direct {
+				return sortedEntries[i].direct
+			}
+			return sortedEntries[i].pagerank > sortedEntries[j].pagerank
+		})
+
+		affected = make(map[string]*impactEntry)
+		for i := 0; i < maxResults && i < len(sortedEntries); i++ {
+			affected[sortedEntries[i].entityID] = sortedEntries[i]
+		}
+	}
+
+	// Build output
+	impactOutput := buildImpactOutput(target, affected)
+
+	// Add recommendations
+	if len(recommendations) > 0 {
+		seen := make(map[string]bool)
+		for _, rec := range recommendations {
+			if !seen[rec] {
+				impactOutput.Recommendations = append(impactOutput.Recommendations, rec)
+				seen[rec] = true
+			}
+		}
+	}
+
+	// Format output
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	density, err := output.ParseDensity(outputDensity)
+	if err != nil {
+		return fmt.Errorf("invalid density: %w", err)
+	}
+
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), impactOutput, density)
+}
+
+// runCheckCoverage shows coverage gaps - equivalent to old cx gaps
+func runCheckCoverage(cmd *cobra.Command, args []string) error {
+	// Load config
+	cfg, err := config.Load(".")
+	if err != nil {
+		cfg = config.DefaultConfig()
+	}
+
+	// Open store
+	storeDB, err := openStore()
+	if err != nil {
+		return err
+	}
+	defer storeDB.Close()
+
+	// Get all active entities
+	entities, err := storeDB.QueryEntities(store.EntityFilter{Status: "active"})
+	if err != nil {
+		return fmt.Errorf("failed to query entities: %w", err)
+	}
+
+	if len(entities) == 0 {
+		return fmt.Errorf("no entities found - run 'cx scan' first")
+	}
+
+	// Check if metrics exist
+	hasMetrics := false
+	for _, e := range entities {
+		if m, _ := storeDB.GetMetrics(e.ID); m != nil {
+			hasMetrics = true
+			break
+		}
+	}
+
+	if !hasMetrics {
+		return fmt.Errorf("no metrics found - run 'cx rank' first to compute importance")
+	}
+
+	// Check if coverage data exists
+	hasCoverage := false
+	for _, e := range entities {
+		if cov, _ := coverage.GetEntityCoverage(storeDB, e.ID); cov != nil {
+			hasCoverage = true
+			break
+		}
+	}
+
+	if !hasCoverage {
+		return fmt.Errorf("no coverage data found - run 'cx coverage import' first")
+	}
+
+	// Build list of gaps
+	var gaps []coverageGap
+	keystoneCount := 0
+
+	for _, e := range entities {
+		m, err := storeDB.GetMetrics(e.ID)
+		if err != nil || m == nil {
+			continue
+		}
+
+		if m.PageRank >= cfg.Metrics.KeystoneThreshold {
+			keystoneCount++
+		}
+
+		cov, err := coverage.GetEntityCoverage(storeDB, e.ID)
+		if err != nil {
+			cov = &coverage.EntityCoverage{
+				EntityID:        e.ID,
+				CoveragePercent: 0,
+				CoveredLines:    []int{},
+				UncoveredLines:  []int{},
+			}
+		}
+
+		if cov.CoveragePercent >= float64(checkThreshold) {
+			continue
+		}
+
+		if checkKeystonesOnly && m.PageRank < cfg.Metrics.KeystoneThreshold {
+			continue
+		}
+
+		riskScore := (1 - cov.CoveragePercent/100.0) * m.PageRank * float64(m.InDegree)
+		riskCategory := categorizeRisk(m, cov, cfg)
+
+		gaps = append(gaps, coverageGap{
+			entity:       e,
+			metrics:      m,
+			coverage:     cov,
+			riskScore:    riskScore,
+			riskCategory: riskCategory,
+		})
+	}
+
+	if len(gaps) == 0 {
+		fmt.Fprintf(os.Stderr, "No coverage gaps found! All entities meet the threshold.\n")
+		return nil
+	}
+
+	sort.Slice(gaps, func(i, j int) bool {
+		return gaps[i].riskScore > gaps[j].riskScore
+	})
+
+	if checkCreateTask {
+		return printTaskCommands(gaps, cfg)
+	}
+
+	// Format output
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	gapsByRisk := groupGapsByRisk(gaps)
+	outputData := buildGapsOutput(gapsByRisk, keystoneCount)
+
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), outputData, output.DensityMedium)
+}
+
+// runCheckDrift performs staleness verification - equivalent to old cx verify
+func runCheckDrift(cmd *cobra.Command, args []string) error {
+	// Open store
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx scan' first")
+	}
+
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	// Get entities
+	filter := store.EntityFilter{Status: "active"}
+	entities, err := storeDB.QueryEntities(filter)
+	if err != nil {
+		return fmt.Errorf("failed to query entities: %w", err)
+	}
+
+	if len(entities) == 0 {
+		verifyOut := &VerifyOutput{
+			Verification: &VerificationData{
+				Status:          "passed",
+				EntitiesChecked: 0,
+				Valid:           0,
+				Drifted:         0,
+				Missing:         0,
+				Issues:          []VerifyIssue{},
+			},
+		}
+
+		if !quiet {
+			formatter, err := output.GetFormatter(output.FormatYAML)
+			if err != nil {
+				return fmt.Errorf("failed to get formatter: %w", err)
+			}
+			return formatter.FormatToWriter(cmd.OutOrStdout(), verifyOut, output.DensityMedium)
+		}
+		return nil
+	}
+
+	result := &verifyResult{}
+	byFile := groupByFileStore(entities)
+	baseDir, err := os.Getwd()
+	if err != nil {
+		baseDir = "."
+	}
+
+	for filePath, fileEntities := range byFile {
+		absPath := filePath
+		if !filepath.IsAbs(absPath) {
+			absPath = filepath.Join(baseDir, filePath)
+		}
+
+		content, err := os.ReadFile(absPath)
+		if err != nil {
+			for _, entity := range fileEntities {
+				e := entity
+				result.missing = append(result.missing, verifyEntry{
+					entity: e,
+					file:   filePath,
+					line:   fmt.Sprintf("%d", e.LineStart),
+					reason: "file deleted",
+					detail: fmt.Sprintf("File not found: %s", filePath),
+				})
+			}
+			continue
+		}
+
+		p, err := parser.NewParser(parser.Go)
+		if err != nil {
+			for _, entity := range fileEntities {
+				e := entity
+				result.drifted = append(result.drifted, verifyEntry{
+					entity: e,
+					file:   filePath,
+					line:   fmt.Sprintf("%d", e.LineStart),
+					reason: "parse error",
+					detail: fmt.Sprintf("Cannot create parser: %v", err),
+				})
+			}
+			continue
+		}
+
+		parseResult, err := p.Parse(content)
+		p.Close()
+
+		if err != nil {
+			for _, entity := range fileEntities {
+				e := entity
+				result.drifted = append(result.drifted, verifyEntry{
+					entity: e,
+					file:   filePath,
+					line:   fmt.Sprintf("%d", e.LineStart),
+					reason: "parse error",
+					detail: fmt.Sprintf("Parse failed: %v", err),
+				})
+			}
+			continue
+		}
+
+		extractor := extract.NewExtractor(parseResult)
+		currentEntities, err := extractor.ExtractAll()
+		if err != nil {
+			for _, entity := range fileEntities {
+				e := entity
+				result.drifted = append(result.drifted, verifyEntry{
+					entity: e,
+					file:   filePath,
+					line:   fmt.Sprintf("%d", e.LineStart),
+					reason: "extract error",
+					detail: fmt.Sprintf("Extraction failed: %v", err),
+				})
+			}
+			continue
+		}
+
+		currentMap := buildEntityLookup(currentEntities)
+
+		for _, stored := range fileEntities {
+			s := stored
+			if s.EntityType == "import" {
+				continue
+			}
+
+			current := findMatchingEntityByName(stored.Name, currentMap)
+			if current == nil {
+				result.missing = append(result.missing, verifyEntry{
+					entity: s,
+					file:   filePath,
+					line:   fmt.Sprintf("%d", s.LineStart),
+					reason: "symbol not found",
+					detail: "Symbol no longer exists in file",
+				})
+				continue
+			}
+
+			entry := verifyEntry{
+				entity:  s,
+				file:    filePath,
+				line:    fmt.Sprintf("%d", s.LineStart),
+				oldSig:  s.SigHash,
+				newSig:  current.SigHash,
+				oldBody: s.BodyHash,
+				newBody: current.BodyHash,
+			}
+
+			if s.SigHash == "" && s.BodyHash == "" {
+				entry.reason = "no stored hashes"
+				entry.detail = "Entity has no stored hashes"
+				result.drifted = append(result.drifted, entry)
+			} else if s.SigHash != current.SigHash {
+				entry.reason = "sig_hash changed"
+				entry.detail = "Parameters or return types changed"
+				result.drifted = append(result.drifted, entry)
+			} else if s.BodyHash != current.BodyHash {
+				entry.reason = "body_hash changed"
+				entry.detail = "Logic changed"
+				result.drifted = append(result.drifted, entry)
+			} else {
+				result.valid = append(result.valid, entry)
+			}
+		}
+
+		parseResult.Close()
+	}
+
+	// Fix drifted if requested
+	if (checkFix || checkDryRun) && len(result.drifted) > 0 {
+		if checkDryRun && !quiet {
+			fmt.Fprintf(cmd.OutOrStdout(), "\n[dry-run] Would fix %d drifted entities:\n", len(result.drifted))
+		}
+		for _, entry := range result.drifted {
+			if entry.newSig != "" && entry.newBody != "" {
+				if checkDryRun && !quiet {
+					fmt.Fprintf(cmd.OutOrStdout(), "[dry-run]   - %s (%s)\n",
+						entry.entity.Name, entry.entity.ID)
+				} else if !checkDryRun {
+					entry.entity.SigHash = entry.newSig
+					entry.entity.BodyHash = entry.newBody
+					if err := storeDB.UpdateEntity(entry.entity); err != nil {
+						fmt.Fprintf(cmd.ErrOrStderr(), "Warning: Failed to update %s: %v\n",
+							entry.entity.ID, err)
+					}
+				}
+			}
+		}
+		if checkDryRun && !quiet {
+			fmt.Fprintf(cmd.OutOrStdout(), "[dry-run] No changes made\n\n")
+		}
+	}
+
+	// Build issues list
+	issues := []VerifyIssue{}
+	for _, entry := range result.drifted {
+		issue := VerifyIssue{
+			Entity:   entry.entity.Name,
+			Type:     "drifted",
+			Location: formatStoreLocation(entry.entity),
+			Reason:   entry.reason,
+			Detail:   entry.detail,
+		}
+		if entry.reason == "sig_hash changed" && entry.oldSig != "" && entry.newSig != "" {
+			issue.HashType = "signature"
+			issue.Expected = entry.oldSig
+			issue.Actual = entry.newSig
+		} else if entry.reason == "body_hash changed" && entry.oldBody != "" && entry.newBody != "" {
+			issue.HashType = "body"
+			issue.Expected = entry.oldBody
+			issue.Actual = entry.newBody
+		}
+		issues = append(issues, issue)
+	}
+
+	for _, entry := range result.missing {
+		issue := VerifyIssue{
+			Entity:   entry.entity.Name,
+			Type:     "missing",
+			Location: formatStoreLocation(entry.entity),
+			Reason:   entry.reason,
+			Detail:   entry.detail,
+		}
+		issues = append(issues, issue)
+	}
+
+	status := "passed"
+	if len(result.drifted) > 0 || len(result.missing) > 0 {
+		status = "failed"
+	}
+
+	actions := []string{}
+	if len(result.drifted) > 0 || len(result.missing) > 0 {
+		if checkFix {
+			actions = append(actions, "Fixed drifted entities")
+		} else {
+			actions = append(actions, "Run `cx check --drift --fix` to update hashes for drifted entities")
+		}
+		actions = append(actions, "Run `cx scan --force` to re-scan the codebase")
+	}
+
+	verifyOut := &VerifyOutput{
+		Verification: &VerificationData{
+			Status:          status,
+			EntitiesChecked: len(result.valid) + len(result.drifted) + len(result.missing),
+			Valid:           len(result.valid),
+			Drifted:         len(result.drifted),
+			Missing:         len(result.missing),
+			Issues:          issues,
+			Actions:         actions,
+		},
+	}
+
+	if !quiet {
+		formatter, err := output.GetFormatter(output.FormatYAML)
+		if err != nil {
+			return fmt.Errorf("failed to get formatter: %w", err)
+		}
+		if err := formatter.FormatToWriter(cmd.OutOrStdout(), verifyOut, output.DensityMedium); err != nil {
+			return fmt.Errorf("failed to format output: %w", err)
+		}
+	}
+
+	// Create beads task if requested
+	if checkCreateTask && (len(result.drifted) > 0 || len(result.missing) > 0) {
+		if !integration.BeadsAvailable() {
+			return fmt.Errorf("--create-task requires beads integration (bd CLI and .beads/ directory)")
+		}
+
+		title := fmt.Sprintf("Verify: %d drifted, %d missing entities need attention",
+			len(result.drifted), len(result.missing))
+
+		var desc strings.Builder
+		desc.WriteString("## Verification Results\n\n")
+		desc.WriteString(fmt.Sprintf("- **Drifted**: %d entities\n", len(result.drifted)))
+		desc.WriteString(fmt.Sprintf("- **Missing**: %d entities\n", len(result.missing)))
+		desc.WriteString(fmt.Sprintf("- **Valid**: %d entities\n\n", len(result.valid)))
+
+		if len(result.drifted) > 0 {
+			desc.WriteString("### Drifted Entities\n")
+			for i, e := range result.drifted {
+				if i >= 10 {
+					desc.WriteString(fmt.Sprintf("... and %d more\n", len(result.drifted)-10))
+					break
+				}
+				desc.WriteString(fmt.Sprintf("- `%s` (%s): %s\n", e.entity.Name, e.file, e.reason))
+			}
+			desc.WriteString("\n")
+		}
+
+		if len(result.missing) > 0 {
+			desc.WriteString("### Missing Entities\n")
+			for i, e := range result.missing {
+				if i >= 10 {
+					desc.WriteString(fmt.Sprintf("... and %d more\n", len(result.missing)-10))
+					break
+				}
+				desc.WriteString(fmt.Sprintf("- `%s` (%s): %s\n", e.entity.Name, e.file, e.reason))
+			}
+			desc.WriteString("\n")
+		}
+
+		desc.WriteString("### Suggested Actions\n")
+		desc.WriteString("- Run `cx scan --force` to update the database\n")
+		desc.WriteString("- Run `cx check --drift --fix` to update hashes for drifted entities\n")
+
+		priority := 2
+		if len(result.missing) > 10 || len(result.drifted) > 20 {
+			priority = 1
+		}
+
+		opts := integration.CreateBeadOptions{
+			Title:       title,
+			Description: desc.String(),
+			Type:        "task",
+			Priority:    priority,
+			Labels:      []string{"cx:verify", "cx:stale"},
+		}
+
+		beadID, err := integration.CreateBead(opts)
+		if err != nil {
+			return fmt.Errorf("failed to create task: %w", err)
+		}
+
+		if !quiet {
+			fmt.Fprintf(cmd.OutOrStdout(), "\n# Created task: %s\n", beadID)
+		}
+	}
+
+	if checkStrict && (len(result.drifted) > 0 || len(result.missing) > 0) {
+		return fmt.Errorf("verification failed: %d drifted, %d missing",
+			len(result.drifted), len(result.missing))
+	}
+
+	return nil
+}
+
+// runCheckChanges shows what changed since last scan - equivalent to old cx diff
+func runCheckChanges(cmd *cobra.Command, args []string) error {
+	// Find .cx directory
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx init && cx scan' first")
+	}
+	projectRoot := filepath.Dir(cxDir)
+
+	// Open store
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	// Use semantic diff if requested
+	if checkSemantic {
+		cfg, err := config.Load(projectRoot)
+		if err != nil {
+			cfg = config.DefaultConfig()
+		}
+		analyzer := semdiff.NewAnalyzer(storeDB, projectRoot, cfg)
+		result, err := analyzer.Analyze(checkFile)
+		if err != nil {
+			return err
+		}
+
+		format, err := output.ParseFormat(outputFormat)
+		if err != nil {
+			return err
+		}
+		density, err := output.ParseDensity(outputDensity)
+		if err != nil {
+			return err
+		}
+		formatter, err := output.GetFormatter(format)
+		if err != nil {
+			return err
+		}
+		return formatter.FormatToWriter(cmd.OutOrStdout(), result, density)
+	}
+
+	// Get all file entries from last scan
+	fileEntries, err := storeDB.GetAllFileEntries()
+	if err != nil {
+		return fmt.Errorf("failed to get file entries: %w", err)
+	}
+
+	if len(fileEntries) == 0 {
+		return fmt.Errorf("no scan data found: run 'cx scan' first")
+	}
+
+	// Find the most recent scan time
+	var lastScanTime time.Time
+	for _, entry := range fileEntries {
+		if entry.ScannedAt.After(lastScanTime) {
+			lastScanTime = entry.ScannedAt
+		}
+	}
+
+	// Build map of stored file hashes
+	storedHashes := make(map[string]string)
+	for _, entry := range fileEntries {
+		if checkFile != "" {
+			if entry.FilePath != checkFile && !hasPrefix(entry.FilePath, checkFile) {
+				continue
+			}
+		}
+		storedHashes[entry.FilePath] = entry.ScanHash
+	}
+
+	// Track changes
+	var added []DiffEntity
+	var modified []DiffEntity
+	var removed []DiffEntity
+	changedFiles := make(map[string]bool)
+
+	// Check stored files for modifications and deletions
+	for filePath, storedHash := range storedHashes {
+		absPath := filepath.Join(projectRoot, filePath)
+		content, err := os.ReadFile(absPath)
+		if err != nil {
+			entities, _ := storeDB.QueryEntities(store.EntityFilter{FilePath: filePath, Status: "active"})
+			for _, e := range entities {
+				removed = append(removed, DiffEntity{
+					Name:     e.Name,
+					Type:     e.EntityType,
+					Location: formatStoreLocation(e),
+					Change:   "file_deleted",
+				})
+			}
+			changedFiles[filePath] = true
+			continue
+		}
+
+		currentHash := extract.ComputeFileHash(content)
+		if currentHash != storedHash {
+			changedFiles[filePath] = true
+			storedEntities, _ := storeDB.QueryEntities(store.EntityFilter{FilePath: filePath, Status: "active"})
+			for _, e := range storedEntities {
+				diffEntity := DiffEntity{
+					Name:     e.Name,
+					Type:     e.EntityType,
+					Location: formatStoreLocation(e),
+					Change:   "file_modified",
+				}
+				if checkDetailed {
+					diffEntity.OldHash = e.SigHash
+				}
+				modified = append(modified, diffEntity)
+			}
+		}
+	}
+
+	// Check for new files
+	err = filepath.Walk(projectRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			base := filepath.Base(path)
+			if base == ".git" || base == ".cx" || base == "node_modules" || base == "vendor" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		ext := filepath.Ext(path)
+		if ext != ".go" && ext != ".ts" && ext != ".js" && ext != ".py" && ext != ".rs" && ext != ".java" {
+			return nil
+		}
+
+		relPath, _ := filepath.Rel(projectRoot, path)
+		if checkFile != "" {
+			if relPath != checkFile && !hasPrefix(relPath, checkFile) {
+				return nil
+			}
+		}
+
+		if _, exists := storedHashes[relPath]; !exists {
+			changedFiles[relPath] = true
+			added = append(added, DiffEntity{
+				Name:     relPath,
+				Type:     "file",
+				Location: relPath,
+				Change:   "new_file",
+			})
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("walking directory: %w", err)
+	}
+
+	// Build output
+	diffOutput := &DiffOutput{
+		Summary: DiffSummary{
+			FilesChanged:     len(changedFiles),
+			EntitiesAdded:    len(added),
+			EntitiesModified: len(modified),
+			EntitiesRemoved:  len(removed),
+			LastScan:         lastScanTime.Format(time.RFC3339),
+		},
+		Added:    added,
+		Modified: modified,
+		Removed:  removed,
+	}
+
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return err
+	}
+	density, err := output.ParseDensity(outputDensity)
+	if err != nil {
+		return err
+	}
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return err
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), diffOutput, density)
 }
 
 // findDirectEntities finds entities that match the target (file or entity name)
@@ -693,7 +1675,7 @@ func createCheckTask(target string, checkOut *CheckOutput) error {
 		for _, k := range checkOut.AffectedKeystones {
 			gap := ""
 			if k.CoverageGap {
-				gap = " ⚠️"
+				gap = " [GAP]"
 			}
 			desc.WriteString(fmt.Sprintf("- `%s` (%s) - %s%s\n", k.Name, k.Coverage, k.Impact, gap))
 		}

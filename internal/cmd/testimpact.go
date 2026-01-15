@@ -86,6 +86,12 @@ func init() {
 	testImpactCmd.Flags().StringVar(&testImpactCommit, "commit", "", "Use specific commit to find changed files")
 	testImpactCmd.Flags().IntVar(&testImpactDepth, "depth", 2, "Depth for indirect test discovery")
 	testImpactCmd.Flags().BoolVar(&testImpactOutputCommand, "output-command", false, "Only output the go test command")
+
+	// Deprecate this command in favor of cx test
+	DeprecateCommand(testImpactCmd, DeprecationInfo{
+		OldCommand: "cx test-impact",
+		NewCommand: "cx test",
+	})
 }
 
 // testInfo holds information about a test
