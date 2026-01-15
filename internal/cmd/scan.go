@@ -491,7 +491,7 @@ func processEntityWithStore(entity *extract.Entity, entityID string, storeDB *st
 				FilePath:   entity.File,
 				LineStart:  int(entity.StartLine),
 				LineEnd:    &endLine,
-				Signature:  "", // Signature can be computed from params/returns if needed
+				Signature:  entity.FormatSignature(),
 				SigHash:    entity.SigHash,
 				BodyHash:   entity.BodyHash,
 				Receiver:   entity.Receiver,
@@ -519,7 +519,7 @@ func processEntityWithStore(entity *extract.Entity, entityID string, storeDB *st
 			FilePath:   entity.File,
 			LineStart:  int(entity.StartLine),
 			LineEnd:    &endLine,
-			Signature:  "", // Signature can be computed from params/returns if needed
+			Signature:  entity.FormatSignature(),
 			SigHash:    entity.SigHash,
 			BodyHash:   entity.BodyHash,
 			Receiver:   entity.Receiver,
