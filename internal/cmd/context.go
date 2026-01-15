@@ -8,6 +8,7 @@ import (
 
 	"github.com/anthropics/cx/internal/config"
 	"github.com/anthropics/cx/internal/context"
+	"github.com/anthropics/cx/internal/coverage"
 	"github.com/anthropics/cx/internal/graph"
 	"github.com/anthropics/cx/internal/integration"
 	"github.com/anthropics/cx/internal/output"
@@ -70,6 +71,11 @@ Density Effects:
   medium:   Add signatures and dependency reasons (default)
   dense:    Include actual code snippets and full analysis
 
+Coverage Information (--with-coverage):
+  When enabled, adds coverage data to each relevant entity:
+  - coverage: Test coverage percentage (e.g., "45.5%")
+  - coverage_warning: Warning for keystones with <50% coverage
+
 Examples:
   cx context bd-a7c                                # Task context, default budget
   cx context src/auth/login.go                     # File context
@@ -81,21 +87,24 @@ Examples:
   cx context bd-a7c --include deps,types           # Explicit inclusions
   cx context bd-a7c --exclude tests,mocks          # Explicit exclusions
   cx context bd-a7c --format=json                  # JSON output
-  cx context --smart "add rate limiting to API"    # Smart context assembly`,
+  cx context --smart "add rate limiting to API"    # Smart context assembly
+  cx context --smart "task" --with-coverage        # Include coverage data
+  cx context <entity> --with-coverage              # Entity context with coverage`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runContext,
 }
 
 var (
-	contextHops      int
-	contextMaxTokens int
-	contextBudget    string
-	contextDensity   string
-	contextInclude   []string
-	contextExclude   []string
-	contextForTask   string
-	contextSmart     string
-	contextDepth     int
+	contextHops         int
+	contextMaxTokens    int
+	contextBudget       string
+	contextDensity      string
+	contextInclude      []string
+	contextExclude      []string
+	contextForTask      string
+	contextSmart        string
+	contextDepth        int
+	contextWithCoverage bool
 )
 
 func init() {
@@ -114,6 +123,9 @@ func init() {
 	// Smart context flags
 	contextCmd.Flags().StringVar(&contextSmart, "smart", "", "Natural language task description for intent-aware context assembly")
 	contextCmd.Flags().IntVar(&contextDepth, "depth", 2, "Max hops from entry points for --smart mode")
+
+	// Coverage flag
+	contextCmd.Flags().BoolVar(&contextWithCoverage, "with-coverage", false, "Include test coverage data for each entity")
 }
 
 // contextEntry represents an entity in the context graph with metadata
@@ -385,12 +397,19 @@ func runContext(cmd *cobra.Command, args []string) error {
 				reason = "Type reference"
 			}
 
-			contextOut.Relevant[entry.entity.Name] = &output.RelevantEntity{
+			relEntity := &output.RelevantEntity{
 				Type:      mapStoreEntityTypeToString(entry.entity.EntityType),
 				Location:  location,
 				Relevance: relevance,
 				Reason:    reason,
 			}
+
+			// Add coverage data if --with-coverage flag is set
+			if contextWithCoverage {
+				addCoverageToRelevantEntity(relEntity, entry.entity.ID, entry.pageRank, storeDB)
+			}
+
+			contextOut.Relevant[entry.entity.Name] = relEntity
 		}
 	}
 
@@ -694,7 +713,7 @@ func runSmartContext(cmd *cobra.Command, taskDescription string) error {
 	}
 
 	// Convert to SmartContextOutput for YAML/JSON output
-	smartOut := buildSmartContextOutput(result, density)
+	smartOut := buildSmartContextOutput(result, density, storeDB)
 
 	// Get formatter and output
 	formatter, err := output.GetFormatter(format)
@@ -724,7 +743,7 @@ type SmartContextIntent struct {
 }
 
 // buildSmartContextOutput converts SmartContextResult to output format.
-func buildSmartContextOutput(result *context.SmartContextResult, density output.Density) *SmartContextOutput {
+func buildSmartContextOutput(result *context.SmartContextResult, density output.Density, storeDB *store.Store) *SmartContextOutput {
 	out := &SmartContextOutput{
 		EntryPoints:  make(map[string]*output.EntryPoint),
 		Relevant:     make(map[string]*output.RelevantEntity),
@@ -770,12 +789,19 @@ func buildSmartContextOutput(result *context.SmartContextResult, density output.
 			reason = "[keystone] " + reason
 		}
 
-		out.Relevant[re.Name] = &output.RelevantEntity{
+		relEntity := &output.RelevantEntity{
 			Type:      re.Type,
 			Location:  re.Location,
 			Relevance: relevance,
 			Reason:    reason,
 		}
+
+		// Add coverage data if --with-coverage flag is set
+		if contextWithCoverage {
+			addCoverageToRelevantEntity(relEntity, re.ID, re.PageRank, storeDB)
+		}
+
+		out.Relevant[re.Name] = relEntity
 	}
 
 	// Convert excluded entities
@@ -784,5 +810,26 @@ func buildSmartContextOutput(result *context.SmartContextResult, density output.
 	}
 
 	return out
+}
+
+// addCoverageToRelevantEntity adds coverage data to a RelevantEntity.
+// It retrieves coverage information from the database and sets the Coverage
+// and CoverageWarning fields on the entity.
+func addCoverageToRelevantEntity(relEntity *output.RelevantEntity, entityID string, pageRank float64, storeDB *store.Store) {
+	cov, err := coverage.GetEntityCoverage(storeDB, entityID)
+	if err != nil {
+		// No coverage data available for this entity
+		return
+	}
+
+	// Set coverage percentage
+	relEntity.Coverage = fmt.Sprintf("%.1f%%", cov.CoveragePercent)
+
+	// Check if this is a keystone with low coverage (< 50%)
+	// Keystones are entities with PageRank >= 0.15 or high importance
+	isKeystone := pageRank >= 0.15
+	if isKeystone && cov.CoveragePercent < 50.0 {
+		relEntity.CoverageWarning = "Keystone below 50% - add tests before modifying"
+	}
 }
 

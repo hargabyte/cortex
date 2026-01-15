@@ -16,13 +16,17 @@ const (
 	// FormatJSON is the JSON output format
 	FormatJSON Format = "json"
 
+	// FormatJSONL is JSON Lines format for streaming output
+	// Each item (entity, node, edge) is output as a separate JSON line
+	FormatJSONL Format = "jsonl"
+
 	// FormatCGF is the deprecated compact CGF format
 	// This format is maintained for backward compatibility but will be removed in v2.0
 	FormatCGF Format = "cgf"
 )
 
 // ParseFormat parses a format string into a Format value.
-// Accepts: "yaml", "json", "cgf" (case-insensitive)
+// Accepts: "yaml", "json", "jsonl", "cgf" (case-insensitive)
 // Returns an error for invalid format values.
 func ParseFormat(s string) (Format, error) {
 	switch strings.ToLower(strings.TrimSpace(s)) {
@@ -30,10 +34,12 @@ func ParseFormat(s string) (Format, error) {
 		return FormatYAML, nil
 	case "json":
 		return FormatJSON, nil
+	case "jsonl", "json-lines", "jsonlines":
+		return FormatJSONL, nil
 	case "cgf":
 		return FormatCGF, nil
 	default:
-		return "", fmt.Errorf("invalid format: %q (expected yaml, json, or cgf)", s)
+		return "", fmt.Errorf("invalid format: %q (expected yaml, json, jsonl, or cgf)", s)
 	}
 }
 
@@ -147,7 +153,7 @@ const DefaultDensity = DensityMedium
 // ValidateFormat checks if a format value is valid.
 func ValidateFormat(f Format) bool {
 	switch f {
-	case FormatYAML, FormatJSON, FormatCGF:
+	case FormatYAML, FormatJSON, FormatJSONL, FormatCGF:
 		return true
 	default:
 		return false

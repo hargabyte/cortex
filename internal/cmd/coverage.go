@@ -39,37 +39,38 @@ Examples:
 
 // importCmd represents the coverage import subcommand
 var importCmd = &cobra.Command{
-	Use:   "import <coverage.out | gocoverdir>",
-	Short: "Import coverage data from coverage.out file or GOCOVERDIR",
+	Use:   "import <coverage.out | directory>",
+	Short: "Import coverage data from coverage.out file or directory",
 	Long: `Parse Go coverage data and map coverage blocks to entities.
 
 Supported formats:
   1. coverage.out file (from go test -coverprofile)
-  2. GOCOVERDIR directory (from Go 1.20+ -test.gocoverdir)
+  2. Per-test coverage directory (TestName.out files) - RECOMMENDED for test-impact
+  3. GOCOVERDIR directory (from go build -cover binaries)
 
 This command:
-  1. Auto-detects the input format (file vs directory)
+  1. Auto-detects the input format (file vs directory type)
   2. Parses the coverage data
   3. Maps coverage blocks to entities by line ranges
   4. Calculates coverage percentage per entity
   5. Stores coverage data in the database
-  6. Populates test→entity mappings (for per-test GOCOVERDIR)
+  6. Populates test→entity mappings (for per-test directories)
 
 Examples:
-  # Traditional coverage.out
+  # Traditional coverage.out (aggregate only, no per-test attribution)
   go test -coverprofile=coverage.out ./...
   cx coverage import coverage.out
 
-  # Go 1.20+ GOCOVERDIR (aggregate)
-  GOCOVERDIR=.coverage go test ./...
-  cx coverage import .coverage/
-
-  # Go 1.20+ GOCOVERDIR (per-test attribution)
-  for test in $(go test -list '.*' ./... | grep '^Test'); do
-    mkdir -p .coverage/$test
-    GOCOVERDIR=.coverage/$test go test -run "^$test$" ./...
+  # Per-test coverage directory (RECOMMENDED for cx test-impact)
+  # Creates one coverage file per test, enabling test→entity mapping
+  mkdir -p .coverage
+  for test in $(go test -list '.*' ./... 2>/dev/null | grep '^Test'); do
+    go test -coverprofile=.coverage/${test}.out -run "^${test}$" ./... 2>/dev/null
   done
   cx coverage import .coverage/
+
+  # Quick per-test script (add to Makefile)
+  # make coverage-per-test && cx coverage import .coverage/
 
 The per-test mode populates test_entity_map, enabling 'cx test-impact' and
 showing 'tested_by' in 'cx show --coverage'.`,
@@ -127,7 +128,13 @@ func runImport(cmd *cobra.Command, args []string) error {
 		basePath = "."
 	}
 
-	// Auto-detect format: GOCOVERDIR (directory) vs coverage.out (file)
+	// Auto-detect format:
+	// 1. Per-test coverage directory (TestFoo.out, TestBar.out files)
+	// 2. GOCOVERDIR (covmeta.*/covcounters.* files)
+	// 3. Traditional coverage.out file
+	if coverage.IsPerTestCoverageDir(inputPath) {
+		return runImportPerTestDir(storeDB, inputPath, basePath)
+	}
 	if coverage.IsGOCOVERDIR(inputPath) {
 		return runImportGOCOVERDIR(storeDB, inputPath, basePath)
 	}
@@ -168,6 +175,53 @@ func runImportCoverageOut(storeDB *store.Store, coverageFile, basePath string) e
 
 	// Display summary
 	printCoverageSummary(entityCoverages, false, 0)
+
+	return nil
+}
+
+// runImportPerTestDir handles a directory of per-test coverage.out files
+func runImportPerTestDir(storeDB *store.Store, dirPath, basePath string) error {
+	fmt.Fprintf(os.Stderr, "Parsing per-test coverage directory: %s\n", dirPath)
+
+	perTestData, err := coverage.ParsePerTestCoverageDir(dirPath)
+	if err != nil {
+		return fmt.Errorf("failed to parse per-test coverage: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "Found %d tests with coverage data\n", len(perTestData.PerTest))
+	if perTestData.Aggregate != nil {
+		fmt.Fprintf(os.Stderr, "Merged %d coverage blocks (mode: %s)\n",
+			len(perTestData.Aggregate.Blocks), perTestData.Aggregate.Mode)
+	}
+
+	// Map aggregate coverage to entities
+	fmt.Fprintf(os.Stderr, "Mapping coverage to entities...\n")
+	mapper := coverage.NewMapper(storeDB, perTestData.Aggregate, basePath)
+	entityCoverages, err := mapper.MapCoverageToEntities()
+	if err != nil {
+		return fmt.Errorf("failed to map coverage: %w", err)
+	}
+
+	if len(entityCoverages) == 0 {
+		fmt.Fprintf(os.Stderr, "Warning: No entities matched coverage data. Check file path normalization.\n")
+		return nil
+	}
+
+	// Store aggregate coverage data
+	fmt.Fprintf(os.Stderr, "Storing coverage for %d entities...\n", len(entityCoverages))
+	if err := coverage.StoreCoverage(storeDB, entityCoverages); err != nil {
+		return fmt.Errorf("failed to store coverage: %w", err)
+	}
+
+	// Populate test_entity_map with per-test attribution
+	fmt.Fprintf(os.Stderr, "Mapping per-test coverage to entities...\n")
+	testMappings, err := coverage.StoreTestEntityMappings(storeDB, perTestData, basePath)
+	if err != nil {
+		return fmt.Errorf("failed to store test mappings: %w", err)
+	}
+
+	// Display summary
+	printCoverageSummary(entityCoverages, true, testMappings)
 
 	return nil
 }

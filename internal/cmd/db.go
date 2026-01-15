@@ -36,6 +36,15 @@ var dbExportCmd = &cobra.Command{
 	RunE:  runDbExport,
 }
 
+// dbStatusCmd is a top-level alias for "db info" - more intuitive for AI agents
+var dbStatusCmd = &cobra.Command{
+	Use:     "status",
+	Aliases: []string{"st"},
+	Short:   "Show database status (alias for 'db info')",
+	Long:    `Display database statistics including entity counts, dependencies, and file index. This is an alias for 'cx db info'.`,
+	RunE:    runDbInfo,
+}
+
 // Flags
 var (
 	compactRemoveArchived bool
@@ -45,6 +54,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(dbCmd)
+	rootCmd.AddCommand(dbStatusCmd) // Top-level status alias
 	dbCmd.AddCommand(dbInfoCmd)
 	dbCmd.AddCommand(dbCompactCmd)
 	dbCmd.AddCommand(dbExportCmd)

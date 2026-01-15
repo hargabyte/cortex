@@ -169,12 +169,15 @@ func runVerify(cmd *cobra.Command, args []string) error {
 			},
 		}
 
-		formatter, err := output.GetFormatter(output.FormatYAML)
-		if err != nil {
-			return fmt.Errorf("failed to get formatter: %w", err)
-		}
+		if !quiet {
+			formatter, err := output.GetFormatter(output.FormatYAML)
+			if err != nil {
+				return fmt.Errorf("failed to get formatter: %w", err)
+			}
 
-		return formatter.FormatToWriter(cmd.OutOrStdout(), verifyOut, output.DensityMedium)
+			return formatter.FormatToWriter(cmd.OutOrStdout(), verifyOut, output.DensityMedium)
+		}
+		return nil
 	}
 
 	result := &verifyResult{}
@@ -270,6 +273,12 @@ func runVerify(cmd *cobra.Command, args []string) error {
 		// Verify each stored entity
 		for _, stored := range fileEntities {
 			s := stored
+
+			// Skip import entities - they have no meaningful body to verify
+			if s.EntityType == "import" {
+				continue
+			}
+
 			current := findMatchingEntityByName(stored.Name, currentMap)
 
 			if current == nil {
@@ -316,15 +325,15 @@ func runVerify(cmd *cobra.Command, args []string) error {
 
 	// Fix drifted if requested (or show what would be fixed in dry-run mode)
 	if (verifyFix || verifyDryRun) && len(result.drifted) > 0 {
-		if verifyDryRun {
+		if verifyDryRun && !quiet {
 			fmt.Fprintf(cmd.OutOrStdout(), "\n[dry-run] Would fix %d drifted entities:\n", len(result.drifted))
 		}
 		for _, entry := range result.drifted {
 			if entry.newSig != "" && entry.newBody != "" {
-				if verifyDryRun {
+				if verifyDryRun && !quiet {
 					fmt.Fprintf(cmd.OutOrStdout(), "[dry-run]   - %s (%s)\n",
 						entry.entity.Name, entry.entity.ID)
-				} else {
+				} else if !verifyDryRun {
 					entry.entity.SigHash = entry.newSig
 					entry.entity.BodyHash = entry.newBody
 					if err := storeDB.UpdateEntity(entry.entity); err != nil {
@@ -334,7 +343,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-		if verifyDryRun {
+		if verifyDryRun && !quiet {
 			fmt.Fprintf(cmd.OutOrStdout(), "[dry-run] No changes made\n\n")
 		}
 	}
@@ -408,14 +417,16 @@ func runVerify(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	// Output in YAML format
-	formatter, err := output.GetFormatter(output.FormatYAML)
-	if err != nil {
-		return fmt.Errorf("failed to get formatter: %w", err)
-	}
+	// Output in YAML format (unless quiet mode)
+	if !quiet {
+		formatter, err := output.GetFormatter(output.FormatYAML)
+		if err != nil {
+			return fmt.Errorf("failed to get formatter: %w", err)
+		}
 
-	if err := formatter.FormatToWriter(cmd.OutOrStdout(), verifyOut, output.DensityMedium); err != nil {
-		return fmt.Errorf("failed to format output: %w", err)
+		if err := formatter.FormatToWriter(cmd.OutOrStdout(), verifyOut, output.DensityMedium); err != nil {
+			return fmt.Errorf("failed to format output: %w", err)
+		}
 	}
 
 	// Create beads task if requested and there are issues
@@ -484,7 +495,9 @@ func runVerify(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to create task: %w", err)
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "\n# Created task: %s\n", beadID)
+		if !quiet {
+			fmt.Fprintf(cmd.OutOrStdout(), "\n# Created task: %s\n", beadID)
+		}
 	}
 
 	// Exit with error if strict mode and drift detected

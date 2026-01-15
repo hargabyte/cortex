@@ -18,6 +18,9 @@ type Intent struct {
 	// Keywords are significant terms extracted from the task
 	Keywords []string `yaml:"keywords" json:"keywords"`
 
+	// IdentifierKeywords are keywords that look like code identifiers (higher weight)
+	IdentifierKeywords []string `yaml:"identifier_keywords,omitempty" json:"identifier_keywords,omitempty"`
+
 	// Pattern is the detected task pattern (e.g., "add_feature", "fix_bug", "refactor")
 	Pattern string `yaml:"pattern" json:"pattern"`
 
@@ -161,17 +164,17 @@ func (sc *SmartContext) Assemble() (*SmartContextResult, error) {
 func ExtractIntent(description string) *Intent {
 	intent := &Intent{}
 
-	// Normalize the description
-	description = strings.ToLower(strings.TrimSpace(description))
+	// Extract action verb and pattern from original description
+	intent.ActionVerb, intent.Pattern = detectActionPattern(strings.ToLower(strings.TrimSpace(description)))
 
-	// Extract action verb and pattern
-	intent.ActionVerb, intent.Pattern = detectActionPattern(description)
-
-	// Extract keywords
-	intent.Keywords = extractKeywords(description)
-
-	// Extract entity mentions (CamelCase or snake_case patterns)
+	// Extract entity mentions (CamelCase or snake_case patterns) BEFORE lowercasing
 	intent.EntityMentions = extractEntityMentions(description)
+
+	// Normalize the description for keyword extraction
+	normalizedDesc := strings.ToLower(strings.TrimSpace(description))
+
+	// Extract keywords, separating identifier-like from generic
+	intent.Keywords, intent.IdentifierKeywords = extractKeywordsWithIdentifiers(normalizedDesc)
 
 	return intent
 }
@@ -221,8 +224,10 @@ func detectActionPattern(desc string) (verb string, pattern string) {
 	return "", "modify"
 }
 
-// extractKeywords extracts significant keywords from the description.
-func extractKeywords(desc string) []string {
+// extractKeywordsWithIdentifiers extracts keywords from the description,
+// separating identifier-like keywords (higher weight) from generic keywords.
+// Identifier-like keywords contain uppercase letters, underscores, or look like code.
+func extractKeywordsWithIdentifiers(desc string) (generic []string, identifiers []string) {
 	// Stop words to exclude
 	stopWords := map[string]bool{
 		"a": true, "an": true, "the": true, "to": true, "for": true,
@@ -255,29 +260,51 @@ func extractKeywords(desc string) []string {
 	}
 
 	words := strings.Fields(desc)
-	keywordSet := make(map[string]bool)
-	var keywords []string
+	genericSet := make(map[string]bool)
+	identifierSet := make(map[string]bool)
 
 	for _, word := range words {
 		// Clean punctuation
-		word = strings.Trim(word, ".,;:!?\"'()[]{}/<>")
-		word = strings.ToLower(word)
+		cleanWord := strings.Trim(word, ".,;:!?\"'()[]{}/<>")
+		lowerWord := strings.ToLower(cleanWord)
 
 		// Skip short words, stop words, and action words
-		if len(word) < 3 || stopWords[word] || actionWords[word] {
+		if len(lowerWord) < 3 || stopWords[lowerWord] || actionWords[lowerWord] {
 			continue
 		}
 
-		// Skip if already added
-		if keywordSet[word] {
-			continue
+		// Check if word looks like an identifier
+		if looksLikeIdentifier(cleanWord) {
+			if !identifierSet[lowerWord] {
+				identifierSet[lowerWord] = true
+				identifiers = append(identifiers, lowerWord)
+			}
+		} else {
+			if !genericSet[lowerWord] {
+				genericSet[lowerWord] = true
+				generic = append(generic, lowerWord)
+			}
 		}
-
-		keywordSet[word] = true
-		keywords = append(keywords, word)
 	}
 
-	return keywords
+	return generic, identifiers
+}
+
+// looksLikeIdentifier returns true if a word looks like a code identifier.
+// This includes words with uppercase letters, underscores, or mixed case.
+func looksLikeIdentifier(word string) bool {
+	hasUpper := false
+	hasUnderscore := strings.Contains(word, "_")
+
+	for _, r := range word {
+		if unicode.IsUpper(r) {
+			hasUpper = true
+			break
+		}
+	}
+
+	// Identifier-like if it has uppercase or underscores
+	return hasUpper || hasUnderscore
 }
 
 // extractEntityMentions finds potential code entity names in the description.
@@ -527,10 +554,24 @@ func (sc *SmartContext) traceFlow(entryPoints []*EntryPoint, intent *Intent) ([]
 		if isKeystone {
 			relevance *= sc.options.KeystoneBoost
 		}
-		// Boost entities that match keywords
+
+		// Boost entities that match identifier-like keywords (strong boost for names)
+		entityNameLower := strings.ToLower(entity.Name)
+		for _, kw := range intent.IdentifierKeywords {
+			if strings.EqualFold(entity.Name, kw) {
+				// Exact name match - very strong boost
+				relevance *= 2.5
+				break
+			} else if strings.Contains(entityNameLower, kw) {
+				// Partial name match - strong boost
+				relevance *= 1.8
+				break
+			}
+		}
+
+		// Boost entities that match generic keywords (name only, no body text)
 		for _, kw := range intent.Keywords {
-			if strings.Contains(strings.ToLower(entity.Name), kw) ||
-				strings.Contains(strings.ToLower(entity.BodyText), kw) {
+			if strings.Contains(entityNameLower, kw) {
 				relevance *= 1.2
 				break
 			}

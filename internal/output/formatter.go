@@ -79,6 +79,193 @@ func (f *JSONFormatter) FormatToWriter(w io.Writer, entity interface{}, density 
 	return encoder.Encode(filtered)
 }
 
+// JSONLFormatter formats entities as JSON Lines (one JSON object per line).
+// This is useful for streaming large outputs and for processing with tools like jq.
+type JSONLFormatter struct{}
+
+// NewJSONLFormatter creates a new JSON Lines formatter.
+func NewJSONLFormatter() *JSONLFormatter {
+	return &JSONLFormatter{}
+}
+
+// Format formats an entity as JSON Lines.
+func (f *JSONLFormatter) Format(entity interface{}, density Density) (string, error) {
+	var buf bytes.Buffer
+	if err := f.FormatToWriter(&buf, entity, density); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// FormatToWriter writes JSON Lines output to a writer.
+// For collection types (ListOutput, GraphOutput), each item is written as a separate line.
+func (f *JSONLFormatter) FormatToWriter(w io.Writer, entity interface{}, density Density) error {
+	filtered := applyDensityFilter(entity, density)
+
+	switch v := filtered.(type) {
+	case *ListOutput:
+		// Output each result as a separate JSON line
+		for name, eo := range v.Results {
+			line := map[string]interface{}{
+				"name":   name,
+				"entity": eo,
+			}
+			if err := f.writeLine(w, line); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case *GraphOutput:
+		// Output metadata first
+		if v.Graph != nil {
+			meta := map[string]interface{}{
+				"type": "metadata",
+				"data": v.Graph,
+			}
+			if err := f.writeLine(w, meta); err != nil {
+				return err
+			}
+		}
+		// Output nodes
+		for name, node := range v.Nodes {
+			line := map[string]interface{}{
+				"type": "node",
+				"name": name,
+				"data": node,
+			}
+			if err := f.writeLine(w, line); err != nil {
+				return err
+			}
+		}
+		// Output edges
+		for _, edge := range v.Edges {
+			line := map[string]interface{}{
+				"type": "edge",
+				"data": edge,
+			}
+			if err := f.writeLine(w, line); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case *ImpactOutput:
+		// Output metadata
+		if v.Impact != nil {
+			meta := map[string]interface{}{
+				"type":    "metadata",
+				"data":    v.Impact,
+				"summary": v.Summary,
+			}
+			if err := f.writeLine(w, meta); err != nil {
+				return err
+			}
+		}
+		// Output affected entities
+		for name, ae := range v.Affected {
+			line := map[string]interface{}{
+				"type": "affected",
+				"name": name,
+				"data": ae,
+			}
+			if err := f.writeLine(w, line); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case *ContextOutput:
+		// Output metadata
+		if v.Context != nil {
+			meta := map[string]interface{}{
+				"type": "metadata",
+				"data": v.Context,
+			}
+			if err := f.writeLine(w, meta); err != nil {
+				return err
+			}
+		}
+		// Output entry points
+		for name, ep := range v.EntryPoints {
+			line := map[string]interface{}{
+				"type": "entry_point",
+				"name": name,
+				"data": ep,
+			}
+			if err := f.writeLine(w, line); err != nil {
+				return err
+			}
+		}
+		// Output relevant entities
+		for name, re := range v.Relevant {
+			line := map[string]interface{}{
+				"type": "relevant",
+				"name": name,
+				"data": re,
+			}
+			if err := f.writeLine(w, line); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case *NearOutput:
+		// Output center entity
+		if v.Center != nil {
+			center := map[string]interface{}{
+				"type": "center",
+				"data": v.Center,
+			}
+			if err := f.writeLine(w, center); err != nil {
+				return err
+			}
+		}
+		// Output neighborhood entities
+		if v.Neighborhood != nil {
+			for _, call := range v.Neighborhood.Calls {
+				line := map[string]interface{}{
+					"type":     "neighbor",
+					"relation": "calls",
+					"data":     call,
+				}
+				f.writeLine(w, line)
+			}
+			for _, caller := range v.Neighborhood.CalledBy {
+				line := map[string]interface{}{
+					"type":     "neighbor",
+					"relation": "called_by",
+					"data":     caller,
+				}
+				f.writeLine(w, line)
+			}
+			for _, sf := range v.Neighborhood.SameFile {
+				line := map[string]interface{}{
+					"type":     "neighbor",
+					"relation": "same_file",
+					"data":     sf,
+				}
+				f.writeLine(w, line)
+			}
+		}
+		return nil
+
+	default:
+		// Single object - output as one line
+		return f.writeLine(w, filtered)
+	}
+}
+
+// writeLine writes a single JSON object as a line (no pretty printing).
+func (f *JSONLFormatter) writeLine(w io.Writer, v interface{}) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, "%s\n", data)
+	return err
+}
+
 // CGFFormatter formats entities in the deprecated CGF (Cortex Graph Format).
 // This formatter is maintained for backward compatibility but emits a deprecation warning.
 type CGFFormatter struct {
@@ -411,6 +598,8 @@ func GetFormatter(format Format) (Formatter, error) {
 		return NewYAMLFormatter(), nil
 	case FormatJSON:
 		return NewJSONFormatter(), nil
+	case FormatJSONL:
+		return NewJSONLFormatter(), nil
 	case FormatCGF:
 		return NewCGFFormatter(), nil
 	default:

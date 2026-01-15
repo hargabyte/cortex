@@ -224,3 +224,177 @@ func (d *GOCOVERDIRData) TestNames() []string {
 	}
 	return names
 }
+
+// IsPerTestCoverageDir checks if a directory contains per-test coverage.out files.
+// This is an alternative to GOCOVERDIR for per-test attribution using traditional
+// coverage.out files. Directory structure:
+//
+//	.coverage/
+//	  TestFoo.out
+//	  TestBar.out
+//	  TestBaz_SubTest.out
+func IsPerTestCoverageDir(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return false
+	}
+
+	// Check for *.out files that look like test names
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasSuffix(name, ".out") && strings.HasPrefix(name, "Test") {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ParsePerTestCoverageDir parses a directory of per-test coverage.out files.
+// Each file should be named TestName.out and contains coverage data for that test.
+// Returns GOCOVERDIRData for compatibility with existing code.
+func ParsePerTestCoverageDir(dirPath string) (*GOCOVERDIRData, error) {
+	info, err := os.Stat(dirPath)
+	if err != nil {
+		return nil, fmt.Errorf("stat directory: %w", err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("%s is not a directory", dirPath)
+	}
+
+	result := &GOCOVERDIRData{
+		PerTest: make(map[string]*CoverageData),
+	}
+
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, fmt.Errorf("read directory: %w", err)
+	}
+
+	var allCoverageFiles []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasSuffix(name, ".out") {
+			filePath := filepath.Join(dirPath, name)
+			allCoverageFiles = append(allCoverageFiles, filePath)
+
+			// Extract test name from filename
+			testName := strings.TrimSuffix(name, ".out")
+
+			// Parse coverage file
+			coverageData, err := ParseCoverageFile(filePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to parse %s: %v\n", name, err)
+				continue
+			}
+
+			result.PerTest[testName] = coverageData
+		}
+	}
+
+	if len(result.PerTest) == 0 {
+		return nil, fmt.Errorf("no coverage.out files found in %s", dirPath)
+	}
+
+	// Merge all coverage files for aggregate data
+	if len(allCoverageFiles) > 0 {
+		aggregate, err := MergeCoverageFiles(allCoverageFiles)
+		if err != nil {
+			return nil, fmt.Errorf("merge coverage files: %w", err)
+		}
+		result.Aggregate = aggregate
+	}
+
+	return result, nil
+}
+
+// MergeCoverageFiles merges multiple coverage.out files into one.
+// Uses go tool cover -merge if available (Go 1.20+), otherwise manual merge.
+func MergeCoverageFiles(files []string) (*CoverageData, error) {
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no files to merge")
+	}
+
+	if len(files) == 1 {
+		return ParseCoverageFile(files[0])
+	}
+
+	// Try go tool cover -merge (Go 1.20+)
+	tmpFile, err := os.CreateTemp("", "cx-coverage-merged-*.out")
+	if err != nil {
+		return nil, fmt.Errorf("create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+	defer os.Remove(tmpPath)
+
+	// Build merge command
+	args := append([]string{"tool", "cover", "-merge"}, files...)
+	args = append(args, "-o", tmpPath)
+
+	cmd := exec.Command("go", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// Fallback to manual merge if go tool cover -merge isn't available
+		return manualMergeCoverageFiles(files)
+	}
+
+	if len(output) > 0 {
+		fmt.Fprintf(os.Stderr, "go tool cover -merge: %s\n", string(output))
+	}
+
+	return ParseCoverageFile(tmpPath)
+}
+
+// manualMergeCoverageFiles merges coverage files without using go tool.
+// It combines blocks and takes the max count for overlapping blocks.
+func manualMergeCoverageFiles(files []string) (*CoverageData, error) {
+	merged := &CoverageData{
+		Blocks: make([]CoverageBlock, 0),
+	}
+
+	// Map to track unique blocks: "file:startLine.startCol,endLine.endCol" -> block
+	blockMap := make(map[string]CoverageBlock)
+
+	for _, file := range files {
+		data, err := ParseCoverageFile(file)
+		if err != nil {
+			continue
+		}
+
+		if merged.Mode == "" {
+			merged.Mode = data.Mode
+		}
+
+		for _, block := range data.Blocks {
+			key := fmt.Sprintf("%s:%d.%d,%d.%d",
+				block.FilePath, block.StartLine, block.StartCol, block.EndLine, block.EndCol)
+
+			if existing, ok := blockMap[key]; ok {
+				// Take max count (if any test covered it, it's covered)
+				if block.Count > existing.Count {
+					blockMap[key] = block
+				}
+			} else {
+				blockMap[key] = block
+			}
+		}
+	}
+
+	for _, block := range blockMap {
+		merged.Blocks = append(merged.Blocks, block)
+	}
+
+	return merged, nil
+}

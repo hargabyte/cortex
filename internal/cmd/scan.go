@@ -166,8 +166,10 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	// Output writer (CGF sparse format for scan summary)
 	w := output.NewCGFWriter(os.Stdout, output.CGFSparse)
-	if err := w.WriteHeader(); err != nil {
-		return fmt.Errorf("writing header: %w", err)
+	if !quiet {
+		if err := w.WriteHeader(); err != nil {
+			return fmt.Errorf("writing header: %w", err)
+		}
 	}
 
 	stats := &scanStats{}
@@ -375,17 +377,19 @@ func runScan(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Print summary
-	w.WriteBlankLine()
-	w.WriteComment(fmt.Sprintf("Scanned %d files, %d entities", stats.filesScanned, stats.entitiesTotal))
-	w.WriteComment(fmt.Sprintf("Created: %d, Updated: %d, Unchanged: %d, Archived: %d",
-		stats.created, stats.updated, stats.unchanged, stats.archived))
-	if stats.depsExtracted > 0 {
-		w.WriteComment(fmt.Sprintf("Dependencies: %d extracted, %d resolved, %d persisted",
-			stats.depsExtracted, stats.depsResolved, stats.depsPersisted))
-	}
-	if stats.skipped > 0 || stats.errors > 0 {
-		w.WriteComment(fmt.Sprintf("Skipped: %d, Errors: %d", stats.skipped, stats.errors))
+	// Print summary (unless quiet mode)
+	if !quiet {
+		w.WriteBlankLine()
+		w.WriteComment(fmt.Sprintf("Scanned %d files, %d entities", stats.filesScanned, stats.entitiesTotal))
+		w.WriteComment(fmt.Sprintf("Created: %d, Updated: %d, Unchanged: %d, Archived: %d",
+			stats.created, stats.updated, stats.unchanged, stats.archived))
+		if stats.depsExtracted > 0 {
+			w.WriteComment(fmt.Sprintf("Dependencies: %d extracted, %d resolved, %d persisted",
+				stats.depsExtracted, stats.depsResolved, stats.depsPersisted))
+		}
+		if stats.skipped > 0 || stats.errors > 0 {
+			w.WriteComment(fmt.Sprintf("Skipped: %d, Errors: %d", stats.skipped, stats.errors))
+		}
 	}
 
 	return nil
@@ -560,6 +564,11 @@ func detectLanguageFromPath(path string) string {
 
 // writeEntityWithStatus writes an entity line in CGF format with status annotation
 func writeEntityWithStatus(w *output.CGFWriter, e *extract.Entity, status string) {
+	// Skip all output in quiet mode
+	if quiet {
+		return
+	}
+
 	entityType := mapEntityKindToCGFType(e.Kind)
 	location := formatLocation(e)
 

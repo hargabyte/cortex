@@ -55,6 +55,7 @@ var (
 	findLang      string
 	findExact     bool
 	findQualified bool
+	findLimit     int
 )
 
 func init() {
@@ -66,6 +67,7 @@ func init() {
 	findCmd.Flags().StringVar(&findLang, "lang", "", "Filter by language (go, typescript, python, rust, java)")
 	findCmd.Flags().BoolVar(&findExact, "exact", false, "Exact match only (default: prefix match)")
 	findCmd.Flags().BoolVar(&findQualified, "qualified", false, "Show qualified names in output")
+	findCmd.Flags().IntVar(&findLimit, "limit", 100, "Maximum results to return")
 }
 
 func runFind(cmd *cobra.Command, args []string) error {
@@ -83,10 +85,10 @@ func runFind(cmd *cobra.Command, args []string) error {
 	}
 	defer storeDB.Close()
 
-	// Build filter from flags
+	// Build filter from flags (query all matching entities, then limit after name filtering)
 	filter := store.EntityFilter{
 		Status: "active",
-		Limit:  10000, // Allow up to 10K entities
+		Limit:  10000, // Get all candidates, limit applied after name filtering
 	}
 	if findType != "" {
 		filter.EntityType = mapCGFTypeToStore(findType)
@@ -106,6 +108,11 @@ func runFind(cmd *cobra.Command, args []string) error {
 
 	// Filter by name pattern
 	matches := filterByName(entities, query, findExact)
+
+	// Apply limit after name filtering
+	if findLimit > 0 && len(matches) > findLimit {
+		matches = matches[:findLimit]
+	}
 
 	// Parse format and density
 	format, err := output.ParseFormat(outputFormat)

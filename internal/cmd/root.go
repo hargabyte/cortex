@@ -16,10 +16,11 @@ var (
 	Version = "0.1.0"
 
 	// Global flags
-	verbose      bool
-	configPath   string
-	forAgents    bool
-	outputFormat string
+	verbose       bool
+	quiet         bool
+	configPath    string
+	forAgents     bool
+	outputFormat  string
 	outputDensity string
 )
 
@@ -77,8 +78,9 @@ func Execute() {
 func init() {
 	// Global flags available to all commands
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
+	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Suppress output (exit code only)")
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Path to config file (default: .cx/config.yaml)")
-	rootCmd.PersistentFlags().StringVar(&outputFormat, "format", "yaml", "Output format (yaml|json|cgf)")
+	rootCmd.PersistentFlags().StringVar(&outputFormat, "format", "yaml", "Output format (yaml|json|jsonl|cgf)")
 	rootCmd.PersistentFlags().StringVar(&outputDensity, "density", "medium", "Output density (sparse|medium|dense|smart)")
 	rootCmd.Flags().BoolVar(&forAgents, "for-agents", false, "Output machine-readable capability discovery JSON")
 

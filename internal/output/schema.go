@@ -312,6 +312,12 @@ type RelevantEntity struct {
 
 	// Code contains the entity code (skeleton or full based on relevance)
 	Code string `yaml:"code,omitempty" json:"code,omitempty"`
+
+	// Coverage is the test coverage percentage (when --with-coverage is used)
+	Coverage string `yaml:"coverage,omitempty" json:"coverage,omitempty"`
+
+	// CoverageWarning is a warning about low coverage on keystones (when --with-coverage is used)
+	CoverageWarning string `yaml:"coverage_warning,omitempty" json:"coverage_warning,omitempty"`
 }
 
 // NearOutput represents neighborhood exploration results for cx near.

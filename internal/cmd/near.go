@@ -107,7 +107,20 @@ func runNear(cmd *cobra.Command, args []string) error {
 	}
 	defer storeDB.Close()
 
-	// Resolve the entity - support name, ID, file:line, or just file
+	// Check if query is a file path without line number (file overview mode)
+	if isFilePath(query) && !strings.Contains(query, ":") {
+		nearOutput, err := buildFileOverview(query, storeDB, density)
+		if err != nil {
+			return err
+		}
+		formatter, err := output.GetFormatter(format)
+		if err != nil {
+			return fmt.Errorf("failed to get formatter: %w", err)
+		}
+		return formatter.FormatToWriter(cmd.OutOrStdout(), nearOutput, density)
+	}
+
+	// Resolve the entity - support name, ID, or file:line
 	entity, err := resolveNearQuery(query, storeDB)
 	if err != nil {
 		return err
@@ -361,4 +374,40 @@ func buildNeighborEntity(e *store.Entity, depth int, density output.Density) *ou
 	}
 
 	return neighbor
+}
+
+// buildFileOverview creates a NearOutput showing all entities in a file
+func buildFileOverview(filePath string, storeDB *store.Store, density output.Density) (*output.NearOutput, error) {
+	// Query all entities in the file
+	entities, err := storeDB.QueryEntities(store.EntityFilter{
+		FilePath: filePath,
+		Status:   "active",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query entities: %w", err)
+	}
+
+	if len(entities) == 0 {
+		return nil, fmt.Errorf("no entities found in file %q", filePath)
+	}
+
+	// Build center as the file itself
+	center := &output.NearCenterEntity{
+		Name:     filePath,
+		Type:     "file",
+		Location: filePath,
+	}
+
+	// Build neighborhood with all entities in the file
+	neighborhood := &output.Neighborhood{}
+
+	for _, e := range entities {
+		neighbor := buildNeighborEntity(e, 0, density)
+		neighborhood.SameFile = append(neighborhood.SameFile, neighbor)
+	}
+
+	return &output.NearOutput{
+		Center:       center,
+		Neighborhood: neighborhood,
+	}, nil
 }
