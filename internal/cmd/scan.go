@@ -136,6 +136,12 @@ func runScan(cmd *cobra.Command, args []string) error {
 			lang = parser.Rust
 		case "python", "py":
 			lang = parser.Python
+		case "c":
+			lang = parser.C
+		case "csharp", "cs":
+			lang = parser.CSharp
+		case "php":
+			lang = parser.PHP
 		default:
 			return fmt.Errorf("unsupported language: %s", scanLang)
 		}
@@ -348,6 +354,24 @@ func runScan(cmd *cobra.Command, args []string) error {
 		case parser.Rust:
 			extractor := extract.NewRustCallGraphExtractor(fr.parseResult, allCallGraphEntities)
 			deps, extractErr = extractor.ExtractDependencies()
+		case parser.C:
+			extractor := extract.NewCCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
+		case parser.Cpp:
+			extractor := extract.NewCppCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
+		case parser.CSharp:
+			extractor := extract.NewCSharpCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
+		case parser.PHP:
+			extractor := extract.NewPHPCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
+		case parser.Ruby:
+			extractor := extract.NewRubyCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
+		case parser.Kotlin:
+			extractor := extract.NewKotlinCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			deps, extractErr = extractor.ExtractDependencies()
 		default:
 			// Unsupported language for call graph extraction
 			continue
@@ -490,6 +514,24 @@ func scanFilePass1(path, basePath string, p *parser.Parser, storeDB *store.Store
 	case parser.Java:
 		extractor := extract.NewJavaExtractorWithBase(result, basePath)
 		entitiesWithNodes, err = extractor.ExtractAllWithNodes()
+	case parser.C:
+		extractor := extract.NewCExtractorWithBase(result, basePath)
+		entitiesWithNodes, err = extractor.ExtractAllWithNodes()
+	case parser.CSharp:
+		extractor := extract.NewCSharpExtractorWithBase(result, basePath)
+		entitiesWithNodes, err = extractor.ExtractAllWithNodes()
+	case parser.PHP:
+		extractor := extract.NewPHPExtractorWithBase(result, basePath)
+		entitiesWithNodes, err = extractor.ExtractAllWithNodes()
+	case parser.Cpp:
+		extractor := extract.NewCppExtractorWithBase(result, basePath)
+		entitiesWithNodes, err = extractor.ExtractAllWithNodes()
+	case parser.Kotlin:
+		extractor := extract.NewKotlinExtractorWithBase(result, basePath)
+		entitiesWithNodes, err = extractor.ExtractAllWithNodes()
+	case parser.Ruby:
+		extractor := extract.NewRubyExtractorWithBase(result, basePath)
+		entitiesWithNodes, err = extractor.ExtractAllWithNodes()
 	default:
 		// Fall back to Go extractor for unsupported languages
 		extractor := extract.NewExtractorWithBase(result, basePath)
@@ -600,6 +642,18 @@ func detectLanguageFromPath(path string) string {
 		return "rust"
 	case ".py":
 		return "python"
+	case ".c", ".h":
+		return "c"
+	case ".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx":
+		return "cpp"
+	case ".cs":
+		return "csharp"
+	case ".php":
+		return "php"
+	case ".kt", ".kts":
+		return "kotlin"
+	case ".rb", ".rake":
+		return "ruby"
 	default:
 		return "unknown"
 	}
@@ -750,6 +804,12 @@ func isSourceFile(path string, lang parser.Language) bool {
 		return ext == ".rs"
 	case parser.Python:
 		return ext == ".py"
+	case parser.C:
+		return ext == ".c" || ext == ".h"
+	case parser.CSharp:
+		return ext == ".cs"
+	case parser.PHP:
+		return ext == ".php"
 	default:
 		return false
 	}

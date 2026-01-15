@@ -55,6 +55,8 @@ const (
 	VisibilityPublic Visibility = "pub"
 	// VisibilityPrivate is unexported (package-private).
 	VisibilityPrivate Visibility = "priv"
+	// VisibilityProtected is protected (C++ style - visible to derived classes).
+	VisibilityProtected Visibility = "prot"
 )
 
 // Field represents a struct/interface field or method.
@@ -63,6 +65,8 @@ type Field struct {
 	Name string
 	// Type is the field type (abbreviated form).
 	Type string
+	// Visibility is the field visibility (public, private, protected).
+	Visibility Visibility
 }
 
 // Param represents a function parameter.

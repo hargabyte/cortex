@@ -1420,6 +1420,18 @@ func detectLanguageForSafe(path string) parser.Language {
 		return parser.Rust
 	case ".py":
 		return parser.Python
+	case ".c", ".h":
+		return parser.C
+	case ".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx":
+		return parser.Cpp
+	case ".cs":
+		return parser.CSharp
+	case ".php":
+		return parser.PHP
+	case ".kt", ".kts":
+		return parser.Kotlin
+	case ".rb", ".rake":
+		return parser.Ruby
 	default:
 		return "" // Unknown
 	}

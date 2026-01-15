@@ -32,6 +32,9 @@ const (
 
 	// Contains represents a module containing a function/type
 	Contains DepType = "contains"
+
+	// Instantiates represents creating an instance of a type (e.g., new ClassName())
+	Instantiates DepType = "instantiates"
 )
 
 // Dependency represents a relationship between entities

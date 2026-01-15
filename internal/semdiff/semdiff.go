@@ -312,6 +312,24 @@ func (a *Analyzer) extractCurrentEntities(filePath string, content []byte) ([]ex
 	case parser.Java:
 		extractor := extract.NewJavaExtractorWithBase(result, a.projectRoot)
 		entities, err = extractor.ExtractAll()
+	case parser.C:
+		extractor := extract.NewCExtractorWithBase(result, a.projectRoot)
+		entities, err = extractor.ExtractAll()
+	case parser.Cpp:
+		extractor := extract.NewCppExtractorWithBase(result, a.projectRoot)
+		entities, err = extractor.ExtractAll()
+	case parser.CSharp:
+		extractor := extract.NewCSharpExtractorWithBase(result, a.projectRoot)
+		entities, err = extractor.ExtractAll()
+	case parser.PHP:
+		extractor := extract.NewPHPExtractorWithBase(result, a.projectRoot)
+		entities, err = extractor.ExtractAll()
+	case parser.Ruby:
+		extractor := extract.NewRubyExtractorWithBase(result, a.projectRoot)
+		entities, err = extractor.ExtractAll()
+	case parser.Kotlin:
+		extractor := extract.NewKotlinExtractorWithBase(result, a.projectRoot)
+		entities, err = extractor.ExtractAll()
 	default:
 		// Fall back to Go extractor
 		extractor := extract.NewExtractorWithBase(result, a.projectRoot)
@@ -523,6 +541,18 @@ func detectLanguage(path string) string {
 		return "rust"
 	case ".java":
 		return "java"
+	case ".c", ".h":
+		return "c"
+	case ".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx":
+		return "cpp"
+	case ".cs":
+		return "csharp"
+	case ".php":
+		return "php"
+	case ".rb", ".rake":
+		return "ruby"
+	case ".kt", ".kts":
+		return "kotlin"
 	default:
 		return ""
 	}

@@ -28,6 +28,12 @@ const (
 	Rust Language = "rust"
 	// Java represents the Java programming language.
 	Java Language = "java"
+	// CSharp represents the C# programming language.
+	CSharp Language = "csharp"
+	// C represents the C programming language.
+	C Language = "c"
+	// PHP represents the PHP programming language.
+	PHP Language = "php"
 )
 
 // Parser wraps tree-sitter for code parsing.
@@ -71,6 +77,12 @@ func NewParser(lang Language) (*Parser, error) {
 		p, err = newRustParser()
 	case Java:
 		p, err = newJavaParser()
+	case CSharp:
+		p, err = newCSharpParser()
+	case C:
+		p, err = newCParser()
+	case PHP:
+		p, err = newPHPParser()
 	default:
 		return nil, &UnsupportedLanguageError{Language: string(lang)}
 	}
