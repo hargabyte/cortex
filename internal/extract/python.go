@@ -77,6 +77,10 @@ func (e *PythonExtractor) ExtractAllWithNodes() ([]EntityWithNode, error) {
 		if e.isInsideClass(node) {
 			continue
 		}
+		// Skip decorated functions - they'll be processed via decorated_definition
+		if e.isDecoratedFunction(node) {
+			continue
+		}
 		entity := e.extractFunction(node)
 		if entity != nil {
 			result = append(result, EntityWithNode{Entity: entity, Node: node})
@@ -184,6 +188,10 @@ func (e *PythonExtractor) ExtractFunctions() ([]Entity, error) {
 	for _, node := range funcNodes {
 		// Skip methods (functions inside classes)
 		if e.isInsideClass(node) {
+			continue
+		}
+		// Skip decorated functions - they'll be processed via decorated_definition
+		if e.isDecoratedFunction(node) {
 			continue
 		}
 		entity := e.extractFunction(node)
@@ -978,6 +986,13 @@ func (e *PythonExtractor) isInsideFunction(node *sitter.Node) bool {
 		parent = parent.Parent()
 	}
 	return false
+}
+
+// isDecoratedFunction checks if a function_definition node is the direct child of a decorated_definition.
+// This helps avoid processing decorated functions twice (once as function_definition, once as decorated_definition).
+func (e *PythonExtractor) isDecoratedFunction(node *sitter.Node) bool {
+	parent := node.Parent()
+	return parent != nil && parent.Type() == "decorated_definition"
 }
 
 // isAsyncFunction checks if a function is async.
