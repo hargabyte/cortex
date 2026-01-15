@@ -2,76 +2,89 @@
 
 ## What Was Accomplished
 
-### CX 3.1: Pre-Flight Safety Check (cortex-aau.2) - COMPLETE
+### CX 3.1: Change Safety & Validation - COMPLETE (Epic Closed)
 
-Implemented `cx check <file-or-entity>` for comprehensive safety assessment before modifying code.
+All three features in this epic are now complete:
+
+1. **cx diff --semantic** (cortex-aau.1) - Structural change analysis
+2. **cx check** (cortex-aau.2) - Pre-flight safety assessment
+3. **cx guard** (cortex-aau.3) - Pre-commit hook integration [NEW THIS SESSION]
+
+### cx guard Implementation Details
+
+Implemented pre-commit guard command for catching problems before commit:
 
 **Features:**
-- **Combined analysis**: Impact + coverage gaps + drift detection in one command
-- **Dynamic keystone detection**: Uses top-N PageRank (top 5% or min 10) instead of absolute thresholds
-- **Risk classification**: low, medium, high, critical based on multiple factors
-- **Actionable output**: Warnings and recommendations tailored to risk level
-- **Keystones listing**: Shows affected keystones with coverage status
+- Check staged files (default) or all modified files (`--all`)
+- Coverage regression detection on keystone entities
+- New untested code warnings
+- Signature change detection with caller impact
+- Graph drift detection
+
+**Configuration** (`.cx/config.yaml`):
+```yaml
+guard:
+  fail_on_coverage_regression: true
+  min_coverage_for_keystones: 50
+  fail_on_warnings: false
+```
+
+**Exit codes:**
+- 0 = pass (no errors, warnings allowed)
+- 1 = warnings only (fail if `--fail-on-warnings`)
+- 2 = errors (always fails)
 
 **Example output:**
 ```yaml
-safety_assessment:
-  target: internal/store/db.go
-  risk_level: critical
-  impact_radius: 546
-  files_affected: 81
-  keystone_count: 27
-  coverage_gaps: 9
+summary:
+  files_checked: 2
+  entities_affected: 44
+  error_count: 0
+  warning_count: 3
   drift_detected: true
+  pass_status: warnings
 warnings:
-  - 28 entities have drifted since last scan - run 'cx scan' to update
-  - 9 keystone entities have inadequate test coverage (<50%)
-recommendations:
-  - 'STOP: Address safety issues before proceeding'
-  - Run 'cx scan' to update the code graph
-  - Add tests for undertested keystones before making changes
+  - type: signature_change
+    entity: UserService.Create
+    message: UserService.Create signature changed, 3 callers may be affected
 ```
 
 **Files created:**
-- `internal/cmd/check.go` - Full implementation (~630 lines)
+- `internal/cmd/guard.go` (~500 lines)
 
 **Files modified:**
-- `CLAUDE.md` - Added cx check documentation and smart context tips
-
-### Smart Context Usage Tip Added
-
-Added documentation about effective `cx context --smart` usage:
-- Use 2-4 focused keywords, not full sentences
-- ✅ `"rate limiting API"`
-- ❌ `"implement rate limiting for the API endpoints"`
-
-Created ticket `cortex-2ur` (P3) for improving keyword extraction.
+- `internal/config/config.go` - Added GuardConfig struct
+- `internal/config/defaults.go` - Added guard defaults and merge function
+- `internal/config/config_test.go` - Updated test for new exclude patterns and guard config
+- `CLAUDE.md` - Added guard command documentation
 
 ## Git State
 - Branch: `master`
 - All changes committed and pushed to origin
-- Latest commit: `226b4df` - Update CLAUDE.md with cx check and smart context tips
+- Latest commit: `fd53577` - Add pre-commit guard command (cx guard) for CX 3.1
 
 ## What's Ready to Work On
 
 | Priority | Bead | Description |
 |----------|------|-------------|
-| P1 | `cortex-aau` | CX 3.1: Change Safety & Validation (epic - partially complete) |
-| P2 | `cortex-aau.3` | Feature: Pre-Commit Guard (cx guard) |
-| P2 | `cortex-iia.2` | Feature: Runtime Behavior Analysis |
-| P2 | `cortex-iia.3` | Feature: Combined Risk Scoring |
-| P3 | `cortex-2ur` | Improve smart context keyword extraction |
-| P3 | `cortex-iia.1.5` | Dead Test Detection |
+| P2 | `cortex-iia` | CX 3.0: Runtime & Test Intelligence (epic - 1/3 features done) |
+| P2 | `cortex-iia.2` | Feature: Runtime Behavior Analysis (trace/pprof/OTEL integration) |
+| P2 | `cortex-iia.3` | Feature: Combined Risk Scoring (static + runtime + coverage) |
+| P2 | `cortex-9r1` | Store and display function signatures in cx graph |
+| P2 | `cortex-div` | CX 3.2: Context Quality & Workflow (unblocked by cortex-aau closure) |
 
-**Recommended next:** `cortex-aau.3` (Pre-Commit Guard) - Builds on cx check to provide automatic safety checks as a git pre-commit hook.
+**Note on remaining iia features:**
+- `cortex-iia.2` (Runtime Behavior Analysis) requires significant infrastructure for trace collection
+- `cortex-iia.3` (Combined Risk Scoring) could be partially implemented with just static + coverage
 
-## Known Issues
-- Config test failing (`TestDefaultConfig` expects 4 exclude patterns, got 7) - pre-existing
+**Recommended next:**
+- `cortex-9r1` - Simple task to complete (2 line changes in scan.go)
+- OR `cortex-div` (Context Quality) - Now unblocked, builds on existing infrastructure
 
 ## To Resume
 ```bash
 cd /home/hargabyte/cortex
 cx prime                    # Get context
 bd ready                    # See available work
-bd show cortex-aau.3        # Review next task
+bd show cortex-div          # Now unblocked, next epic
 ```
