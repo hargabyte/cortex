@@ -28,11 +28,11 @@ type ExportedTag struct {
 	Note       string `yaml:"note,omitempty" json:"note,omitempty"`
 }
 
-// tagCmd is the main tag command
+// tagCmd is the main tag command (parent with subcommands)
 var tagCmd = &cobra.Command{
-	Use:   "tag <entity> <tag...>",
-	Short: "Add tags/bookmarks to entities",
-	Long: `Add tags to code entities for organization, bookmarking, and filtering.
+	Use:   "tag",
+	Short: "Manage entity tags",
+	Long: `Manage tags on code entities for organization, bookmarking, and filtering.
 
 Tags are arbitrary labels that help organize and find entities. Common uses:
   - Bookmarking important code: "important", "review", "todo"
@@ -40,64 +40,169 @@ Tags are arbitrary labels that help organize and find entities. Common uses:
   - Workflow tracking: "needs-test", "needs-docs", "refactor"
   - Agent collaboration: "assigned:claude", "owner:team-a"
 
+Subcommands:
+  add      Add tags to an entity
+  remove   Remove a tag from an entity
+  list     List tags for an entity or all tags
+  find     Find entities by tag
+  export   Export all tags to a file
+  import   Import tags from a file
+
+Shortcut:
+  cx tag <entity> <tags...>   Same as 'cx tag add <entity> <tags...>'
+
 Examples:
-  cx tag LoginUser important                # Tag single entity
-  cx tag LoginUser auth security            # Add multiple tags
-  cx tag sa-fn-abc123-Login review          # Tag by direct ID
-  cx tag Store@internal/store core          # Tag with file hint
-  cx tag LoginUser -n "Needs security audit"  # Tag with note`,
+  cx tag add LoginUser important       # Add tag to entity
+  cx tag remove LoginUser review       # Remove tag from entity
+  cx tag list LoginUser                # List tags for entity
+  cx tag list                          # List all tags with counts
+  cx tag find auth                     # Find entities with 'auth' tag
+  cx tag export tags.yaml              # Export all tags
+  cx tag import tags.yaml              # Import tags`,
+	// Allow running without subcommand for backwards compatibility
+	RunE: runTagShortcut,
+}
+
+// tagAddCmd adds tags to entities
+var tagAddCmd = &cobra.Command{
+	Use:   "add <entity> <tag...>",
+	Short: "Add tags to an entity",
+	Long: `Add one or more tags to a code entity.
+
+Examples:
+  cx tag add LoginUser important             # Add single tag
+  cx tag add LoginUser auth security         # Add multiple tags
+  cx tag add sa-fn-abc123-Login review       # Add by direct ID
+  cx tag add Store@internal/store core       # Add with file hint
+  cx tag add LoginUser -n "Needs audit"      # Add with note`,
 	Args: cobra.MinimumNArgs(2),
 	RunE: runTagAdd,
 }
 
-// untagCmd removes tags from entities
-var untagCmd = &cobra.Command{
-	Use:   "untag <entity> <tag>",
+// tagRemoveCmd removes tags from entities
+var tagRemoveCmd = &cobra.Command{
+	Use:   "remove <entity> <tag>",
 	Short: "Remove a tag from an entity",
 	Long: `Remove a tag from a code entity.
 
 Examples:
-  cx untag LoginUser review          # Remove 'review' tag
-  cx untag sa-fn-abc123-Login todo   # Remove by direct ID`,
+  cx tag remove LoginUser review           # Remove 'review' tag
+  cx tag remove sa-fn-abc123-Login todo    # Remove by direct ID`,
 	Args: cobra.ExactArgs(2),
 	RunE: runTagRemove,
 }
 
-// tagsCmd lists tags for an entity or all tags
-var tagsCmd = &cobra.Command{
-	Use:   "tags [entity]",
+// tagListCmd lists tags for an entity or all tags
+var tagListCmd = &cobra.Command{
+	Use:   "list [entity]",
 	Short: "List tags for an entity or all tags",
 	Long: `List tags for a specific entity, or list all tags in the database.
 
 Examples:
-  cx tags LoginUser             # List tags for entity
-  cx tags                       # List all unique tags with counts
-  cx tags --find auth           # Find all entities with 'auth' tag
-  cx tags --find auth --find security --all  # Entities with ALL tags
-  cx tags --find auth --find security --any  # Entities with ANY tag`,
+  cx tag list LoginUser    # List tags for entity
+  cx tag list              # List all unique tags with counts`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runTagsList,
+}
+
+// tagFindCmd finds entities by tag
+var tagFindCmd = &cobra.Command{
+	Use:   "find <tag...>",
+	Short: "Find entities by tag",
+	Long: `Find all entities with one or more specified tags.
+
+By default, finds entities with ANY of the specified tags.
+Use --all to require ALL tags.
+
+Examples:
+  cx tag find auth                      # Find entities with 'auth' tag
+  cx tag find auth security             # Find entities with auth OR security
+  cx tag find auth security --all       # Find entities with auth AND security`,
+	Args: cobra.MinimumNArgs(1),
+	RunE: runTagFind,
+}
+
+// tagExportCmd exports all tags to a YAML file
+var tagExportCmd = &cobra.Command{
+	Use:   "export [file]",
+	Short: "Export all tags to a file",
+	Long: `Export all entity tags to a YAML file for backup or sharing.
+
+If no file is specified, outputs to stdout. Default export location
+when using -o without a path is .cx/tags.yaml.
+
+Examples:
+  cx tag export                    # Export to stdout
+  cx tag export tags.yaml          # Export to file
+  cx tag export -o                 # Export to .cx/tags.yaml (default)
+  cx tag export -o backup.yaml     # Export to specific file`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runTagsExport,
+}
+
+// tagImportCmd imports tags from a YAML file
+var tagImportCmd = &cobra.Command{
+	Use:   "import <file>",
+	Short: "Import tags from a file",
+	Long: `Import entity tags from a YAML file.
+
+By default, existing tags are skipped. Use --overwrite to replace
+existing tags with imported values.
+
+Examples:
+  cx tag import tags.yaml               # Import, skip existing
+  cx tag import tags.yaml --overwrite   # Import, overwrite existing
+  cx tag import tags.yaml --dry-run     # Show what would be imported`,
+	Args: cobra.ExactArgs(1),
+	RunE: runTagsImport,
 }
 
 var (
 	tagNote      string
 	tagCreatedBy string
-	tagFind      []string
 	tagMatchAll  bool
-	tagMatchAny  bool
+)
+
+var (
+	tagsExportOutput    string
+	tagsImportOverwrite bool
+	tagsImportDryRun    bool
 )
 
 func init() {
+	// Main tag command
 	rootCmd.AddCommand(tagCmd)
-	rootCmd.AddCommand(untagCmd)
-	rootCmd.AddCommand(tagsCmd)
 
-	tagCmd.Flags().StringVarP(&tagNote, "note", "n", "", "Add a note explaining the tag")
-	tagCmd.Flags().StringVar(&tagCreatedBy, "by", "", "Who is adding the tag (default: cli)")
+	// Subcommands
+	tagCmd.AddCommand(tagAddCmd)
+	tagCmd.AddCommand(tagRemoveCmd)
+	tagCmd.AddCommand(tagListCmd)
+	tagCmd.AddCommand(tagFindCmd)
+	tagCmd.AddCommand(tagExportCmd)
+	tagCmd.AddCommand(tagImportCmd)
 
-	tagsCmd.Flags().StringArrayVar(&tagFind, "find", nil, "Find entities with this tag (can be repeated)")
-	tagsCmd.Flags().BoolVar(&tagMatchAll, "all", false, "Require ALL tags when using --find multiple times")
-	tagsCmd.Flags().BoolVar(&tagMatchAny, "any", false, "Require ANY tag when using --find multiple times (default)")
+	// Flags for add subcommand
+	tagAddCmd.Flags().StringVarP(&tagNote, "note", "n", "", "Add a note explaining the tag")
+	tagAddCmd.Flags().StringVar(&tagCreatedBy, "by", "", "Who is adding the tag (default: cli)")
+
+	// Flags for find subcommand
+	tagFindCmd.Flags().BoolVar(&tagMatchAll, "all", false, "Require ALL tags (default: match ANY)")
+
+	// Flags for export subcommand
+	tagExportCmd.Flags().StringVarP(&tagsExportOutput, "output", "o", "", "Output file (default: stdout, or .cx/tags.yaml with -o flag)")
+
+	// Flags for import subcommand
+	tagImportCmd.Flags().BoolVar(&tagsImportOverwrite, "overwrite", false, "Overwrite existing tags")
+	tagImportCmd.Flags().BoolVar(&tagsImportDryRun, "dry-run", false, "Show what would be imported without making changes")
+}
+
+// runTagShortcut handles 'cx tag <entity> <tags...>' as shortcut for 'cx tag add'
+func runTagShortcut(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return cmd.Help()
+	}
+	// Treat as 'cx tag add <entity> <tags...>'
+	return runTagAdd(cmd, args)
 }
 
 func runTagAdd(cmd *cobra.Command, args []string) error {
@@ -179,11 +284,6 @@ func runTagsList(cmd *cobra.Command, args []string) error {
 	}
 	defer storeDB.Close()
 
-	// If --find is specified, find entities by tags
-	if len(tagFind) > 0 {
-		return runTagsFind(cmd, storeDB, tagFind)
-	}
-
 	// If entity is specified, list its tags
 	if len(args) > 0 {
 		return runTagsForEntity(cmd, storeDB, args[0])
@@ -191,6 +291,16 @@ func runTagsList(cmd *cobra.Command, args []string) error {
 
 	// Otherwise, list all unique tags
 	return runTagsListAll(cmd, storeDB)
+}
+
+func runTagFind(cmd *cobra.Command, args []string) error {
+	storeDB, err := openStore()
+	if err != nil {
+		return err
+	}
+	defer storeDB.Close()
+
+	return runTagsFindInternal(cmd, storeDB, args)
 }
 
 func runTagsForEntity(cmd *cobra.Command, storeDB *store.Store, entityQuery string) error {
@@ -307,12 +417,9 @@ func runTagsListAll(cmd *cobra.Command, storeDB *store.Store) error {
 	return formatter.FormatToWriter(cmd.OutOrStdout(), out, output.DensityMedium)
 }
 
-func runTagsFind(cmd *cobra.Command, storeDB *store.Store, tags []string) error {
+func runTagsFindInternal(cmd *cobra.Command, storeDB *store.Store, tags []string) error {
 	// Determine match mode (default is ANY)
 	matchAll := tagMatchAll
-	if !tagMatchAll && !tagMatchAny {
-		matchAll = false // Default to ANY
-	}
 
 	entities, err := storeDB.FindByTags(tags, matchAll)
 	if err != nil {
@@ -371,57 +478,6 @@ func runTagsFind(cmd *cobra.Command, storeDB *store.Store, tags []string) error 
 	}
 
 	return formatter.FormatToWriter(cmd.OutOrStdout(), out, output.DensityMedium)
-}
-
-// tagsExportCmd exports all tags to a YAML file
-var tagsExportCmd = &cobra.Command{
-	Use:   "export [file]",
-	Short: "Export all tags to a file",
-	Long: `Export all entity tags to a YAML file for backup or sharing.
-
-If no file is specified, outputs to stdout. Default export location
-when using -o without a path is .cx/tags.yaml.
-
-Examples:
-  cx tags export                    # Export to stdout
-  cx tags export tags.yaml          # Export to file
-  cx tags export -o                 # Export to .cx/tags.yaml (default)
-  cx tags export -o backup.yaml     # Export to specific file`,
-	Args: cobra.MaximumNArgs(1),
-	RunE: runTagsExport,
-}
-
-// tagsImportCmd imports tags from a YAML file
-var tagsImportCmd = &cobra.Command{
-	Use:   "import <file>",
-	Short: "Import tags from a file",
-	Long: `Import entity tags from a YAML file.
-
-By default, existing tags are skipped. Use --overwrite to replace
-existing tags with imported values.
-
-Examples:
-  cx tags import tags.yaml               # Import, skip existing
-  cx tags import tags.yaml --overwrite   # Import, overwrite existing
-  cx tags import tags.yaml --dry-run     # Show what would be imported`,
-	Args: cobra.ExactArgs(1),
-	RunE: runTagsImport,
-}
-
-var (
-	tagsExportOutput    string
-	tagsImportOverwrite bool
-	tagsImportDryRun    bool
-)
-
-func init() {
-	// Add export and import as subcommands of tags
-	tagsCmd.AddCommand(tagsExportCmd)
-	tagsCmd.AddCommand(tagsImportCmd)
-
-	tagsExportCmd.Flags().StringVarP(&tagsExportOutput, "output", "o", "", "Output file (default: stdout, or .cx/tags.yaml with -o flag)")
-	tagsImportCmd.Flags().BoolVar(&tagsImportOverwrite, "overwrite", false, "Overwrite existing tags")
-	tagsImportCmd.Flags().BoolVar(&tagsImportDryRun, "dry-run", false, "Show what would be imported without making changes")
 }
 
 func runTagsExport(cmd *cobra.Command, args []string) error {

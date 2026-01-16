@@ -72,7 +72,9 @@ This is an alias for 'cx doctor'. See 'cx doctor --help' for full documentation.
 
 func init() {
 	rootCmd.AddCommand(dbCmd)
-	rootCmd.AddCommand(dbStatusCmd) // Top-level status alias
+	// NOTE: Top-level 'cx status' now shows daemon/graph status (see status.go)
+	// The old 'cx status' (db info) is deprecated - users should use 'cx db info'
+	// We no longer register dbStatusCmd at top-level to avoid conflicts
 	dbCmd.AddCommand(dbInfoCmd)
 	dbCmd.AddCommand(dbCompactCmd)
 	dbCmd.AddCommand(dbExportCmd)
@@ -85,12 +87,6 @@ func init() {
 	dbDoctorCmd.Flags().BoolVar(&doctorFix, "fix", false, "Auto-fix issues found")
 	dbDoctorCmd.Flags().BoolVar(&doctorDeep, "deep", false, "Run deep checks including archived entity ratio")
 	dbDoctorCmd.Flags().BoolVar(&doctorYes, "yes", false, "Auto-confirm fixes without prompting")
-
-	// Deprecate top-level status command
-	DeprecateCommand(dbStatusCmd, DeprecationInfo{
-		OldCommand: "cx status",
-		NewCommand: "cx db info",
-	})
 }
 
 func runDbInfo(cmd *cobra.Command, args []string) error {

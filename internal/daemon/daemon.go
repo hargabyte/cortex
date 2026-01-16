@@ -218,16 +218,17 @@ func (d *Daemon) log(format string, args ...interface{}) {
 // and begins handling requests.
 func (d *Daemon) Start() error {
 	d.mu.Lock()
-	defer d.mu.Unlock()
 
 	// Check if already running
 	if d.startedAt != (time.Time{}) {
+		d.mu.Unlock()
 		return fmt.Errorf("daemon already running")
 	}
 
 	// Check for existing daemon via PID file
 	if existingPID, err := readPIDFile(d.config.PIDPath); err == nil {
 		if isProcessRunning(existingPID) {
+			d.mu.Unlock()
 			return fmt.Errorf("daemon already running with PID %d", existingPID)
 		}
 		// Stale PID file, remove it
@@ -237,6 +238,7 @@ func (d *Daemon) Start() error {
 	// Open store
 	storeDB, err := store.Open(d.cxDir)
 	if err != nil {
+		d.mu.Unlock()
 		return fmt.Errorf("open store: %w", err)
 	}
 	d.store = storeDB
@@ -245,6 +247,7 @@ func (d *Daemon) Start() error {
 	g, err := graph.BuildFromStore(storeDB)
 	if err != nil {
 		d.store.Close()
+		d.mu.Unlock()
 		return fmt.Errorf("build graph: %w", err)
 	}
 	d.graph = g
@@ -252,6 +255,7 @@ func (d *Daemon) Start() error {
 	// Write PID file
 	if err := writePIDFile(d.config.PIDPath, os.Getpid()); err != nil {
 		d.cleanup()
+		d.mu.Unlock()
 		return fmt.Errorf("write PID file: %w", err)
 	}
 
@@ -259,11 +263,13 @@ func (d *Daemon) Start() error {
 	d.socket, err = NewSocket(d.config.SocketPath, d.handleRequest)
 	if err != nil {
 		d.cleanup()
+		d.mu.Unlock()
 		return fmt.Errorf("create socket: %w", err)
 	}
 
 	if err := d.socket.Start(); err != nil {
 		d.cleanup()
+		d.mu.Unlock()
 		return fmt.Errorf("start socket: %w", err)
 	}
 
@@ -278,6 +284,9 @@ func (d *Daemon) Start() error {
 
 	// Setup signal handlers
 	go d.handleSignals()
+
+	// Release lock before logging (d.log acquires RLock which can't be held with Lock)
+	d.mu.Unlock()
 
 	d.log("started (pid=%d, socket=%s, idle_timeout=%v)",
 		os.Getpid(), d.config.SocketPath, d.config.IdleTimeout)
@@ -494,8 +503,8 @@ func (d *Daemon) GetStatus() Status {
 
 		// Get entity count from store if available
 		if d.store != nil {
-			if entities, err := d.store.QueryEntities(store.EntityFilter{Limit: 0}); err == nil {
-				status.EntityCount = len(entities)
+			if count, err := d.store.CountEntities(store.EntityFilter{}); err == nil {
+				status.EntityCount = count
 			}
 		}
 	}

@@ -37,6 +37,10 @@ Ranking Flags:
   --keystones    Show only keystone entities (highly depended-on)
   --bottlenecks  Show only bottleneck entities (central to paths)
 
+Tag Filtering:
+  --tag <tag>    Filter to entities with this tag (repeatable, default: match ALL)
+  --tag-any      Match ANY tag instead of ALL when multiple --tag flags used
+
 Density Levels:
   sparse:  Type and location only (~50-100 tokens per entity)
   medium:  Add signature and basic dependencies (~200-300 tokens)
@@ -62,7 +66,11 @@ Examples:
   cx find --keystones                      # Only keystone entities
   cx find --important "database"           # FTS search, sorted by importance
   cx find LoginUser --density=sparse       # Minimal output for token budget
-  cx find LoginUser --format=json          # JSON output for parsing`,
+  cx find LoginUser --format=json          # JSON output for parsing
+  cx find --tag important                  # Find all entities with 'important' tag
+  cx find --tag auth --tag security        # Entities with BOTH auth AND security tags
+  cx find --tag auth --tag security --tag-any  # Entities with EITHER tag
+  cx find Login --tag core                 # Name search filtered by tag`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runFind,
 }
@@ -79,6 +87,8 @@ var (
 	findBottlenecks bool
 	findTop         int
 	findRecompute   bool
+	findTags        []string
+	findTagAny      bool
 )
 
 func init() {
@@ -98,6 +108,10 @@ func init() {
 	findCmd.Flags().BoolVar(&findBottlenecks, "bottlenecks", false, "Show only bottleneck entities (central to paths)")
 	findCmd.Flags().IntVar(&findTop, "top", 20, "Number of results for --important/--keystones/--bottlenecks")
 	findCmd.Flags().BoolVar(&findRecompute, "recompute", false, "Force recompute metrics (for --important/--keystones)")
+
+	// Tag filtering flags
+	findCmd.Flags().StringArrayVar(&findTags, "tag", nil, "Filter by tag (can be repeated, default: match ALL tags)")
+	findCmd.Flags().BoolVar(&findTagAny, "tag-any", false, "Match ANY tag instead of ALL (use with --tag)")
 }
 
 func runFind(cmd *cobra.Command, args []string) error {
@@ -107,9 +121,9 @@ func runFind(cmd *cobra.Command, args []string) error {
 		query = args[0]
 	}
 
-	// If no query and no ranking flags, show error
-	if query == "" && !findImportant && !findKeystones && !findBottlenecks {
-		return fmt.Errorf("query required (use --important, --keystones, or --bottlenecks for ranked results without query)")
+	// If no query and no ranking flags and no tag filters, show error
+	if query == "" && !findImportant && !findKeystones && !findBottlenecks && len(findTags) == 0 {
+		return fmt.Errorf("query required (use --important, --keystones, --bottlenecks, or --tag for results without query)")
 	}
 
 	// Load config for thresholds
@@ -152,6 +166,11 @@ func runFind(cmd *cobra.Command, args []string) error {
 	if isRankOnlyQuery || findImportant || findKeystones || findBottlenecks {
 		// Use ranking mode
 		return runFindWithRanking(cmd, storeDB, cfg, query, isConceptSearch, format, density)
+	}
+
+	// Tag-only query (no text query, just --tag filters)
+	if query == "" && len(findTags) > 0 {
+		return runFindByTagsOnly(cmd, storeDB, format, density)
 	}
 
 	if isConceptSearch {
@@ -199,7 +218,13 @@ func runFindByName(cmd *cobra.Command, storeDB *store.Store, query string, forma
 	// Filter by name pattern
 	matches := filterByName(entities, query, findExact)
 
-	// Apply limit after name filtering
+	// Filter by tags if specified
+	if len(findTags) > 0 {
+		matchAll := !findTagAny // default is match ALL tags
+		matches = filterByTags(matches, storeDB, findTags, matchAll)
+	}
+
+	// Apply limit after filtering
 	if findLimit > 0 && len(matches) > findLimit {
 		matches = matches[:findLimit]
 	}
@@ -213,6 +238,52 @@ func runFindByName(cmd *cobra.Command, storeDB *store.Store, query string, forma
 	// Deduplicate matches by location (file:line range + name)
 	seen := make(map[string]bool)
 	for _, e := range matches {
+		name := e.Name
+		if !findQualified {
+			name = extractSymbolName(e)
+		}
+
+		// Use location + name as deduplication key
+		location := formatEntityLocation(e)
+		key := location + ":" + name
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+
+		// Convert store entity to EntityOutput
+		entityOut := storeEntityToOutput(e, density, storeDB)
+		listOutput.Results[name] = entityOut
+		listOutput.Count++
+	}
+
+	// Get formatter and output
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), listOutput, density)
+}
+
+// runFindByTagsOnly performs tag-only search (no query, just --tag filters)
+func runFindByTagsOnly(cmd *cobra.Command, storeDB *store.Store, format output.Format, density output.Density) error {
+	// Get entities matching the tag criteria
+	matchAll := !findTagAny // default is match ALL tags
+	entities, err := storeDB.FindByTags(findTags, matchAll)
+	if err != nil {
+		return fmt.Errorf("failed to find entities by tags: %w", err)
+	}
+
+	// Build ListOutput
+	listOutput := &output.ListOutput{
+		Results: make(map[string]*output.EntityOutput),
+		Count:   0,
+	}
+
+	// Deduplicate matches by location (file:line range + name)
+	seen := make(map[string]bool)
+	for _, e := range entities {
 		name := e.Name
 		if !findQualified {
 			name = extractSymbolName(e)
@@ -258,6 +329,30 @@ func runFindWithFTS(cmd *cobra.Command, storeDB *store.Store, query string, form
 	results, err := storeDB.SearchEntities(opts)
 	if err != nil {
 		return fmt.Errorf("search failed: %w", err)
+	}
+
+	// Filter by tags if specified
+	if len(findTags) > 0 {
+		matchAll := !findTagAny // default is match ALL tags
+		// Extract entities from results for tag filtering
+		entities := make([]*store.Entity, len(results))
+		for i, r := range results {
+			entities[i] = r.Entity
+		}
+		filteredEntities := filterByTags(entities, storeDB, findTags, matchAll)
+
+		// Rebuild results with only filtered entities
+		filteredIDs := make(map[string]bool)
+		for _, e := range filteredEntities {
+			filteredIDs[e.ID] = true
+		}
+		var filteredResults []*store.SearchResult
+		for _, r := range results {
+			if filteredIDs[r.Entity.ID] {
+				filteredResults = append(filteredResults, r)
+			}
+		}
+		results = filteredResults
 	}
 
 	if len(results) == 0 {
@@ -391,6 +486,12 @@ func runFindWithRanking(cmd *cobra.Command, storeDB *store.Store, cfg *config.Co
 	} else {
 		// No query, use all entities
 		candidateEntities = entities
+	}
+
+	// Filter by tags if specified
+	if len(findTags) > 0 {
+		matchAll := !findTagAny // default is match ALL tags
+		candidateEntities = filterByTags(candidateEntities, storeDB, findTags, matchAll)
 	}
 
 	// Build ranked list
@@ -531,6 +632,37 @@ func filterByName(entities []*store.Entity, query string, exact bool) []*store.E
 	}
 
 	return matches
+}
+
+// filterByTags filters entities to only include those with specified tags
+// If matchAll is true, entity must have ALL tags. If false, entity must have ANY tag.
+func filterByTags(entities []*store.Entity, storeDB *store.Store, tags []string, matchAll bool) []*store.Entity {
+	if len(tags) == 0 {
+		return entities
+	}
+
+	// Get entities that match the tag criteria
+	taggedEntities, err := storeDB.FindByTags(tags, matchAll)
+	if err != nil {
+		// On error, return original list (fail open)
+		return entities
+	}
+
+	// Build a set of tagged entity IDs for fast lookup
+	taggedIDs := make(map[string]bool)
+	for _, e := range taggedEntities {
+		taggedIDs[e.ID] = true
+	}
+
+	// Filter the input entities to only those in the tagged set
+	var filtered []*store.Entity
+	for _, e := range entities {
+		if taggedIDs[e.ID] {
+			filtered = append(filtered, e)
+		}
+	}
+
+	return filtered
 }
 
 // mapCGFTypeToStore converts CGF type marker to store entity type

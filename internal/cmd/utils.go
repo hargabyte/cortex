@@ -8,6 +8,9 @@ import (
 	"strings"
 
 	"github.com/anthropics/cx/internal/config"
+	"github.com/anthropics/cx/internal/coverage"
+	"github.com/anthropics/cx/internal/extract"
+	"github.com/anthropics/cx/internal/output"
 	"github.com/anthropics/cx/internal/store"
 )
 
@@ -408,6 +411,26 @@ func formatEntityLocation(e *store.Entity) string {
 	return formatStoreLocation(e)
 }
 
+// mapStoreTypeToCGF maps store entity types to CGF entity types
+func mapStoreTypeToCGF(entityType string) output.CGFEntityType {
+	switch strings.ToLower(entityType) {
+	case "function":
+		return output.CGFFunction
+	case "type":
+		return output.CGFType
+	case "constant", "const":
+		return output.CGFConstant
+	case "var", "variable":
+		return output.CGFConstant // Variables map to Constant in CGF
+	case "enum":
+		return output.CGFEnum
+	case "import":
+		return output.CGFImport
+	default:
+		return output.CGFFunction // Default to function
+	}
+}
+
 // normalizeFilePath cleans a file path for database queries.
 // It removes leading "./" and cleans the path for consistency with stored paths.
 func normalizeFilePath(path string) string {
@@ -418,4 +441,521 @@ func normalizeFilePath(path string) string {
 		cleaned = cleaned[2:]
 	}
 	return cleaned
+}
+
+// isFilePath checks if a string looks like a file path
+func isFilePath(s string) bool {
+	// Check for path separators or common file extensions
+	if strings.Contains(s, "/") || strings.Contains(s, "\\") {
+		return true
+	}
+	// Check for common source file extensions
+	exts := []string{".go", ".py", ".js", ".ts", ".rs", ".java", ".c", ".cpp", ".h", ".hpp"}
+	for _, ext := range exts {
+		if strings.HasSuffix(s, ext) {
+			return true
+		}
+	}
+	return false
+}
+
+// computeImportanceLevel converts PageRank to importance level string
+func computeImportanceLevel(pagerank float64) string {
+	switch {
+	case pagerank >= 0.50:
+		return "critical"
+	case pagerank >= 0.30:
+		return "high"
+	case pagerank >= 0.10:
+		return "medium"
+	default:
+		return "low"
+	}
+}
+
+// impactEntry holds information about an entity in the impact analysis
+type impactEntry struct {
+	entityID   string
+	name       string
+	location   string
+	entityType output.CGFEntityType
+	depth      int
+	direct     bool
+	pagerank   float64
+	deps       int
+	importance string
+}
+
+// SearchOutput represents the output of a search command
+type SearchOutput struct {
+	Query   string                          `json:"query" yaml:"query"`
+	Results map[string]*output.EntityOutput `json:"results" yaml:"results"`
+	Count   int                             `json:"count" yaml:"count"`
+	Scores  map[string]*SearchScore         `json:"scores,omitempty" yaml:"scores,omitempty"`
+}
+
+// SearchScore represents the relevance scores for an entity
+type SearchScore struct {
+	FTSScore      float64 `json:"fts_score" yaml:"fts_score"`
+	PageRank      float64 `json:"pagerank" yaml:"pagerank"`
+	CombinedScore float64 `json:"combined_score" yaml:"combined_score"`
+}
+
+// MarshalYAML implements custom YAML marshaling for SearchOutput
+func (s *SearchOutput) MarshalYAML() (interface{}, error) {
+	m := make(map[string]interface{})
+	m["query"] = s.Query
+	m["results"] = s.Results
+	m["count"] = s.Count
+	if len(s.Scores) > 0 {
+		m["scores"] = s.Scores
+	}
+	return m, nil
+}
+
+// buildSearchOutput converts search results to output format
+func buildSearchOutput(results []*store.SearchResult, density output.Density, storeDB *store.Store, query string) *SearchOutput {
+	searchOutput := &SearchOutput{
+		Query:   query,
+		Results: make(map[string]*output.EntityOutput),
+		Scores:  make(map[string]*SearchScore),
+	}
+
+	for _, r := range results {
+		e := r.Entity
+		name := e.Name
+
+		// Convert to EntityOutput
+		entityOut := &output.EntityOutput{
+			Type:     mapStoreEntityTypeToString(e.EntityType),
+			Location: formatStoreLocation(e),
+		}
+
+		// Add signature for medium/dense
+		if density.IncludesSignature() && e.Signature != "" {
+			entityOut.Signature = e.Signature
+		}
+
+		// Add visibility
+		if density.IncludesSignature() {
+			entityOut.Visibility = inferVisibility(e.Name)
+		}
+
+		// Add dependencies for medium/dense
+		if density.IncludesEdges() {
+			deps := &output.Dependencies{}
+
+			// Get outgoing calls
+			depsOut, err := storeDB.GetDependenciesFrom(e.ID)
+			if err == nil {
+				for _, d := range depsOut {
+					if d.DepType == "calls" {
+						deps.Calls = append(deps.Calls, d.ToID)
+					}
+				}
+			}
+
+			// Get incoming calls
+			depsIn, err := storeDB.GetDependenciesTo(e.ID)
+			if err == nil {
+				for _, d := range depsIn {
+					if d.DepType == "calls" {
+						deps.CalledBy = append(deps.CalledBy, output.CalledByEntry{
+							Name: d.FromID,
+						})
+					}
+				}
+			}
+
+			if len(deps.Calls) > 0 || len(deps.CalledBy) > 0 {
+				entityOut.Dependencies = deps
+			}
+		}
+
+		// Add metrics for dense
+		if density.IncludesMetrics() {
+			entityOut.Metrics = &output.Metrics{
+				PageRank:  r.PageRank,
+				InDegree:  0,
+				OutDegree: 0,
+			}
+
+			// Add search-specific scores
+			searchOutput.Scores[name] = &SearchScore{
+				FTSScore:      r.FTSScore,
+				PageRank:      r.PageRank,
+				CombinedScore: r.CombinedScore,
+			}
+		}
+
+		searchOutput.Results[name] = entityOut
+		searchOutput.Count++
+	}
+
+	return searchOutput
+}
+
+// ============================================================================
+// Impact Analysis Types and Functions (from impact.go)
+// ============================================================================
+
+// buildImpactOutput constructs the impact output structure
+func buildImpactOutput(target string, affected map[string]*impactEntry, depth int) *output.ImpactOutput {
+	impactOut := &output.ImpactOutput{
+		Impact: &output.ImpactMetadata{
+			Target: target,
+			Depth:  depth,
+		},
+		Summary: &output.ImpactSummary{
+			EntitiesAffected: len(affected),
+			FilesAffected:    countAffectedFiles(affected),
+			RiskLevel:        computeRiskLevel(affected),
+		},
+		Affected:        make(map[string]*output.AffectedEntity),
+		Recommendations: []string{},
+	}
+
+	// Build affected entities map
+	for _, entry := range affected {
+		var impactType string
+		var reason string
+
+		if entry.direct {
+			impactType = "direct"
+			reason = "file was changed"
+		} else {
+			impactType = "caller"
+			if entry.depth > 1 {
+				impactType = "indirect"
+				reason = fmt.Sprintf("transitively depends on changed entity (depth=%d)", entry.depth)
+			} else {
+				reason = "calls changed entity"
+			}
+		}
+
+		affectedEntity := &output.AffectedEntity{
+			Type:       mapStoreEntityTypeToString(mapCGFTypeToStoreType(entry.entityType)),
+			Location:   entry.location,
+			Impact:     impactType,
+			Importance: entry.importance,
+			Reason:     reason,
+		}
+
+		impactOut.Affected[entry.name] = affectedEntity
+	}
+
+	return impactOut
+}
+
+// countAffectedFiles counts unique files in affected entities
+func countAffectedFiles(affected map[string]*impactEntry) int {
+	files := make(map[string]bool)
+	for _, entry := range affected {
+		parts := strings.Split(entry.location, ":")
+		if len(parts) > 0 {
+			files[parts[0]] = true
+		}
+	}
+	return len(files)
+}
+
+// computeRiskLevel computes overall risk level from affected entities
+func computeRiskLevel(affected map[string]*impactEntry) string {
+	keystoneCount := 0
+	for _, entry := range affected {
+		if entry.pagerank >= 0.30 {
+			keystoneCount++
+		}
+	}
+
+	keystonePercent := float64(keystoneCount) / float64(len(affected))
+	switch {
+	case keystonePercent > 0.25:
+		return "high"
+	case keystonePercent > 0.10:
+		return "medium"
+	default:
+		return "low"
+	}
+}
+
+// mapCGFTypeToStoreType maps CGF type back to store type string
+func mapCGFTypeToStoreType(t output.CGFEntityType) string {
+	switch t {
+	case output.CGFFunction:
+		return "function"
+	case output.CGFType:
+		return "type"
+	case output.CGFModule:
+		return "module"
+	case output.CGFConstant:
+		return "constant"
+	case output.CGFEnum:
+		return "enum"
+	default:
+		return "function"
+	}
+}
+
+// ============================================================================
+// Coverage Gap Types and Functions (from gaps.go)
+// ============================================================================
+
+// coverageGap represents an entity with insufficient test coverage
+type coverageGap struct {
+	entity       *store.Entity
+	metrics      *store.Metrics
+	coverage     *coverage.EntityCoverage
+	riskScore    float64
+	riskCategory string
+}
+
+// categorizeRisk determines risk category based on metrics and coverage
+func categorizeRisk(m *store.Metrics, cov *coverage.EntityCoverage, cfg *config.Config) string {
+	isKeystone := m.PageRank >= cfg.Metrics.KeystoneThreshold
+
+	if isKeystone {
+		if cov.CoveragePercent < 25 {
+			return "CRITICAL"
+		} else if cov.CoveragePercent < 50 {
+			return "HIGH"
+		}
+		return "MEDIUM"
+	}
+
+	if cov.CoveragePercent < 25 {
+		return "MEDIUM"
+	}
+	return "LOW"
+}
+
+// groupGapsByRisk groups gaps by their risk category
+func groupGapsByRisk(gaps []coverageGap) map[string][]coverageGap {
+	result := make(map[string][]coverageGap)
+	for _, gap := range gaps {
+		category := strings.ToLower(gap.riskCategory)
+		result[category] = append(result[category], gap)
+	}
+	return result
+}
+
+// buildGapsOutput constructs the output data structure for coverage gaps
+func buildGapsOutput(gapsByRisk map[string][]coverageGap, keystoneCount int) map[string]interface{} {
+	coverageGaps := make(map[string]interface{})
+
+	for _, category := range []string{"critical", "high", "medium", "low"} {
+		if gaps, ok := gapsByRisk[category]; ok && len(gaps) > 0 {
+			categoryData := make([]map[string]interface{}, 0, len(gaps))
+			for _, gap := range gaps {
+				gapData := map[string]interface{}{
+					"name":       gap.entity.Name,
+					"type":       mapStoreEntityTypeToString(gap.entity.EntityType),
+					"location":   formatStoreLocation(gap.entity),
+					"importance": determineImportanceLabel(gap.metrics),
+					"in_degree":  gap.metrics.InDegree,
+					"pagerank":   gap.metrics.PageRank,
+					"coverage":   fmt.Sprintf("%.1f%%", gap.coverage.CoveragePercent),
+					"risk_score": fmt.Sprintf("%.3f", gap.riskScore),
+					"risk":       gap.riskCategory,
+				}
+
+				if gap.riskCategory == "CRITICAL" {
+					gapData["recommendation"] = "Add tests before ANY changes"
+				} else if gap.riskCategory == "HIGH" {
+					gapData["recommendation"] = "Increase test coverage before major changes"
+				}
+
+				categoryData = append(categoryData, gapData)
+			}
+			coverageGaps[category] = categoryData
+		}
+	}
+
+	summary := map[string]interface{}{
+		"keystones_total": keystoneCount,
+		"critical_gaps":   len(gapsByRisk["critical"]),
+		"high_gaps":       len(gapsByRisk["high"]),
+		"medium_gaps":     len(gapsByRisk["medium"]),
+		"low_gaps":        len(gapsByRisk["low"]),
+	}
+
+	criticalCount := len(gapsByRisk["critical"])
+	highCount := len(gapsByRisk["high"])
+	if criticalCount > 0 {
+		summary["recommendation"] = "URGENT: Address critical gaps before next release"
+	} else if highCount > 0 {
+		summary["recommendation"] = "Address high-priority gaps in near term"
+	} else {
+		summary["recommendation"] = "Continue monitoring coverage for important entities"
+	}
+
+	return map[string]interface{}{
+		"coverage_gaps": coverageGaps,
+		"summary":       summary,
+	}
+}
+
+// determineImportanceLabel determines the importance label for an entity
+func determineImportanceLabel(m *store.Metrics) string {
+	cfg, _ := config.Load(".")
+	if cfg == nil {
+		cfg = config.DefaultConfig()
+	}
+
+	if m.PageRank >= cfg.Metrics.KeystoneThreshold {
+		return "keystone"
+	} else if m.Betweenness >= cfg.Metrics.BottleneckThreshold {
+		return "bottleneck"
+	} else if m.InDegree == 0 {
+		return "leaf"
+	}
+	return "normal"
+}
+
+// printTaskCommands prints bd commands to create tasks for coverage gaps
+func printTaskCommands(gaps []coverageGap, cfg *config.Config) error {
+	fmt.Println("# Coverage gap tasks - run these commands to create beads:")
+	fmt.Println()
+
+	for _, gap := range gaps {
+		if gap.riskCategory == "LOW" {
+			continue
+		}
+
+		priority := 2
+		if gap.riskCategory == "CRITICAL" {
+			priority = 0
+		} else if gap.riskCategory == "HIGH" {
+			priority = 1
+		}
+
+		desc := fmt.Sprintf("Add test coverage for %s (currently %.1f%%)",
+			gap.entity.Name, gap.coverage.CoveragePercent)
+
+		fmt.Printf("bd create --title \"Test: %s\" --type task --priority %d --description \"%s\"\n",
+			gap.entity.Name, priority, desc)
+	}
+
+	return nil
+}
+
+// ============================================================================
+// Verification Types (from verify.go)
+// ============================================================================
+
+// VerifyOutput represents the output of the verify command
+type VerifyOutput struct {
+	Verification *VerificationData `yaml:"verification" json:"verification"`
+}
+
+// VerificationData holds the detailed verification information
+type VerificationData struct {
+	Status          string        `yaml:"status" json:"status"`
+	EntitiesChecked int           `yaml:"entities_checked" json:"entities_checked"`
+	Valid           int           `yaml:"valid" json:"valid"`
+	Drifted         int           `yaml:"drifted" json:"drifted"`
+	Missing         int           `yaml:"missing" json:"missing"`
+	Issues          []VerifyIssue `yaml:"issues" json:"issues"`
+	Actions         []string      `yaml:"actions,omitempty" json:"actions,omitempty"`
+}
+
+// VerifyIssue represents an individual verification issue
+type VerifyIssue struct {
+	Entity   string `yaml:"entity" json:"entity"`
+	Type     string `yaml:"type" json:"type"`
+	Location string `yaml:"location" json:"location"`
+	Reason   string `yaml:"reason" json:"reason"`
+	Detail   string `yaml:"detail" json:"detail"`
+	Expected string `yaml:"expected,omitempty" json:"expected,omitempty"`
+	Actual   string `yaml:"actual,omitempty" json:"actual,omitempty"`
+	HashType string `yaml:"hash_type,omitempty" json:"hash_type,omitempty"`
+}
+
+// DiffEntity represents an entity that changed
+type DiffEntity struct {
+	Name     string `yaml:"name" json:"name"`
+	Type     string `yaml:"type" json:"type"`
+	Location string `yaml:"location" json:"location"`
+	Change   string `yaml:"change,omitempty" json:"change,omitempty"`
+	OldHash  string `yaml:"old_hash,omitempty" json:"old_hash,omitempty"`
+	NewHash  string `yaml:"new_hash,omitempty" json:"new_hash,omitempty"`
+}
+
+// DiffOutput represents the output of the diff command
+type DiffOutput struct {
+	Summary  DiffSummary  `yaml:"summary" json:"summary"`
+	Added    []DiffEntity `yaml:"added,omitempty" json:"added,omitempty"`
+	Modified []DiffEntity `yaml:"modified,omitempty" json:"modified,omitempty"`
+	Removed  []DiffEntity `yaml:"removed,omitempty" json:"removed,omitempty"`
+}
+
+// DiffSummary contains counts of changes
+type DiffSummary struct {
+	FilesChanged     int    `yaml:"files_changed" json:"files_changed"`
+	EntitiesAdded    int    `yaml:"entities_added" json:"entities_added"`
+	EntitiesModified int    `yaml:"entities_modified" json:"entities_modified"`
+	EntitiesRemoved  int    `yaml:"entities_removed" json:"entities_removed"`
+	LastScan         string `yaml:"last_scan,omitempty" json:"last_scan,omitempty"`
+}
+
+// hasPrefix checks if a path has a given directory prefix
+func hasPrefix(path, prefix string) bool {
+	if prefix != "" && prefix[len(prefix)-1] != filepath.Separator {
+		prefix = prefix + string(filepath.Separator)
+	}
+	return len(path) >= len(prefix) && path[:len(prefix)] == prefix
+}
+
+// verifyResult holds the categorized verification results
+type verifyResult struct {
+	valid   []verifyEntry
+	drifted []verifyEntry
+	missing []verifyEntry
+}
+
+// verifyEntry holds details about a single entity verification
+type verifyEntry struct {
+	entity  *store.Entity
+	file    string
+	line    string
+	oldSig  string
+	newSig  string
+	oldBody string
+	newBody string
+	reason  string
+	detail  string
+}
+
+// groupByFileStore groups entities by their file path
+func groupByFileStore(entities []*store.Entity) map[string][]*store.Entity {
+	result := make(map[string][]*store.Entity)
+	for _, e := range entities {
+		if e.FilePath != "" {
+			result[e.FilePath] = append(result[e.FilePath], e)
+		}
+	}
+	return result
+}
+
+// buildEntityLookup builds a map from entity name to extracted entity
+func buildEntityLookup(entities []extract.Entity) map[string]*extract.Entity {
+	result := make(map[string]*extract.Entity)
+
+	for i := range entities {
+		e := &entities[i]
+		result[e.Name] = e
+		if e.Receiver != "" {
+			result[e.Receiver+"."+e.Name] = e
+		}
+	}
+
+	return result
+}
+
+// findMatchingEntityByName finds the current entity matching a stored entity by name
+func findMatchingEntityByName(name string, currentMap map[string]*extract.Entity) *extract.Entity {
+	if current, ok := currentMap[name]; ok {
+		return current
+	}
+	return nil
 }

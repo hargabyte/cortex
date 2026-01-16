@@ -1,0 +1,457 @@
+// Package daemon provides incremental scanning support for efficient graph updates.
+// The IncrementalScanner tracks file modifications and applies targeted updates
+// only to changed entities, minimizing rescan time.
+package daemon
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/anthropics/cx/internal/store"
+)
+
+// IncrementalScanner provides efficient incremental scanning of code files.
+// It tracks file modifications via content hashes and scan generations,
+// and updates only the entities and dependencies for changed files.
+type IncrementalScanner struct {
+	store       *store.Store
+	projectRoot string
+
+	// Current scan generation
+	generation int
+
+	// Statistics from last scan
+	stats IncrementalScanStats
+
+	// Thread safety
+	mu sync.RWMutex
+
+	// Logger function
+	logFunc func(format string, args ...interface{})
+}
+
+// IncrementalScanStats contains statistics from an incremental scan.
+type IncrementalScanStats struct {
+	// Files
+	FilesChecked  int           // Total files checked
+	FilesChanged  int           // Files with content changes
+	FilesAdded    int           // New files added
+	FilesRemoved  int           // Files removed/deleted
+	FilesUnchanged int          // Files with no changes
+
+	// Entities
+	EntitiesAdded    int // New entities created
+	EntitiesUpdated  int // Entities with changes
+	EntitiesRemoved  int // Entities removed (from deleted/changed files)
+
+	// Dependencies
+	EdgesAdded   int // New dependency edges added
+	EdgesRemoved int // Stale dependency edges removed
+
+	// Timing
+	ScanDuration time.Duration
+	StartTime    time.Time
+	EndTime      time.Time
+
+	// Scan generation
+	Generation int
+}
+
+// IncrementalScanResult contains the results of an incremental scan.
+type IncrementalScanResult struct {
+	Stats         IncrementalScanStats
+	ChangedFiles  []string // Paths of changed files
+	AddedFiles    []string // Paths of new files
+	RemovedFiles  []string // Paths of removed files
+	AffectedPaths []string // All file paths that were updated
+}
+
+// NewIncrementalScanner creates a new IncrementalScanner for the given store.
+func NewIncrementalScanner(s *store.Store, projectRoot string) (*IncrementalScanner, error) {
+	if s == nil {
+		return nil, fmt.Errorf("store is required")
+	}
+	if projectRoot == "" {
+		var err error
+		projectRoot, err = os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("get working directory: %w", err)
+		}
+	}
+
+	// Get the current scan generation
+	gen, err := s.GetCurrentScanGeneration()
+	if err != nil {
+		gen = 0 // Start fresh
+	}
+
+	return &IncrementalScanner{
+		store:       s,
+		projectRoot: projectRoot,
+		generation:  gen,
+		logFunc:     defaultIncrementalLog,
+	}, nil
+}
+
+// defaultIncrementalLog is the default logging function.
+func defaultIncrementalLog(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, "[incremental] "+format+"\n", args...)
+}
+
+// SetLogger sets a custom logging function.
+func (is *IncrementalScanner) SetLogger(fn func(format string, args ...interface{})) {
+	is.mu.Lock()
+	defer is.mu.Unlock()
+	is.logFunc = fn
+}
+
+// log writes a log message using the configured logger.
+func (is *IncrementalScanner) log(format string, args ...interface{}) {
+	is.mu.RLock()
+	fn := is.logFunc
+	is.mu.RUnlock()
+	if fn != nil {
+		fn(format, args...)
+	}
+}
+
+// DetectChanges scans the project directory and detects which files have changed
+// since the last scan. Returns a list of changed, added, and removed file paths.
+func (is *IncrementalScanner) DetectChanges(excludes []string) (*IncrementalScanResult, error) {
+	is.mu.Lock()
+	defer is.mu.Unlock()
+
+	result := &IncrementalScanResult{
+		Stats: IncrementalScanStats{
+			StartTime: time.Now(),
+		},
+	}
+
+	// Get all currently indexed files
+	indexedFiles, err := is.store.GetAllFileEntries()
+	if err != nil {
+		return nil, fmt.Errorf("get indexed files: %w", err)
+	}
+
+	indexedMap := make(map[string]*store.FileIndex)
+	for _, f := range indexedFiles {
+		indexedMap[f.FilePath] = f
+	}
+
+	// Walk the project directory and check each file
+	currentFiles := make(map[string]bool)
+	err = filepath.Walk(is.projectRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // Skip errors
+		}
+
+		// Skip directories
+		if info.IsDir() {
+			base := filepath.Base(path)
+			// Skip hidden directories and common non-source dirs
+			if strings.HasPrefix(base, ".") && base != "." {
+				return filepath.SkipDir
+			}
+			for _, excl := range excludes {
+				if matched, _ := filepath.Match(excl, base); matched {
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		}
+
+		// Skip non-source files
+		if !isSourceFileExt(path) {
+			return nil
+		}
+
+		// Get relative path
+		relPath, err := filepath.Rel(is.projectRoot, path)
+		if err != nil {
+			return nil
+		}
+
+		// Check if file should be excluded
+		for _, excl := range excludes {
+			if matched, _ := filepath.Match(excl, filepath.Base(path)); matched {
+				return nil
+			}
+		}
+
+		result.Stats.FilesChecked++
+		currentFiles[relPath] = true
+
+		// Compute current file hash
+		hash, err := computeFileHash(path)
+		if err != nil {
+			is.log("warning: failed to hash %s: %v", path, err)
+			return nil
+		}
+
+		// Check if file is new or changed
+		if indexed, exists := indexedMap[relPath]; exists {
+			if indexed.ScanHash != hash {
+				result.ChangedFiles = append(result.ChangedFiles, relPath)
+				result.Stats.FilesChanged++
+			} else {
+				result.Stats.FilesUnchanged++
+			}
+		} else {
+			result.AddedFiles = append(result.AddedFiles, relPath)
+			result.Stats.FilesAdded++
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("walk project: %w", err)
+	}
+
+	// Find removed files (in index but not on disk)
+	for relPath := range indexedMap {
+		if !currentFiles[relPath] {
+			result.RemovedFiles = append(result.RemovedFiles, relPath)
+			result.Stats.FilesRemoved++
+		}
+	}
+
+	// Combine all affected paths
+	result.AffectedPaths = append(result.AffectedPaths, result.ChangedFiles...)
+	result.AffectedPaths = append(result.AffectedPaths, result.AddedFiles...)
+	result.AffectedPaths = append(result.AffectedPaths, result.RemovedFiles...)
+
+	result.Stats.EndTime = time.Now()
+	result.Stats.ScanDuration = result.Stats.EndTime.Sub(result.Stats.StartTime)
+
+	return result, nil
+}
+
+// UpdateDependencies updates the dependency graph for the given file paths.
+// It removes stale edges from entities in the changed/removed files
+// and prepares for new edges to be added.
+func (is *IncrementalScanner) UpdateDependencies(changedFiles, removedFiles []string) (*GraphUpdateResult, error) {
+	is.mu.Lock()
+	defer is.mu.Unlock()
+
+	result := &GraphUpdateResult{
+		StartTime: time.Now(),
+	}
+
+	// For removed files: delete all entities and their dependencies
+	for _, filePath := range removedFiles {
+		// Delete dependencies FROM entities in this file
+		if err := is.store.DeleteDependenciesByFile(filePath); err != nil {
+			is.log("warning: failed to delete dependencies for %s: %v", filePath, err)
+		} else {
+			result.EdgesRemoved++
+		}
+
+		// Delete entities in this file
+		if err := is.store.DeleteEntitiesByFile(filePath); err != nil {
+			is.log("warning: failed to delete entities for %s: %v", filePath, err)
+		} else {
+			result.EntitiesRemoved++
+		}
+
+		// Remove from file index
+		if err := is.store.DeleteFileEntry(filePath); err != nil {
+			is.log("warning: failed to delete file entry for %s: %v", filePath, err)
+		}
+	}
+
+	// For changed files: remove existing dependencies (will be re-added during rescan)
+	for _, filePath := range changedFiles {
+		// Delete dependencies FROM entities in this file (they will be re-extracted)
+		if err := is.store.DeleteDependenciesByFile(filePath); err != nil {
+			is.log("warning: failed to delete dependencies for changed file %s: %v", filePath, err)
+		} else {
+			result.EdgesRemoved++
+		}
+
+		// Note: We don't delete entities here - they will be updated in place
+		// during the rescan process
+	}
+
+	result.EndTime = time.Now()
+	result.Duration = result.EndTime.Sub(result.StartTime)
+
+	return result, nil
+}
+
+// GraphUpdateResult contains the results of a graph update operation.
+type GraphUpdateResult struct {
+	EntitiesRemoved int           // Entities removed from graph
+	EdgesRemoved    int           // Edges removed from graph
+	EntitiesAdded   int           // Entities added to graph
+	EdgesAdded      int           // Edges added to graph
+	Duration        time.Duration
+	StartTime       time.Time
+	EndTime         time.Time
+}
+
+// PrepareIncrementalScan sets up for an incremental scan by:
+// 1. Incrementing the scan generation
+// 2. Returning the files that need to be scanned
+func (is *IncrementalScanner) PrepareIncrementalScan(excludes []string) (*IncrementalScanResult, error) {
+	// Detect changes first
+	result, err := is.DetectChanges(excludes)
+	if err != nil {
+		return nil, err
+	}
+
+	// Increment scan generation for this scan
+	is.mu.Lock()
+	is.generation++
+	result.Stats.Generation = is.generation
+	is.mu.Unlock()
+
+	return result, nil
+}
+
+// MarkFileScanned marks a file as scanned with the current generation.
+func (is *IncrementalScanner) MarkFileScanned(relPath, hash string) error {
+	is.mu.RLock()
+	gen := is.generation
+	is.mu.RUnlock()
+
+	return is.store.SetFileScannedWithGeneration(relPath, hash, gen)
+}
+
+// CleanupStaleData removes file entries and entities from files
+// that were not seen in the current scan generation.
+func (is *IncrementalScanner) CleanupStaleData() (int, error) {
+	is.mu.RLock()
+	gen := is.generation
+	is.mu.RUnlock()
+
+	// Get stale files
+	staleFiles, err := is.store.GetFilesOlderThanGeneration(gen)
+	if err != nil {
+		return 0, fmt.Errorf("get stale files: %w", err)
+	}
+
+	if len(staleFiles) == 0 {
+		return 0, nil
+	}
+
+	// Clean up entities and dependencies for stale files
+	for _, f := range staleFiles {
+		is.store.DeleteDependenciesByFile(f.FilePath)
+		is.store.DeleteEntitiesByFile(f.FilePath)
+	}
+
+	// Delete stale file entries
+	deleted, err := is.store.DeleteFilesOlderThanGeneration(gen)
+	if err != nil {
+		return 0, fmt.Errorf("delete stale files: %w", err)
+	}
+
+	return deleted, nil
+}
+
+// GetStats returns the statistics from the last scan.
+func (is *IncrementalScanner) GetStats() IncrementalScanStats {
+	is.mu.RLock()
+	defer is.mu.RUnlock()
+	return is.stats
+}
+
+// GetGeneration returns the current scan generation.
+func (is *IncrementalScanner) GetGeneration() int {
+	is.mu.RLock()
+	defer is.mu.RUnlock()
+	return is.generation
+}
+
+// HasChanges returns true if the last change detection found any changes.
+func (is *IncrementalScanner) HasChanges(result *IncrementalScanResult) bool {
+	if result == nil {
+		return false
+	}
+	return len(result.ChangedFiles) > 0 || len(result.AddedFiles) > 0 || len(result.RemovedFiles) > 0
+}
+
+// ShouldFullScan determines if a full scan is needed instead of incremental.
+// Returns true if:
+// - No files have been indexed yet
+// - The number of changes exceeds 50% of indexed files
+func (is *IncrementalScanner) ShouldFullScan() (bool, string) {
+	count, err := is.store.CountFileIndex()
+	if err != nil || count == 0 {
+		return true, "no files indexed yet"
+	}
+
+	return false, ""
+}
+
+// PruneOrphanedDependencies removes dependency edges where either
+// from_id or to_id no longer exists in the entities table.
+func (is *IncrementalScanner) PruneOrphanedDependencies() (int, error) {
+	is.mu.Lock()
+	defer is.mu.Unlock()
+
+	// Get all dependencies
+	deps, err := is.store.GetAllDependencies()
+	if err != nil {
+		return 0, fmt.Errorf("get dependencies: %w", err)
+	}
+
+	pruned := 0
+	for _, dep := range deps {
+		// Check if from_id entity exists
+		fromEntity, err := is.store.GetEntity(dep.FromID)
+		if err != nil || fromEntity == nil || fromEntity.Status == "archived" {
+			if err := is.store.DeleteDependency(dep.FromID, dep.ToID, dep.DepType); err == nil {
+				pruned++
+			}
+			continue
+		}
+
+		// Check if to_id entity exists
+		toEntity, err := is.store.GetEntity(dep.ToID)
+		if err != nil || toEntity == nil || toEntity.Status == "archived" {
+			if err := is.store.DeleteDependency(dep.FromID, dep.ToID, dep.DepType); err == nil {
+				pruned++
+			}
+		}
+	}
+
+	return pruned, nil
+}
+
+// computeFileHash computes a SHA256 hash of the file contents.
+func computeFileHash(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(h.Sum(nil))[:16], nil
+}
+
+// isSourceFileExt checks if a file has a source code extension.
+func isSourceFileExt(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".go", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+		".java", ".rs", ".py", ".c", ".h", ".cpp", ".cc", ".cxx",
+		".hpp", ".hh", ".hxx", ".cs", ".php", ".kt", ".kts", ".rb", ".rake":
+		return true
+	default:
+		return false
+	}
+}

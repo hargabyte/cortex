@@ -1,0 +1,51 @@
+package cmd
+
+import (
+	"github.com/anthropics/cx/internal/daemon"
+)
+
+// Global daemon client connection.
+// This is lazily initialized on first use by commands.
+var globalDaemonClient *daemon.Client
+
+// ensureDaemon ensures a daemon connection is available.
+// It tries to connect to an existing daemon or start a new one.
+// Returns a connected client or nil if falling back to direct DB mode.
+//
+// This function is safe to call multiple times - it caches the connection
+// after the first successful connection.
+//
+// Usage in commands:
+//
+//	client := ensureDaemon()
+//	if client != nil {
+//	    // Use daemon client for queries
+//	    resp, err := client.Query(...)
+//	} else {
+//	    // Fallback to direct store access
+//	    store, _ := store.Open(cxDir)
+//	    defer store.Close()
+//	    ...
+//	}
+func ensureDaemon() *daemon.Client {
+	// DISABLED: Daemon auto-start is disabled due to memory issues.
+	// The daemon loads the full dependency graph into memory which can
+	// cause OOM on large codebases. Commands use direct DB mode instead.
+	// To re-enable, restore the original implementation.
+	// See: https://github.com/anthropics/cx/issues/XXX
+	return nil
+}
+
+// useDaemon returns true if daemon mode is available.
+// This is a convenience wrapper around ensureDaemon for
+// simple presence checks.
+func useDaemon() bool {
+	return ensureDaemon() != nil
+}
+
+// resetDaemonClient clears the cached daemon client.
+// This forces the next ensureDaemon() call to reconnect.
+// Useful for testing or after a daemon restart.
+func resetDaemonClient() {
+	globalDaemonClient = nil
+}

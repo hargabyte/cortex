@@ -1,0 +1,814 @@
+package daemon
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/anthropics/cx/internal/store"
+)
+
+func TestNewIncrementalScanner(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "incremental-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create .cx directory
+	cxDir := filepath.Join(tmpDir, ".cx")
+	if err := os.MkdirAll(cxDir, 0755); err != nil {
+		t.Fatalf("create .cx dir: %v", err)
+	}
+
+	// Open store
+	s, err := store.Open(cxDir)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer s.Close()
+
+	// Create scanner
+	scanner, err := NewIncrementalScanner(s, tmpDir)
+	if err != nil {
+		t.Fatalf("create scanner: %v", err)
+	}
+
+	if scanner.GetGeneration() != 0 {
+		t.Errorf("expected generation 0, got %d", scanner.GetGeneration())
+	}
+}
+
+func TestIncrementalScanner_DetectChanges(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "incremental-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create .cx directory
+	cxDir := filepath.Join(tmpDir, ".cx")
+	if err := os.MkdirAll(cxDir, 0755); err != nil {
+		t.Fatalf("create .cx dir: %v", err)
+	}
+
+	// Create a source file
+	srcFile := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(srcFile, []byte("package main\n\nfunc main() {}\n"), 0644); err != nil {
+		t.Fatalf("create source file: %v", err)
+	}
+
+	// Open store
+	s, err := store.Open(cxDir)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer s.Close()
+
+	// Create scanner
+	scanner, err := NewIncrementalScanner(s, tmpDir)
+	if err != nil {
+		t.Fatalf("create scanner: %v", err)
+	}
+
+	// First scan - should detect as new file
+	result, err := scanner.DetectChanges(nil)
+	if err != nil {
+		t.Fatalf("detect changes: %v", err)
+	}
+
+	if result.Stats.FilesChecked != 1 {
+		t.Errorf("expected 1 file checked, got %d", result.Stats.FilesChecked)
+	}
+	if result.Stats.FilesAdded != 1 {
+		t.Errorf("expected 1 file added, got %d", result.Stats.FilesAdded)
+	}
+	if len(result.AddedFiles) != 1 {
+		t.Errorf("expected 1 added file, got %d", len(result.AddedFiles))
+	}
+
+	// Mark file as scanned
+	hash, _ := computeFileHash(srcFile)
+	if err := scanner.MarkFileScanned("main.go", hash); err != nil {
+		t.Fatalf("mark file scanned: %v", err)
+	}
+
+	// Second scan - should show no changes
+	result2, err := scanner.DetectChanges(nil)
+	if err != nil {
+		t.Fatalf("detect changes 2: %v", err)
+	}
+
+	if result2.Stats.FilesUnchanged != 1 {
+		t.Errorf("expected 1 unchanged file, got %d", result2.Stats.FilesUnchanged)
+	}
+	if result2.Stats.FilesChanged != 0 {
+		t.Errorf("expected 0 changed files, got %d", result2.Stats.FilesChanged)
+	}
+
+	// Modify the file
+	if err := os.WriteFile(srcFile, []byte("package main\n\nfunc main() { println(\"hello\") }\n"), 0644); err != nil {
+		t.Fatalf("modify source file: %v", err)
+	}
+
+	// Third scan - should detect as changed
+	result3, err := scanner.DetectChanges(nil)
+	if err != nil {
+		t.Fatalf("detect changes 3: %v", err)
+	}
+
+	if result3.Stats.FilesChanged != 1 {
+		t.Errorf("expected 1 changed file, got %d", result3.Stats.FilesChanged)
+	}
+	if len(result3.ChangedFiles) != 1 {
+		t.Errorf("expected 1 changed file path, got %d", len(result3.ChangedFiles))
+	}
+}
+
+func TestIncrementalScanner_DetectRemovedFiles(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "incremental-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create .cx directory
+	cxDir := filepath.Join(tmpDir, ".cx")
+	if err := os.MkdirAll(cxDir, 0755); err != nil {
+		t.Fatalf("create .cx dir: %v", err)
+	}
+
+	// Create a source file
+	srcFile := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(srcFile, []byte("package main\n\nfunc main() {}\n"), 0644); err != nil {
+		t.Fatalf("create source file: %v", err)
+	}
+
+	// Open store
+	s, err := store.Open(cxDir)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer s.Close()
+
+	// Create scanner
+	scanner, err := NewIncrementalScanner(s, tmpDir)
+	if err != nil {
+		t.Fatalf("create scanner: %v", err)
+	}
+
+	// Mark file as scanned
+	hash, _ := computeFileHash(srcFile)
+	if err := scanner.MarkFileScanned("main.go", hash); err != nil {
+		t.Fatalf("mark file scanned: %v", err)
+	}
+
+	// Remove the file
+	if err := os.Remove(srcFile); err != nil {
+		t.Fatalf("remove file: %v", err)
+	}
+
+	// Scan - should detect as removed
+	result, err := scanner.DetectChanges(nil)
+	if err != nil {
+		t.Fatalf("detect changes: %v", err)
+	}
+
+	if result.Stats.FilesRemoved != 1 {
+		t.Errorf("expected 1 removed file, got %d", result.Stats.FilesRemoved)
+	}
+	if len(result.RemovedFiles) != 1 {
+		t.Errorf("expected 1 removed file path, got %d", len(result.RemovedFiles))
+	}
+}
+
+func TestIncrementalScanner_ScanGeneration(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "incremental-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create .cx directory
+	cxDir := filepath.Join(tmpDir, ".cx")
+	if err := os.MkdirAll(cxDir, 0755); err != nil {
+		t.Fatalf("create .cx dir: %v", err)
+	}
+
+	// Open store
+	s, err := store.Open(cxDir)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer s.Close()
+
+	// Create scanner
+	scanner, err := NewIncrementalScanner(s, tmpDir)
+	if err != nil {
+		t.Fatalf("create scanner: %v", err)
+	}
+
+	// Initial generation should be 0
+	if scanner.GetGeneration() != 0 {
+		t.Errorf("expected generation 0, got %d", scanner.GetGeneration())
+	}
+
+	// Prepare scan should increment generation
+	result, err := scanner.PrepareIncrementalScan(nil)
+	if err != nil {
+		t.Fatalf("prepare scan: %v", err)
+	}
+
+	if result.Stats.Generation != 1 {
+		t.Errorf("expected generation 1, got %d", result.Stats.Generation)
+	}
+	if scanner.GetGeneration() != 1 {
+		t.Errorf("expected scanner generation 1, got %d", scanner.GetGeneration())
+	}
+
+	// Another prepare should increment again
+	result2, err := scanner.PrepareIncrementalScan(nil)
+	if err != nil {
+		t.Fatalf("prepare scan 2: %v", err)
+	}
+
+	if result2.Stats.Generation != 2 {
+		t.Errorf("expected generation 2, got %d", result2.Stats.Generation)
+	}
+}
+
+func TestIncrementalScanner_UpdateDependencies(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "incremental-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create .cx directory
+	cxDir := filepath.Join(tmpDir, ".cx")
+	if err := os.MkdirAll(cxDir, 0755); err != nil {
+		t.Fatalf("create .cx dir: %v", err)
+	}
+
+	// Open store
+	s, err := store.Open(cxDir)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer s.Close()
+
+	// Create some test entities
+	entity1 := &store.Entity{
+		ID:         "test-fn-1",
+		Name:       "testFunc1",
+		EntityType: "function",
+		FilePath:   "main.go",
+		LineStart:  1,
+		Status:     "active",
+		Language:   "go",
+	}
+	entity2 := &store.Entity{
+		ID:         "test-fn-2",
+		Name:       "testFunc2",
+		EntityType: "function",
+		FilePath:   "utils.go",
+		LineStart:  1,
+		Status:     "active",
+		Language:   "go",
+	}
+
+	if err := s.CreateEntity(entity1); err != nil {
+		t.Fatalf("create entity 1: %v", err)
+	}
+	if err := s.CreateEntity(entity2); err != nil {
+		t.Fatalf("create entity 2: %v", err)
+	}
+
+	// Create a dependency
+	dep := &store.Dependency{
+		FromID:  "test-fn-1",
+		ToID:    "test-fn-2",
+		DepType: "calls",
+	}
+	if err := s.CreateDependency(dep); err != nil {
+		t.Fatalf("create dependency: %v", err)
+	}
+
+	// Verify dependency exists
+	deps, err := s.GetDependenciesFrom("test-fn-1")
+	if err != nil {
+		t.Fatalf("get dependencies: %v", err)
+	}
+	if len(deps) != 1 {
+		t.Errorf("expected 1 dependency, got %d", len(deps))
+	}
+
+	// Create scanner
+	scanner, err := NewIncrementalScanner(s, tmpDir)
+	if err != nil {
+		t.Fatalf("create scanner: %v", err)
+	}
+
+	// Update dependencies for changed file
+	result, err := scanner.UpdateDependencies([]string{"main.go"}, nil)
+	if err != nil {
+		t.Fatalf("update dependencies: %v", err)
+	}
+
+	if result.EdgesRemoved == 0 {
+		t.Errorf("expected edges to be removed, got 0")
+	}
+
+	// Verify dependency was removed
+	deps2, err := s.GetDependenciesFrom("test-fn-1")
+	if err != nil {
+		t.Fatalf("get dependencies 2: %v", err)
+	}
+	if len(deps2) != 0 {
+		t.Errorf("expected 0 dependencies after update, got %d", len(deps2))
+	}
+}
+
+func TestIncrementalScanner_CleanupStaleData(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "incremental-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create .cx directory
+	cxDir := filepath.Join(tmpDir, ".cx")
+	if err := os.MkdirAll(cxDir, 0755); err != nil {
+		t.Fatalf("create .cx dir: %v", err)
+	}
+
+	// Open store
+	s, err := store.Open(cxDir)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer s.Close()
+
+	// Create scanner
+	scanner, err := NewIncrementalScanner(s, tmpDir)
+	if err != nil {
+		t.Fatalf("create scanner: %v", err)
+	}
+
+	// Add a file with generation 0
+	if err := s.SetFileScannedWithGeneration("old.go", "hash123", 0); err != nil {
+		t.Fatalf("set file scanned: %v", err)
+	}
+
+	// Create entity for that file
+	entity := &store.Entity{
+		ID:         "old-fn-1",
+		Name:       "oldFunc",
+		EntityType: "function",
+		FilePath:   "old.go",
+		LineStart:  1,
+		Status:     "active",
+		Language:   "go",
+	}
+	if err := s.CreateEntity(entity); err != nil {
+		t.Fatalf("create entity: %v", err)
+	}
+
+	// Prepare scan (increments to generation 1)
+	_, err = scanner.PrepareIncrementalScan(nil)
+	if err != nil {
+		t.Fatalf("prepare scan: %v", err)
+	}
+
+	// Add a new file with current generation
+	if err := scanner.MarkFileScanned("new.go", "hash456"); err != nil {
+		t.Fatalf("mark new file scanned: %v", err)
+	}
+
+	// Cleanup stale data
+	deleted, err := scanner.CleanupStaleData()
+	if err != nil {
+		t.Fatalf("cleanup stale data: %v", err)
+	}
+
+	if deleted != 1 {
+		t.Errorf("expected 1 file deleted, got %d", deleted)
+	}
+
+	// Verify old file entry is gone
+	entry, err := s.GetFileEntry("old.go")
+	if err == nil && entry != nil {
+		t.Error("expected old file entry to be deleted")
+	}
+
+	// Verify new file entry still exists
+	entry, err = s.GetFileEntry("new.go")
+	if err != nil {
+		t.Errorf("expected new file entry to exist: %v", err)
+	}
+}
+
+func TestIncrementalScanner_PruneOrphanedDependencies(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "incremental-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create .cx directory
+	cxDir := filepath.Join(tmpDir, ".cx")
+	if err := os.MkdirAll(cxDir, 0755); err != nil {
+		t.Fatalf("create .cx dir: %v", err)
+	}
+
+	// Open store
+	s, err := store.Open(cxDir)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer s.Close()
+
+	// Create scanner
+	scanner, err := NewIncrementalScanner(s, tmpDir)
+	if err != nil {
+		t.Fatalf("create scanner: %v", err)
+	}
+
+	// Create one entity
+	entity := &store.Entity{
+		ID:         "real-fn-1",
+		Name:       "realFunc",
+		EntityType: "function",
+		FilePath:   "main.go",
+		LineStart:  1,
+		Status:     "active",
+		Language:   "go",
+	}
+	if err := s.CreateEntity(entity); err != nil {
+		t.Fatalf("create entity: %v", err)
+	}
+
+	// Create an orphaned dependency (to non-existent entity)
+	orphanDep := &store.Dependency{
+		FromID:  "real-fn-1",
+		ToID:    "non-existent-fn",
+		DepType: "calls",
+	}
+	if err := s.CreateDependency(orphanDep); err != nil {
+		t.Fatalf("create orphan dependency: %v", err)
+	}
+
+	// Prune orphaned dependencies
+	pruned, err := scanner.PruneOrphanedDependencies()
+	if err != nil {
+		t.Fatalf("prune orphaned dependencies: %v", err)
+	}
+
+	if pruned != 1 {
+		t.Errorf("expected 1 pruned dependency, got %d", pruned)
+	}
+
+	// Verify dependency was removed
+	deps, err := s.GetDependenciesFrom("real-fn-1")
+	if err != nil {
+		t.Fatalf("get dependencies: %v", err)
+	}
+	if len(deps) != 0 {
+		t.Errorf("expected 0 dependencies after pruning, got %d", len(deps))
+	}
+}
+
+func TestIncrementalScanner_HasChanges(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "incremental-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create .cx directory
+	cxDir := filepath.Join(tmpDir, ".cx")
+	if err := os.MkdirAll(cxDir, 0755); err != nil {
+		t.Fatalf("create .cx dir: %v", err)
+	}
+
+	// Open store
+	s, err := store.Open(cxDir)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer s.Close()
+
+	// Create scanner
+	scanner, err := NewIncrementalScanner(s, tmpDir)
+	if err != nil {
+		t.Fatalf("create scanner: %v", err)
+	}
+
+	// nil result should return false
+	if scanner.HasChanges(nil) {
+		t.Error("expected HasChanges(nil) to return false")
+	}
+
+	// Empty result should return false
+	emptyResult := &IncrementalScanResult{}
+	if scanner.HasChanges(emptyResult) {
+		t.Error("expected HasChanges(empty) to return false")
+	}
+
+	// Result with changes should return true
+	withChanges := &IncrementalScanResult{
+		ChangedFiles: []string{"main.go"},
+	}
+	if !scanner.HasChanges(withChanges) {
+		t.Error("expected HasChanges with changed files to return true")
+	}
+
+	// Result with added files should return true
+	withAdded := &IncrementalScanResult{
+		AddedFiles: []string{"new.go"},
+	}
+	if !scanner.HasChanges(withAdded) {
+		t.Error("expected HasChanges with added files to return true")
+	}
+
+	// Result with removed files should return true
+	withRemoved := &IncrementalScanResult{
+		RemovedFiles: []string{"deleted.go"},
+	}
+	if !scanner.HasChanges(withRemoved) {
+		t.Error("expected HasChanges with removed files to return true")
+	}
+}
+
+func TestIncrementalScanner_ShouldFullScan(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "incremental-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create .cx directory
+	cxDir := filepath.Join(tmpDir, ".cx")
+	if err := os.MkdirAll(cxDir, 0755); err != nil {
+		t.Fatalf("create .cx dir: %v", err)
+	}
+
+	// Open store
+	s, err := store.Open(cxDir)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer s.Close()
+
+	// Create scanner
+	scanner, err := NewIncrementalScanner(s, tmpDir)
+	if err != nil {
+		t.Fatalf("create scanner: %v", err)
+	}
+
+	// With no files indexed, should need full scan
+	needsFull, reason := scanner.ShouldFullScan()
+	if !needsFull {
+		t.Error("expected ShouldFullScan to return true for empty index")
+	}
+	if reason != "no files indexed yet" {
+		t.Errorf("unexpected reason: %s", reason)
+	}
+
+	// Add some files
+	if err := s.SetFileScannedWithGeneration("main.go", "hash1", 1); err != nil {
+		t.Fatalf("set file scanned: %v", err)
+	}
+
+	// With files indexed, should not need full scan
+	needsFull, _ = scanner.ShouldFullScan()
+	if needsFull {
+		t.Error("expected ShouldFullScan to return false when files are indexed")
+	}
+}
+
+func TestFileIndex_ScanGenerationColumns(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "incremental-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create .cx directory
+	cxDir := filepath.Join(tmpDir, ".cx")
+	if err := os.MkdirAll(cxDir, 0755); err != nil {
+		t.Fatalf("create .cx dir: %v", err)
+	}
+
+	// Open store
+	s, err := store.Open(cxDir)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer s.Close()
+
+	// Test SetFileScannedWithGeneration
+	if err := s.SetFileScannedWithGeneration("test.go", "hash123", 5); err != nil {
+		t.Fatalf("set file scanned with generation: %v", err)
+	}
+
+	// Test GetFileEntry
+	entry, err := s.GetFileEntry("test.go")
+	if err != nil {
+		t.Fatalf("get file entry: %v", err)
+	}
+
+	if entry.ScanGeneration != 5 {
+		t.Errorf("expected generation 5, got %d", entry.ScanGeneration)
+	}
+	if entry.ScanHash != "hash123" {
+		t.Errorf("expected hash hash123, got %s", entry.ScanHash)
+	}
+	if entry.LastScanTime.IsZero() {
+		t.Error("expected last_scan_time to be set")
+	}
+
+	// Test GetCurrentScanGeneration
+	gen, err := s.GetCurrentScanGeneration()
+	if err != nil {
+		t.Fatalf("get current scan generation: %v", err)
+	}
+	if gen != 5 {
+		t.Errorf("expected current generation 5, got %d", gen)
+	}
+
+	// Add another file with different generation
+	if err := s.SetFileScannedWithGeneration("test2.go", "hash456", 3); err != nil {
+		t.Fatalf("set file scanned 2: %v", err)
+	}
+
+	// GetCurrentScanGeneration should return max
+	gen, err = s.GetCurrentScanGeneration()
+	if err != nil {
+		t.Fatalf("get current scan generation 2: %v", err)
+	}
+	if gen != 5 {
+		t.Errorf("expected max generation 5, got %d", gen)
+	}
+
+	// Test GetFilesOlderThanGeneration
+	oldFiles, err := s.GetFilesOlderThanGeneration(5)
+	if err != nil {
+		t.Fatalf("get files older than generation: %v", err)
+	}
+	if len(oldFiles) != 1 {
+		t.Errorf("expected 1 old file, got %d", len(oldFiles))
+	}
+	if oldFiles[0].FilePath != "test2.go" {
+		t.Errorf("expected test2.go, got %s", oldFiles[0].FilePath)
+	}
+
+	// Test UpdateFileGeneration
+	if err := s.UpdateFileGeneration("test2.go", 5); err != nil {
+		t.Fatalf("update file generation: %v", err)
+	}
+
+	// Now both files should have generation 5
+	oldFiles, err = s.GetFilesOlderThanGeneration(5)
+	if err != nil {
+		t.Fatalf("get files older 2: %v", err)
+	}
+	if len(oldFiles) != 0 {
+		t.Errorf("expected 0 old files after update, got %d", len(oldFiles))
+	}
+
+	// Test DeleteFilesOlderThanGeneration
+	if err := s.SetFileScannedWithGeneration("old.go", "hashOld", 1); err != nil {
+		t.Fatalf("set old file: %v", err)
+	}
+
+	deleted, err := s.DeleteFilesOlderThanGeneration(5)
+	if err != nil {
+		t.Fatalf("delete old files: %v", err)
+	}
+	if deleted != 1 {
+		t.Errorf("expected 1 deleted, got %d", deleted)
+	}
+
+	// Verify old file is gone
+	_, err = s.GetFileEntry("old.go")
+	if err == nil {
+		t.Error("expected old.go to be deleted")
+	}
+
+	// Test GetFilesModifiedSince
+	cutoff := time.Now().Add(-1 * time.Hour)
+	modifiedFiles, err := s.GetFilesModifiedSince(cutoff)
+	if err != nil {
+		t.Fatalf("get modified files: %v", err)
+	}
+	if len(modifiedFiles) != 2 { // test.go and test2.go
+		t.Errorf("expected 2 modified files, got %d", len(modifiedFiles))
+	}
+}
+
+func TestComputeFileHash(t *testing.T) {
+	// Create temp file
+	tmpFile, err := os.CreateTemp("", "hash-test-*.go")
+	if err != nil {
+		t.Fatalf("create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	content := []byte("package main\n\nfunc main() {}\n")
+	if _, err := tmpFile.Write(content); err != nil {
+		t.Fatalf("write content: %v", err)
+	}
+	tmpFile.Close()
+
+	// Compute hash
+	hash1, err := computeFileHash(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("compute hash: %v", err)
+	}
+
+	if len(hash1) != 16 {
+		t.Errorf("expected 16 char hash, got %d", len(hash1))
+	}
+
+	// Same content should produce same hash
+	hash2, err := computeFileHash(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("compute hash 2: %v", err)
+	}
+
+	if hash1 != hash2 {
+		t.Errorf("expected same hash, got %s != %s", hash1, hash2)
+	}
+
+	// Different content should produce different hash
+	if err := os.WriteFile(tmpFile.Name(), []byte("different content"), 0644); err != nil {
+		t.Fatalf("write different content: %v", err)
+	}
+
+	hash3, err := computeFileHash(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("compute hash 3: %v", err)
+	}
+
+	if hash1 == hash3 {
+		t.Error("expected different hash for different content")
+	}
+}
+
+func TestIsSourceFileExt(t *testing.T) {
+	tests := []struct {
+		path     string
+		expected bool
+	}{
+		{"main.go", true},
+		{"index.ts", true},
+		{"app.tsx", true},
+		{"script.js", true},
+		{"react.jsx", true},
+		{"module.mjs", true},
+		{"require.cjs", true},
+		{"Main.java", true},
+		{"lib.rs", true},
+		{"app.py", true},
+		{"code.c", true},
+		{"header.h", true},
+		{"app.cpp", true},
+		{"lib.cc", true},
+		{"util.cxx", true},
+		{"header.hpp", true},
+		{"header.hh", true},
+		{"header.hxx", true},
+		{"Program.cs", true},
+		{"index.php", true},
+		{"Main.kt", true},
+		{"build.kts", true},
+		{"app.rb", true},
+		{"tasks.rake", true},
+		{"readme.md", false},
+		{"config.json", false},
+		{"style.css", false},
+		{"image.png", false},
+		{".gitignore", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.path, func(t *testing.T) {
+			result := isSourceFileExt(tc.path)
+			if result != tc.expected {
+				t.Errorf("isSourceFileExt(%s) = %v, expected %v", tc.path, result, tc.expected)
+			}
+		})
+	}
+}

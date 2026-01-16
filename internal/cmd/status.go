@@ -61,6 +61,7 @@ type StatusOutput struct {
 // DaemonStatus represents daemon-specific status
 type DaemonStatus struct {
 	Running           bool   `json:"running" yaml:"running"`
+	Connected         bool   `json:"connected" yaml:"connected"`
 	PID               int    `json:"pid,omitempty" yaml:"pid,omitempty"`
 	Uptime            string `json:"uptime,omitempty" yaml:"uptime,omitempty"`
 	IdleTime          string `json:"idle_time,omitempty" yaml:"idle_time,omitempty"`
@@ -118,6 +119,10 @@ func runStatusOnce(cmd *cobra.Command) error {
 	output.Database.Initialized = true
 	output.Database.Path = cxDir
 
+	// Check daemon connection status
+	client := ensureDaemon()
+	output.Daemon.Connected = (client != nil)
+
 	// Try to get daemon status
 	daemonStatus, err := daemon.GetDaemonStatus("")
 	if err == nil && daemonStatus != nil && daemonStatus.Running {
@@ -169,6 +174,11 @@ func runStatusOnce(cmd *cobra.Command) error {
 	// Daemon section
 	if output.Daemon.Running {
 		fmt.Fprintf(cmd.OutOrStdout(), "  Daemon:   running (pid %d)\n", output.Daemon.PID)
+		if output.Daemon.Connected {
+			fmt.Fprintln(cmd.OutOrStdout(), "            connected (commands use daemon mode)")
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), "            not connected (commands use direct DB mode)")
+		}
 		fmt.Fprintf(cmd.OutOrStdout(), "            uptime %s, idle %s\n",
 			output.Daemon.Uptime, output.Daemon.IdleTime)
 		if output.Daemon.TimeUntilShutdown != "" && output.Daemon.TimeUntilShutdown != "0s" {
@@ -176,7 +186,11 @@ func runStatusOnce(cmd *cobra.Command) error {
 		}
 	} else {
 		fmt.Fprintln(cmd.OutOrStdout(), "  Daemon:   not running")
-		fmt.Fprintln(cmd.OutOrStdout(), "            Will auto-start on next command")
+		if output.Daemon.Connected {
+			fmt.Fprintln(cmd.OutOrStdout(), "            connected (will auto-start on next command)")
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), "            commands use direct DB mode")
+		}
 	}
 	fmt.Fprintln(cmd.OutOrStdout(), "")
 

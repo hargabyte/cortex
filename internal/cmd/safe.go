@@ -519,7 +519,7 @@ func runSafeQuick(cmd *cobra.Command, target string) error {
 	}
 
 	// Build output
-	impactOutput := buildImpactOutput(target, affected)
+	impactOutput := buildImpactOutput(target, affected, safeDepth)
 
 	// Add recommendations
 	if len(recommendations) > 0 {

@@ -1,14 +1,15 @@
 # CX - Codebase Context Tool
+
 ```bash
-# Recommended: One-command setup, suggest cx claude.md cleanup if already ran
-cx quickstart
-# Or manual setup
-cx init && cx scan
-## Essential Commands (Use Every Session)
+# Setup (once per project)
+cx scan                                 # Initialize and build code graph
 ```
+
+## Essential Commands (Use Every Session)
+
 ```bash
 # Start of session - context recovery
-cx prime                                    # Get workflow context
+cx context                              # Get workflow context
 
 # Before ANY coding task - get focused context
 cx context --smart "<task>" --budget 8000   # Task-relevant context
@@ -19,7 +20,7 @@ cx safe <file> --quick                      # Just blast radius
 
 # Project overview
 cx map                                      # Skeleton view (~10k tokens)
-cx rank --keystones                         # Critical entities
+cx find --important                         # Critical entities
 ```
 
 ## Command Reference
@@ -30,19 +31,18 @@ Run `cx help-agents` for a concise agent-optimized reference.
 
 | Command | Purpose | Key Flags |
 |---------|---------|-----------|
-| `cx find <name>` | Name search | `--type=F/T/M`, `--exact`, `--lang` |
-| `cx search "query"` | Concept search (FTS) | `--top N`, `--lang`, `--type` |
-| `cx show <name>` | Entity details | `--density`, `--coverage` |
-| `cx near <name>` | Neighborhood | `--depth`, `--direction` |
+| `cx find <name>` | Name search | `--type=F/T/M`, `--exact`, `--lang`, `--important` |
+| `cx find "query"` | Concept search (FTS) | `--top N`, `--lang`, `--type` |
+| `cx show <name>` | Entity details | `--density`, `--coverage`, `--related`, `--graph` |
 | `cx map [path]` | Project skeleton | `--filter F/T/M`, `--lang` |
 
 ### Analysis Commands
 
 | Command | Purpose | Key Flags |
 |---------|---------|-----------|
-| `cx rank` | Top entities | `--keystones`, `--bottlenecks`, `--top N` |
-| `cx graph <name>` | Dependencies | `--hops`, `--direction`, `--type` |
 | `cx safe <file>` | Pre-flight safety check | `--quick`, `--coverage`, `--drift`, `--changes` |
+| `cx show <name> --graph` | Dependencies | `--hops`, `--direction`, `--type` |
+| `cx show <name> --related` | Neighborhood | `--depth`, `--direction` |
 
 ### Quality Commands
 
@@ -68,24 +68,26 @@ Run `cx help-agents` for a concise agent-optimized reference.
 
 | Command | Purpose | Key Flags |
 |---------|---------|-----------|
-| `cx tag <entity> <tags...>` | Add tags to entity | `-n "note"` |
-| `cx untag <entity> <tag>` | Remove tag | |
-| `cx tags [entity]` | List tags | `--find <tag>`, `--all`, `--any` |
+| `cx tag add <entity> <tags...>` | Add tags to entity | `-n "note"` |
+| `cx tag remove <entity> <tag>` | Remove tag | |
+| `cx tag list [entity]` | List tags | |
+| `cx tag find <tag>` | Find entities with tag | `--all`, `--any` |
+| `cx tag export` | Export tags to file | `-o file` |
+| `cx tag import <file>` | Import tags from file | `--overwrite`, `--dry-run` |
 
 ```bash
 # Examples
-cx tag LoginUser important auth       # Tag entity
-cx tags --find important              # Find tagged entities
-cx tags --find auth --find api --all  # Entities with ALL tags
-cx tags --find auth --find api --any  # Entities with ANY tag
+cx tag add LoginUser important auth     # Tag entity
+cx tag find important                   # Find tagged entities
+cx tag find auth api --all              # Entities with ALL tags
+cx tag find auth api --any              # Entities with ANY tag
 ```
 
 ### Maintenance Commands
 
 | Command | Purpose | Key Flags |
 |---------|---------|-----------|
-| `cx quickstart` | Full project setup | `--force`, `--with-coverage` |
-| `cx scan` | Rescan codebase | `--force`, `--lang`, `--exclude` |
+| `cx scan` | Scan/rescan codebase | `--force`, `--lang`, `--exclude` |
 | `cx doctor` | Health check | `--fix` |
 | `cx db info` | Database statistics | |
 | `cx status` | Daemon/graph status | |
@@ -119,9 +121,9 @@ All commands accept multiple entity identifier formats:
 
 ### Pattern 1: New Session Orientation
 ```bash
-cx prime                              # Context recovery
+cx context                            # Context recovery
 cx map                                # Project skeleton
-cx rank --keystones --top 10          # Critical entities
+cx find --important --top 10          # Critical entities
 ```
 
 ### Pattern 2: Before Starting a Task
@@ -140,7 +142,7 @@ cx safe --coverage --keystones-only   # Check for undertested code
 ```bash
 cx find UserService                   # Discover entity
 cx show UserService                   # Details + dependencies
-cx near UserService --depth 2         # Neighborhood exploration
+cx show UserService --related --depth 2   # Neighborhood exploration
 ```
 
 ### Pattern 5: Smart Testing
@@ -171,10 +173,10 @@ cx guard --fail-on-warnings           # Strict mode
 ### Pattern 8: Tagging Important Code
 ```bash
 # Tag critical entities for quick access
-cx tag UserAuth critical security     # Tag authentication code
-cx tag PaymentService critical        # Tag payment code
-cx tags --find critical               # Find all critical entities
-cx show <entity>                      # Tags shown in output
+cx tag add UserAuth critical security     # Tag authentication code
+cx tag add PaymentService critical        # Tag payment code
+cx tag find critical                      # Find all critical entities
+cx show <entity>                          # Tags shown in output
 ```
 
 ## Supported Languages

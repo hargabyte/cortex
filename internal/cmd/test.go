@@ -160,11 +160,30 @@ and showing 'tested_by' in 'cx show --coverage'.`,
 	RunE: runTestCoverageImport,
 }
 
+// testImpactCmd shows coverage impact analysis for a file or entity
+var testImpactCmd = &cobra.Command{
+	Use:   "impact [file-or-entity]",
+	Short: "Show test coverage impact analysis",
+	Long: `Show test coverage analysis for all entities in a file or a specific entity.
+
+This command analyzes coverage data to show:
+  - Coverage percentage per entity
+  - Which tests cover each entity
+  - Recommendations for testing based on importance
+
+Examples:
+  cx test impact internal/auth/jwt.go    # Coverage for all entities in file
+  cx test impact ValidateToken           # Coverage for specific entity
+  cx test impact --uncovered             # List all uncovered entities`,
+	RunE: runTestImpact,
+}
+
 var (
 	// Test selection flags
 	testDiff          bool
 	testCommit        string
 	testFile          string
+	testAffected      string // Entity name/ID to find tests for
 	testDepth         int
 	testOutputCommand bool
 	testRun           bool
@@ -183,6 +202,9 @@ var (
 	testDiscoverLanguage string
 	testListLanguage     string
 	testListForEntity    string
+
+	// Test impact flags
+	testImpactUncovered bool
 )
 
 func init() {
@@ -192,6 +214,7 @@ func init() {
 	testCmd.Flags().BoolVar(&testDiff, "diff", false, "Use git diff HEAD to find changed files")
 	testCmd.Flags().StringVar(&testCommit, "commit", "", "Use specific commit to find changed files")
 	testCmd.Flags().StringVar(&testFile, "file", "", "Specify a file path directly")
+	testCmd.Flags().StringVar(&testAffected, "affected", "", "Find tests covering a specific entity")
 	testCmd.Flags().IntVar(&testDepth, "depth", 2, "Depth for indirect test discovery")
 	testCmd.Flags().BoolVar(&testOutputCommand, "output-command", false, "Only output the go test command")
 	testCmd.Flags().BoolVar(&testRun, "run", false, "Actually run the selected tests")
@@ -218,6 +241,10 @@ func init() {
 	testCmd.AddCommand(testListCmd)
 	testListCmd.Flags().StringVar(&testListLanguage, "language", "", "Filter by language")
 	testListCmd.Flags().StringVar(&testListForEntity, "for-entity", "", "Show tests covering this entity ID")
+
+	// Add impact subcommand
+	testCmd.AddCommand(testImpactCmd)
+	testImpactCmd.Flags().BoolVar(&testImpactUncovered, "uncovered", false, "List all uncovered entities")
 }
 
 func runTest(cmd *cobra.Command, args []string) error {
@@ -229,6 +256,11 @@ func runTest(cmd *cobra.Command, args []string) error {
 	// Handle --gaps flag (show coverage gaps)
 	if testShowGaps {
 		return runTestGaps(cmd)
+	}
+
+	// Handle --affected flag (find tests for specific entity)
+	if testAffected != "" {
+		return runTestAffected(cmd, testAffected)
 	}
 
 	// Otherwise, run smart test selection
@@ -1416,4 +1448,238 @@ type TestListItem struct {
 type TestsForEntityOutput struct {
 	EntityID string         `yaml:"entity_id" json:"entity_id"`
 	Tests    []TestListItem `yaml:"tests" json:"tests"`
+}
+
+// runTestAffected finds tests that cover a specific entity
+func runTestAffected(cmd *cobra.Command, entityQuery string) error {
+	// Open store
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx scan' first")
+	}
+
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	// Resolve entity by name or ID
+	entity, err := resolveEntity(storeDB, entityQuery)
+	if err != nil {
+		return fmt.Errorf("failed to resolve entity '%s': %w", entityQuery, err)
+	}
+
+	// Get tests covering this entity
+	tests, err := coverage.GetTestsForEntity(storeDB, entity.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get tests: %w", err)
+	}
+
+	// Build output
+	result := &TestAffectedOutput{
+		Entity: TestAffectedEntity{
+			ID:       entity.ID,
+			Name:     entity.Name,
+			Type:     entity.EntityType,
+			FilePath: entity.FilePath,
+		},
+		Tests:      make([]TestAffectedTest, 0, len(tests)),
+		TotalTests: len(tests),
+	}
+
+	for _, t := range tests {
+		result.Tests = append(result.Tests, TestAffectedTest{
+			Name:     t.TestName,
+			FilePath: t.TestFile,
+		})
+	}
+
+	// Get coverage info
+	cov, err := coverage.GetEntityCoverage(storeDB, entity.ID)
+	if err == nil && cov != nil {
+		result.Entity.Coverage = cov.CoveragePercent
+	}
+
+	// If --run flag is set, run the tests
+	if testRun && len(tests) > 0 {
+		return runTestsForAffected(result.Tests)
+	}
+
+	// If --output-command flag is set, just print the command
+	if testOutputCommand && len(tests) > 0 {
+		cmd := buildGoTestCommand(result.Tests)
+		fmt.Println(cmd)
+		return nil
+	}
+
+	// Format and output
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), result, output.DensityMedium)
+}
+
+// TestAffectedOutput represents the output of --affected command
+type TestAffectedOutput struct {
+	Entity     TestAffectedEntity `yaml:"entity" json:"entity"`
+	Tests      []TestAffectedTest `yaml:"tests" json:"tests"`
+	TotalTests int                `yaml:"total_tests" json:"total_tests"`
+}
+
+// TestAffectedEntity represents the target entity
+type TestAffectedEntity struct {
+	ID       string  `yaml:"id" json:"id"`
+	Name     string  `yaml:"name" json:"name"`
+	Type     string  `yaml:"type" json:"type"`
+	FilePath string  `yaml:"file_path" json:"file_path"`
+	Coverage float64 `yaml:"coverage,omitempty" json:"coverage,omitempty"`
+}
+
+// TestAffectedTest represents a test covering the entity
+type TestAffectedTest struct {
+	Name     string `yaml:"name" json:"name"`
+	FilePath string `yaml:"file_path" json:"file_path"`
+}
+
+// runTestsForAffected runs the tests found for an entity
+func runTestsForAffected(tests []TestAffectedTest) error {
+	if len(tests) == 0 {
+		fmt.Println("No tests to run")
+		return nil
+	}
+
+	cmd := buildGoTestCommand(tests)
+	fmt.Fprintf(os.Stderr, "Running: %s\n", cmd)
+
+	// Execute the test command
+	execCmd := exec.Command("sh", "-c", cmd)
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+	return execCmd.Run()
+}
+
+// buildGoTestCommand builds a go test command from test list
+func buildGoTestCommand(tests []TestAffectedTest) string {
+	// Collect unique test names
+	testNames := make([]string, 0, len(tests))
+	for _, t := range tests {
+		testNames = append(testNames, t.Name)
+	}
+
+	// Build -run regex
+	runRegex := "^(" + strings.Join(testNames, "|") + ")$"
+	return fmt.Sprintf("go test -v -run '%s' ./...", runRegex)
+}
+
+// runTestImpact shows coverage impact analysis for a file or entity
+func runTestImpact(cmd *cobra.Command, args []string) error {
+	// Open store
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx scan' first")
+	}
+
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	// Load config
+	cfg, err := config.Load(".")
+	if err != nil {
+		cfg = config.DefaultConfig()
+	}
+
+	// Handle --uncovered flag
+	if testImpactUncovered {
+		return runTestImpactUncovered(cmd, storeDB, cfg)
+	}
+
+	// Require a target argument
+	if len(args) == 0 {
+		return fmt.Errorf("usage: cx test impact <file-or-entity> or cx test impact --uncovered")
+	}
+
+	target := args[0]
+
+	// Analyze impact for the target
+	analysis, err := coverage.AnalyzeImpact(storeDB, target, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to analyze impact: %w", err)
+	}
+
+	// Format and output
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), analysis, output.DensityMedium)
+}
+
+// runTestImpactUncovered lists all uncovered entities
+func runTestImpactUncovered(cmd *cobra.Command, storeDB *store.Store, cfg *config.Config) error {
+	uncovered, err := coverage.GetUncoveredEntities(storeDB, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to get uncovered entities: %w", err)
+	}
+
+	// Format and output
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), uncovered, output.DensityMedium)
+}
+
+// resolveEntity resolves an entity by name or ID
+func resolveEntity(storeDB *store.Store, query string) (*store.Entity, error) {
+	// First try exact ID match
+	entity, err := storeDB.GetEntity(query)
+	if err == nil && entity != nil {
+		return entity, nil
+	}
+
+	// Try name search
+	entities, err := storeDB.QueryEntities(store.EntityFilter{
+		Status: "active",
+		Name:   query,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Find exact name match
+	for _, e := range entities {
+		if e.Name == query {
+			return e, nil
+		}
+	}
+
+	// Return first prefix match if any
+	if len(entities) > 0 {
+		return entities[0], nil
+	}
+
+	return nil, fmt.Errorf("entity not found: %s", query)
 }
