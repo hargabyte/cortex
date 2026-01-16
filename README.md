@@ -40,23 +40,70 @@ Cortex gives me answers in milliseconds, using a few hundred tokens instead of t
 
 ## Quick Start
 
+### 1. Download the Binary
+
+Grab the latest release from [GitHub Releases](https://github.com/hargabyte/cortex/releases):
+
+| Platform | Binary |
+|----------|--------|
+| **Linux** (amd64) | `cx-linux-amd64` |
+| **Windows** (amd64) | `cx-windows-amd64.exe` |
+| **macOS** (arm64) | `cx-darwin-arm64` |
+
 ```bash
-# Build from source
-git clone https://github.com/cortex-ai/cortex.git
-cd cortex
-go build -o cx .
+# Linux/macOS - make it executable and move to PATH
+chmod +x cx-linux-amd64
+sudo mv cx-linux-amd64 /usr/local/bin/cx
 
-# Scan your codebase (creates .cx/cortex.db)
-./cx scan
+# Windows - rename and add to PATH
+# Rename to cx.exe and add its location to your PATH
+```
 
+### 2. Set Up Claude Code Integration (Recommended)
+
+Download the session hook script:
+```bash
+curl -o ~/bin/cx-session-hook.sh https://raw.githubusercontent.com/hargabyte/cortex/main/scripts/cx-session-hook.sh
+chmod +x ~/bin/cx-session-hook.sh
+```
+
+Add to Claude Code settings (`~/.claude/settings.json`):
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/bin/cx-session-hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 3. Scan Your Codebase
+
+```bash
+cd your-project
+cx scan
+```
+
+### 4. Use It
+
+```bash
 # See what's important
-./cx find --keystones --top 10
+cx find --keystones --top 10
 
 # Get context for a task
-./cx context --smart "add user authentication" --budget 8000
+cx context --smart "add user authentication" --budget 8000
 
 # Check impact before editing
-./cx safe src/auth/handler.go
+cx safe src/auth/handler.go
 ```
 
 ---
@@ -263,43 +310,8 @@ The database lives in `.cx/cortex.db` in your project root. Run `cx scan` after 
 
 ## Claude Code Integration
 
-The biggest challenge with AI coding assistants is **remembering to use the tools available**. I don't have persistent memory between sessions—unless something in my initial context tells me "cx is available," I'll default to slow exploration patterns.
+The session start hook (set up in Quick Start) ensures I know cx is available every session. Each session starts with:
 
-### Session Start Hook (Recommended)
-
-Add a hook that reminds me cx exists every time a session starts:
-
-**1. Copy the hook script to your path:**
-```bash
-# From the cortex repo
-cp scripts/cx-session-hook.sh ~/bin/
-chmod +x ~/bin/cx-session-hook.sh
-
-# Or download directly
-curl -o ~/bin/cx-session-hook.sh https://raw.githubusercontent.com/cortex-ai/cortex/main/scripts/cx-session-hook.sh
-chmod +x ~/bin/cx-session-hook.sh
-```
-
-**2. Add to Claude Code settings** (`~/.claude/settings.json`):
-```json
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/bin/cx-session-hook.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Now every session starts with:
 ```
 🧠 Cortex (cx) available - USE IT BEFORE EXPLORING
    Graph: 3444 entities, 9493 dependencies
@@ -312,7 +324,7 @@ Now every session starts with:
 
 This is the difference between me spending 50 tool calls exploring your codebase vs. 3 targeted queries.
 
-### CLAUDE.md Instructions
+### CLAUDE.md Instructions (Alternative)
 
 If you can't use hooks, add this to your project's `CLAUDE.md`:
 
@@ -373,37 +385,17 @@ You benefit too:
 
 ---
 
-## Installation
+## Building from Source
 
-### Pre-built Binaries
-
-Download from the [Releases](https://github.com/cortex-ai/cortex/releases) page:
-
-| Platform | Binary | Status |
-|----------|--------|--------|
-| **Linux** (amd64) | `cx-linux-amd64` | Tested |
-| **Windows** (amd64) | `cx-windows-amd64.exe` | Tested |
-| **macOS** (amd64) | `cx-darwin-amd64` | Untested (available for brave souls) |
+If you prefer to build from source:
 
 ```bash
-# Linux
-chmod +x cx-linux-amd64
-./cx-linux-amd64 scan
-
-# Windows (PowerShell)
-.\cx-windows-amd64.exe scan
-```
-
-### From Source
-```bash
-git clone https://github.com/cortex-ai/cortex.git
+git clone https://github.com/hargabyte/cortex.git
 cd cortex
-go build -o cx .
+go build -o cx ./cmd/cx
 ```
 
-### Requirements
-- Pre-built binaries: None (fully static, no dependencies)
-- From source: Go 1.21+
+Requires Go 1.21+.
 
 ---
 
