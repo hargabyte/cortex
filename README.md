@@ -77,13 +77,19 @@ Invoke-WebRequest -Uri "https://github.com/hargabyte/cortex/releases/latest/down
 
 ### 2. Set Up Claude Code Integration (Recommended)
 
-Download the session hook script:
+**Ask Claude to do it:**
+> Set up the cx session hook for Claude Code - download cx-session-hook.sh from github.com/hargabyte/cortex/main/scripts/ to ~/bin/, make it executable, and add a SessionStart hook to ~/.claude/settings.json that runs it.
+
+Or do it manually:
+
+1. Download the session hook script:
 ```bash
+mkdir -p ~/bin
 curl -o ~/bin/cx-session-hook.sh https://raw.githubusercontent.com/hargabyte/cortex/main/scripts/cx-session-hook.sh
 chmod +x ~/bin/cx-session-hook.sh
 ```
 
-Add to Claude Code settings (`~/.claude/settings.json`):
+2. Add to Claude Code settings (`~/.claude/settings.json`):
 ```json
 {
   "hooks": {
