@@ -42,7 +42,10 @@ Cortex gives me answers in milliseconds, using a few hundred tokens instead of t
 
 ### 1. Download the Binary
 
-Grab the latest release from [GitHub Releases](https://github.com/hargabyte/cortex/releases):
+**Ask Claude to do it:**
+> Install cx from github.com/hargabyte/cortex - download the latest release binary for my platform, rename it to cx, make it executable, and move it to my PATH.
+
+Or do it manually - grab the latest release from [GitHub Releases](https://github.com/hargabyte/cortex/releases):
 
 | Platform | Binary | Status |
 |----------|--------|--------|
