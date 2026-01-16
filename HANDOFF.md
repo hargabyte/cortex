@@ -1,92 +1,94 @@
-# Session Handoff: CX Auto-Exclude Implementation
+# Session Handoff: CX Auto-Exclude Nested Projects
 
 **Date:** 2026-01-16
-**Last Session:** Implemented cortex-z49.7 auto-exclude feature
+**Last Session:** Created cortex-z49.8 for nested project detection
 **Branch:** master
 
-## Completed: cortex-z49.7 - Auto-exclude dependency directories (Phase 1)
+## Current Task: cortex-z49.8 - Auto-exclude nested project directories
 
-### What Was Implemented
+### Problem
 
-Automatic exclusion of dependency directories during `cx scan` with 100% confidence detection.
+Auto-exclude only checks root directory for marker files. Nested subprojects aren't detected:
 
-**Detection Rules:**
-
-| Language | Exclude | Condition |
-|----------|---------|-----------|
-| Rust | `target/` | `Cargo.toml` exists AND `target/` exists |
-| Go | `vendor/` | `vendor/modules.txt` exists |
-| Python | Any dir with `pyvenv.cfg` | Scans all top-level dirs |
-| PHP | `vendor/` | `vendor/autoload.php` exists |
-| Node/TS | `node_modules/` | `package.json` exists AND `node_modules/` exists |
-
-**Behavior:**
-- Silent by default (just excludes)
-- `--verbose` / `-v`: prints what was auto-excluded
-- `--no-auto-exclude`: disables this feature entirely
-
-### Files Changed
-
-1. **`internal/exclude/autoexclude.go`** (new) - Detection logic
-   - `DetectAutoExcludes(projectRoot)` returns directories and reasons
-   - Scans top-level directories for Python venvs (not just hardcoded names)
-   - Handles Go+PHP monorepo (vendor/ only added once)
-
-2. **`internal/exclude/autoexclude_test.go`** (new) - Test coverage
-   - Tests for all 5 ecosystems
-   - Edge cases: no target dir, no node_modules, Go+PHP combo
-
-3. **`internal/cmd/scan.go`** - Integration
-   - Added `scanNoAutoExclude` flag variable
-   - Registered `--no-auto-exclude` flag in `init()`
-   - Integrated auto-exclude after exclude merge (lines 127-138)
-   - Updated help text with auto-exclude documentation
-
-### Testing Done
-
-- Tested with test repos from `~/cortex-test-repos/`:
-  - TypeScript (ts-simple) - node_modules detected
-  - Rust (rust-structure) - target detected
-  - PHP (php-laravel-quickstart) - vendor detected
-  - Go (with vendor/modules.txt) - vendor detected
-  - Python (python-mini) - custom venv detected
-- Verified `--no-auto-exclude` disables feature
-- Verified silent without `-v`
-- All unit tests pass
-
-### Binary Updated
-
-```bash
-cp dist/cx ~/.local/bin/cx
+```
+project/
+  Cargo.toml           ← detected (root)
+  target/              ← excluded (works)
+  tools/
+    svg-generator/
+      src-tauri/
+        Cargo.toml     ← NOT detected (nested)
+        target/        ← NOT excluded (bug)
 ```
 
-## What's NOT in Phase 1 (deferred)
+### Solution
 
-- Ruby `vendor/bundle` (needs `.bundle/config` parsing)
-- C/C++ vcpkg/conan (not 100% confidence)
-- Java/Kotlin `target/`/`build/` (could be user directories)
-- Generated file header scanning
-- Minification detection
-- `.cxignore` file support
-- `cx suggest-ignore` command
+Recursively detect marker files at any depth. When found, exclude their sibling dependency directory.
 
-## Next Steps
+**Detection rules (same as Phase 1, but recursive):**
 
-Close the bead and sync:
+| Marker File | Exclude Sibling |
+|-------------|-----------------|
+| `Cargo.toml` | `target/` |
+| `package.json` | `node_modules/` |
+| `go.mod` + `vendor/modules.txt` | `vendor/` |
+| `composer.json` + `vendor/autoload.php` | `vendor/` |
+| `pyvenv.cfg` | parent directory |
+
+### Implementation Approach
+
+Modify `internal/exclude/autoexclude.go`:
+
+1. Walk the directory tree looking for marker files
+2. When a marker is found, check if sibling dependency dir exists
+3. Add to exclude list with path relative to project root
+4. Skip already-excluded directories during walk (optimization)
+
+### Files to Modify
+
+- `internal/exclude/autoexclude.go` - Add recursive `filepath.WalkDir`
+- `internal/exclude/autoexclude_test.go` - Add nested project test cases
+
+### Out of Scope
+
+User's other complaints are Phase 2+ (need `.cxignore`):
+- `tabby-analysis/` - no marker file
+- `backup/` - no marker file
+- `src-tauri/gen/` - generated code detection
+
+## Previous Work (cortex-z49.7) - COMPLETE
+
+Phase 1 auto-exclude implemented:
+- `internal/exclude/autoexclude.go` - root-level detection
+- `internal/exclude/autoexclude_test.go` - tests
+- `internal/cmd/scan.go` - integration with `--no-auto-exclude` flag
+
+## Quick Start
 
 ```bash
-bd close cortex-z49.7 --reason "Implemented auto-exclude for Rust, Go, Python, PHP, Node with --no-auto-exclude flag and verbose output"
+# Context recovery
+cx prime
+bd show cortex-z49.8
+
+# Look at current implementation
+cat internal/exclude/autoexclude.go
+
+# Implement recursive detection
+# 1. Replace root-only checks with filepath.WalkDir
+# 2. Collect marker files at any depth
+# 3. Add sibling dependency dirs to exclude list
+# 4. Add tests for nested projects
+
+# Test
+go test ./internal/exclude/...
+
+# When done
+bd close cortex-z49.8 --reason "Added recursive detection for nested project directories"
 bd sync
 git add .
-git commit -m "feat(scan): auto-exclude dependency directories (cortex-z49.7)"
+git commit -m "fix(scan): auto-exclude nested project directories (cortex-z49.8)"
 git push
 ```
-
-## Related Beads
-
-- **cortex-z49:** Smart .cxignore suggestion system (parent feature)
-- **cortex-z49.1-6:** Other subtasks (deferred - .cxignore parsing, heuristics, etc.)
-- **cortex-z49.7:** This task - COMPLETE
 
 ## Research Reference
 
