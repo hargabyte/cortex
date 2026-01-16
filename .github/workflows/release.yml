@@ -57,6 +57,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 1
           CC: ${{ matrix.goos == 'linux' && matrix.goarch == 'arm64' && 'aarch64-linux-gnu-gcc' || '' }}
+        shell: bash
         run: |
           VERSION=${GITHUB_REF_NAME}
           go build -ldflags="-s -w -X github.com/anthropics/cx/internal/cmd.Version=${VERSION}" -o ${{ matrix.artifact }} ./cmd/cx
