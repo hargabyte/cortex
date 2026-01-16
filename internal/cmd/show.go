@@ -334,6 +334,16 @@ func runShowDefault(cmd *cobra.Command, entity *store.Entity, storeDB *store.Sto
 		}
 	}
 
+	// Add tags for the entity
+	tags, err := storeDB.GetTags(entityID)
+	if err == nil && len(tags) > 0 {
+		tagNames := make([]string, len(tags))
+		for i, t := range tags {
+			tagNames[i] = t.Tag
+		}
+		entityOut.Tags = tagNames
+	}
+
 	// Wrap in a map with entity name as key
 	result := map[string]*output.EntityOutput{
 		entity.Name: entityOut,

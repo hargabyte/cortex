@@ -55,6 +55,9 @@ type EntityOutput struct {
 
 	// Coverage contains test coverage information (when --coverage flag is used)
 	Coverage *Coverage `yaml:"coverage,omitempty" json:"coverage,omitempty"`
+
+	// Tags contains entity tags/bookmarks
+	Tags []string `yaml:"tags,omitempty" json:"tags,omitempty"`
 }
 
 // Dependencies represents entity relationships and edges.
@@ -381,4 +384,73 @@ type NeighborEntity struct {
 
 	// Depth is the hop distance from center (for multi-hop traversal)
 	Depth int `yaml:"depth,omitempty" json:"depth,omitempty"`
+}
+
+// TraceOutput represents call chain trace results for cx trace.
+type TraceOutput struct {
+	// Trace contains metadata about the trace query
+	Trace *TraceMetadata `yaml:"trace" json:"trace"`
+
+	// Path contains the shortest path between entities (if found)
+	Path []*TracePathNode `yaml:"path,omitempty" json:"path,omitempty"`
+
+	// AllPaths contains all paths found (when --all is specified)
+	AllPaths []TracePathList `yaml:"all_paths,omitempty" json:"all_paths,omitempty"`
+
+	// Callers contains upstream caller chains (when --callers is specified)
+	Callers []*TracePathNode `yaml:"callers,omitempty" json:"callers,omitempty"`
+
+	// Callees contains downstream callee chains (when --callees is specified)
+	Callees []*TracePathNode `yaml:"callees,omitempty" json:"callees,omitempty"`
+}
+
+// TraceMetadata contains metadata about a trace query.
+type TraceMetadata struct {
+	// From is the starting entity name
+	From string `yaml:"from,omitempty" json:"from,omitempty"`
+
+	// To is the ending entity name
+	To string `yaml:"to,omitempty" json:"to,omitempty"`
+
+	// Target is the entity being traced (for --callers/--callees)
+	Target string `yaml:"target,omitempty" json:"target,omitempty"`
+
+	// Mode is the trace mode: path, callers, or callees
+	Mode string `yaml:"mode" json:"mode"`
+
+	// Depth is the maximum trace depth
+	Depth int `yaml:"depth" json:"depth"`
+
+	// PathFound indicates whether a path was found between entities
+	PathFound bool `yaml:"path_found,omitempty" json:"path_found,omitempty"`
+
+	// PathCount is the number of paths found (for --all)
+	PathCount int `yaml:"path_count,omitempty" json:"path_count,omitempty"`
+}
+
+// TracePathNode represents a node in a trace path.
+type TracePathNode struct {
+	// Name is the entity name
+	Name string `yaml:"name" json:"name"`
+
+	// Type is the entity type
+	Type string `yaml:"type" json:"type"`
+
+	// Location is the file:line-line location
+	Location string `yaml:"location" json:"location"`
+
+	// Signature is the function signature (optional)
+	Signature string `yaml:"signature,omitempty" json:"signature,omitempty"`
+
+	// Depth is the hop distance from the starting entity
+	Depth int `yaml:"depth,omitempty" json:"depth,omitempty"`
+}
+
+// TracePathList represents a single path in the all_paths list.
+type TracePathList struct {
+	// Length is the number of hops in this path
+	Length int `yaml:"length" json:"length"`
+
+	// Nodes contains the entities in this path
+	Nodes []string `yaml:"nodes" json:"nodes"`
 }

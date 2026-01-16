@@ -64,6 +64,22 @@ Run `cx help-agents` for a concise agent-optimized reference.
 > - ✅ `"rate limiting API"` or `"auth validation"`
 > - ❌ `"implement rate limiting for the API endpoints"`
 
+### Entity Tagging Commands
+
+| Command | Purpose | Key Flags |
+|---------|---------|-----------|
+| `cx tag <entity> <tags...>` | Add tags to entity | `-n "note"` |
+| `cx untag <entity> <tag>` | Remove tag | |
+| `cx tags [entity]` | List tags | `--find <tag>`, `--all`, `--any` |
+
+```bash
+# Examples
+cx tag LoginUser important auth       # Tag entity
+cx tags --find important              # Find tagged entities
+cx tags --find auth --find api --all  # Entities with ALL tags
+cx tags --find auth --find api --any  # Entities with ANY tag
+```
+
 ### Maintenance Commands
 
 | Command | Purpose | Key Flags |
@@ -72,6 +88,7 @@ Run `cx help-agents` for a concise agent-optimized reference.
 | `cx scan` | Rescan codebase | `--force`, `--lang`, `--exclude` |
 | `cx doctor` | Health check | `--fix` |
 | `cx db info` | Database statistics | |
+| `cx status` | Daemon/graph status | |
 | `cx reset` | Reset database | `--scan-only`, `--hard`, `--force` |
 | `cx link` | Link to beads/issues | `--list`, `--remove` |
 
@@ -149,6 +166,15 @@ chmod +x .git/hooks/pre-commit
 cx guard                              # Check staged files
 cx guard --all                        # Check all modified files
 cx guard --fail-on-warnings           # Strict mode
+```
+
+### Pattern 8: Tagging Important Code
+```bash
+# Tag critical entities for quick access
+cx tag UserAuth critical security     # Tag authentication code
+cx tag PaymentService critical        # Tag payment code
+cx tags --find critical               # Find all critical entities
+cx show <entity>                      # Tags shown in output
 ```
 
 ## Supported Languages

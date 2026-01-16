@@ -77,6 +77,7 @@ cx find --keystones --top 10          # What's critical in this codebase?
 | I need to understand dependencies | ` + "`cx show <entity> --graph`" + ` visualizes them |
 | I'm wasting tokens exploring | ` + "`cx map`" + ` gives project overview in ~10k tokens |
 | I need to find specific code | ` + "`cx find <name>`" + ` or ` + "`cx find \"concept\"`" + ` |
+| I need to bookmark critical code | ` + "`cx tag <entity> critical`" + ` for later reference |
 
 ---
 
@@ -320,6 +321,32 @@ cx serve --list-tools         # Available tools
 
 ---
 
+## cx tag / cx tags
+**Tag entities** for organization and quick access.
+
+` + "```bash" + `
+cx tag <entity> <tags...>             # Add tags
+cx tag UserAuth critical auth         # Multiple tags
+cx tag LoginUser -n "needs review"    # Tag with note
+cx untag <entity> <tag>               # Remove tag
+cx tags <entity>                      # List tags for entity
+cx tags                               # All tags with counts
+cx tags --find critical               # Find entities by tag
+cx tags --find auth --find api --all  # ALL tags (AND)
+cx tags --find auth --find api --any  # ANY tag (OR)
+` + "```" + `
+
+---
+
+## cx status
+**Graph and daemon status.**
+
+` + "```bash" + `
+cx status                             # Database statistics (alias: cx db info)
+` + "```" + `
+
+---
+
 ## cx link
 **Link code to external systems** (beads, github, jira).
 
@@ -393,6 +420,11 @@ func generateAgentReferenceJSON() string {
       "purpose": "Project skeleton in ~10k tokens",
       "usage": "cx map",
       "flags": ["--filter F|T|M", "--lang"]
+    },
+    "tag": {
+      "purpose": "Tag entities for organization and quick access",
+      "usage": "cx tag <entity> <tags...>",
+      "examples": ["cx tag UserAuth critical", "cx tags --find critical"]
     }
   },
   "workflow": {

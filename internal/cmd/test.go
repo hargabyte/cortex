@@ -174,6 +174,7 @@ var (
 	testShowCoverage  bool
 	testKeystonesOnly bool
 	testThreshold     int
+	testByPriority    bool
 
 	// Coverage import flags
 	testCoverageBasePath string
@@ -200,6 +201,7 @@ func init() {
 	testCmd.Flags().BoolVar(&testShowCoverage, "coverage", false, "Show coverage summary")
 	testCmd.Flags().BoolVar(&testKeystonesOnly, "keystones-only", false, "With --gaps: only show keystones")
 	testCmd.Flags().IntVar(&testThreshold, "threshold", 75, "With --gaps: coverage threshold percentage")
+	testCmd.Flags().BoolVar(&testByPriority, "by-priority", false, "With --gaps: group output by priority tier")
 
 	// Add coverage subcommand
 	testCmd.AddCommand(testCoverageCmd)

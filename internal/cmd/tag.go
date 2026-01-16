@@ -11,6 +11,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TagExport represents the export format for tags
+type TagExport struct {
+	Tags []ExportedTag `yaml:"tags" json:"tags"`
+}
+
+// ExportedTag represents a single exported tag
+type ExportedTag struct {
+	EntityID   string `yaml:"entity_id" json:"entity_id"`
+	EntityName string `yaml:"entity_name,omitempty" json:"entity_name,omitempty"`
+	Tag        string `yaml:"tag" json:"tag"`
+	Note       string `yaml:"note,omitempty" json:"note,omitempty"`
+}
+
 // tagCmd is the main tag command
 var tagCmd = &cobra.Command{
 	Use:   "tag <entity> <tag...>",

@@ -67,13 +67,13 @@ type ExcludedEntity struct {
 
 // SmartContextResult contains the assembled smart context.
 type SmartContextResult struct {
-	Intent       *Intent                     `yaml:"intent" json:"intent"`
-	EntryPoints  []*EntryPoint               `yaml:"entry_points" json:"entry_points"`
-	Relevant     []*RelevantEntity           `yaml:"relevant_entities" json:"relevant_entities"`
-	Excluded     []*ExcludedEntity           `yaml:"excluded,omitempty" json:"excluded,omitempty"`
-	TokensUsed   int                         `yaml:"tokens_used" json:"tokens_used"`
-	TokensBudget int                         `yaml:"tokens_budget" json:"tokens_budget"`
-	Warnings     []string                    `yaml:"warnings,omitempty" json:"warnings,omitempty"`
+	Intent       *Intent           `yaml:"intent" json:"intent"`
+	EntryPoints  []*EntryPoint     `yaml:"entry_points" json:"entry_points"`
+	Relevant     []*RelevantEntity `yaml:"relevant_entities" json:"relevant_entities"`
+	Excluded     []*ExcludedEntity `yaml:"excluded,omitempty" json:"excluded,omitempty"`
+	TokensUsed   int               `yaml:"tokens_used" json:"tokens_used"`
+	TokensBudget int               `yaml:"tokens_budget" json:"tokens_budget"`
+	Warnings     []string          `yaml:"warnings,omitempty" json:"warnings,omitempty"`
 }
 
 // SmartContextOptions configures the smart context assembly.
@@ -83,6 +83,18 @@ type SmartContextOptions struct {
 	Depth           int     // Max hops from entry points (default: 2)
 	SearchLimit     int     // Max search results for entry points (default: 20)
 	KeystoneBoost   float64 // Multiplier for keystone entities (default: 2.0)
+	TagBoost        float64 // Multiplier for tagged entities (default: 1.5)
+}
+
+// boostTags defines tags that increase relevance in smart context
+var boostTags = map[string]float64{
+	"important":   1.8, // User-marked as important
+	"keystone":    1.8, // User-marked as keystone
+	"core":        1.5, // Core functionality
+	"critical":    1.5, // Critical code
+	"entry-point": 1.4, // Entry point
+	"api":         1.3, // API surface
+	"public":      1.2, // Public interface
 }
 
 // DefaultSmartContextOptions returns default options.
@@ -92,6 +104,7 @@ func DefaultSmartContextOptions() SmartContextOptions {
 		Depth:         2,
 		SearchLimit:   20,
 		KeystoneBoost: 2.0,
+		TagBoost:      1.5,
 	}
 }
 
@@ -115,6 +128,9 @@ func NewSmartContext(s *store.Store, g *graph.Graph, opts SmartContextOptions) *
 	}
 	if opts.KeystoneBoost <= 0 {
 		opts.KeystoneBoost = 2.0
+	}
+	if opts.TagBoost <= 0 {
+		opts.TagBoost = 1.5
 	}
 
 	return &SmartContext{
@@ -183,32 +199,32 @@ func ExtractIntent(description string) *Intent {
 func detectActionPattern(desc string) (verb string, pattern string) {
 	// Common action verbs and their patterns
 	patterns := map[string]string{
-		"add":        "add_feature",
-		"implement":  "add_feature",
-		"create":     "add_feature",
-		"build":      "add_feature",
-		"fix":        "fix_bug",
-		"repair":     "fix_bug",
-		"debug":      "fix_bug",
-		"resolve":    "fix_bug",
-		"update":     "modify",
-		"change":     "modify",
-		"modify":     "modify",
-		"edit":       "modify",
-		"refactor":   "refactor",
+		"add":         "add_feature",
+		"implement":   "add_feature",
+		"create":      "add_feature",
+		"build":       "add_feature",
+		"fix":         "fix_bug",
+		"repair":      "fix_bug",
+		"debug":       "fix_bug",
+		"resolve":     "fix_bug",
+		"update":      "modify",
+		"change":      "modify",
+		"modify":      "modify",
+		"edit":        "modify",
+		"refactor":    "refactor",
 		"restructure": "refactor",
-		"reorganize": "refactor",
-		"clean":      "refactor",
-		"optimize":   "optimize",
-		"improve":    "optimize",
-		"speed":      "optimize",
+		"reorganize":  "refactor",
+		"clean":       "refactor",
+		"optimize":    "optimize",
+		"improve":     "optimize",
+		"speed":       "optimize",
 		"performance": "optimize",
-		"remove":     "remove",
-		"delete":     "remove",
-		"deprecate":  "remove",
-		"test":       "test",
-		"verify":     "test",
-		"document":   "document",
+		"remove":      "remove",
+		"delete":      "remove",
+		"deprecate":   "remove",
+		"test":        "test",
+		"verify":      "test",
+		"document":    "document",
 	}
 
 	words := strings.Fields(desc)
@@ -596,6 +612,16 @@ func (sc *SmartContext) traceFlow(entryPoints []*EntryPoint, intent *Intent) ([]
 		relevance := 1.0 / float64(item.hop+1)
 		if isKeystone {
 			relevance *= sc.options.KeystoneBoost
+		}
+
+		// Boost entities based on their tags
+		entityTags, _ := sc.store.GetTags(item.entityID)
+		for _, t := range entityTags {
+			tagLower := strings.ToLower(t.Tag)
+			if boost, hasBoost := boostTags[tagLower]; hasBoost {
+				relevance *= boost
+				break // Apply only the highest boost (tags are sorted, so first match wins)
+			}
 		}
 
 		// Boost entities that match identifier-like keywords (strong boost for names)

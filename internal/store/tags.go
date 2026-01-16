@@ -192,6 +192,48 @@ func (s *Store) CountUniqueTags() (int, error) {
 	return count, err
 }
 
+// EntityTagWithName includes entity name for export purposes
+type EntityTagWithName struct {
+	EntityID   string `json:"entity_id" yaml:"entity_id"`
+	EntityName string `json:"entity_name,omitempty" yaml:"entity_name,omitempty"`
+	Tag        string `json:"tag" yaml:"tag"`
+	Note       string `json:"note,omitempty" yaml:"note,omitempty"`
+	CreatedBy  string `json:"created_by,omitempty" yaml:"created_by,omitempty"`
+}
+
+// GetAllTagsWithEntity returns all tags with entity names for export.
+func (s *Store) GetAllTagsWithEntity() ([]*EntityTagWithName, error) {
+	rows, err := s.db.Query(`
+		SELECT t.entity_id, COALESCE(e.name, '') as entity_name, t.tag, t.note, t.created_by
+		FROM entity_tags t
+		LEFT JOIN entities e ON t.entity_id = e.id
+		ORDER BY t.entity_id, t.tag`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tags []*EntityTagWithName
+	for rows.Next() {
+		var t EntityTagWithName
+		var note, createdBy sql.NullString
+
+		if err := rows.Scan(&t.EntityID, &t.EntityName, &t.Tag, &note, &createdBy); err != nil {
+			return nil, err
+		}
+
+		if note.Valid {
+			t.Note = note.String
+		}
+		if createdBy.Valid {
+			t.CreatedBy = createdBy.String
+		}
+
+		tags = append(tags, &t)
+	}
+	return tags, rows.Err()
+}
+
 // scanEntities is a helper to scan entity rows into a slice.
 func scanEntities(rows *sql.Rows) ([]*Entity, error) {
 	var entities []*Entity

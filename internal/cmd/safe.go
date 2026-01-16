@@ -10,6 +10,7 @@ import (
 
 	"github.com/anthropics/cx/internal/config"
 	"github.com/anthropics/cx/internal/coverage"
+	"github.com/anthropics/cx/internal/diff"
 	"github.com/anthropics/cx/internal/extract"
 	"github.com/anthropics/cx/internal/graph"
 	"github.com/anthropics/cx/internal/integration"
@@ -97,6 +98,8 @@ var (
 	safeSemantic bool
 	// Impact-specific flags
 	safeImpactThreshold float64
+	// Inline drift flag
+	safeInline bool
 )
 
 func init() {
@@ -128,6 +131,9 @@ func init() {
 
 	// Impact-specific flags
 	safeCmd.Flags().Float64Var(&safeImpactThreshold, "impact-threshold", 0, "Min importance threshold for impact analysis")
+
+	// Inline drift flag
+	safeCmd.Flags().BoolVar(&safeInline, "inline", false, "Inline mode: quick drift check for a specific file")
 }
 
 // SafeOutput represents the safety check results
@@ -170,6 +176,7 @@ type safeEntity struct {
 	direct    bool
 	drifted   bool
 	driftType string
+	tags      []string // Entity tags for warning generation
 }
 
 func runSafe(cmd *cobra.Command, args []string) error {
@@ -184,10 +191,13 @@ func runSafe(cmd *cobra.Command, args []string) error {
 	if safeChanges {
 		modeCount++
 	}
+	if safeInline {
+		modeCount++
+	}
 
 	// Validate: only one mode flag at a time (quick is different - it's a modifier)
 	if modeCount > 1 {
-		return fmt.Errorf("only one of --coverage, --drift, or --changes can be specified")
+		return fmt.Errorf("only one of --coverage, --drift, --changes, or --inline can be specified")
 	}
 
 	// Route to the appropriate mode handler
@@ -200,10 +210,16 @@ func runSafe(cmd *cobra.Command, args []string) error {
 	if safeChanges {
 		return runSafeChanges(cmd, args)
 	}
+	if safeInline {
+		if len(args) == 0 {
+			return fmt.Errorf("target file required for --inline mode")
+		}
+		return runSafeInline(cmd, args[0])
+	}
 
 	// Default mode: full check or quick (impact-only) - requires a target
 	if len(args) == 0 {
-		return fmt.Errorf("target file or entity required (or use --coverage, --drift, or --changes)")
+		return fmt.Errorf("target file or entity required (or use --coverage, --drift, --changes, or --inline)")
 	}
 
 	target := args[0]
@@ -256,6 +272,9 @@ func runSafeFull(cmd *cobra.Command, target string) error {
 
 	// === PHASE 2: Coverage Gap Detection ===
 	enrichWithCoverageSafe(affected, storeDB)
+
+	// === PHASE 2.5: Tag Enrichment ===
+	enrichWithTagsSafe(affected, storeDB)
 
 	// === PHASE 3: Drift Detection ===
 	baseDir, _ := os.Getwd()
@@ -993,6 +1012,61 @@ func runSafeDrift(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// runSafeInline performs inline drift detection for a specific file
+// This compares the current file content with the indexed version without a full scan
+func runSafeInline(cmd *cobra.Command, target string) error {
+	// Find .cx directory
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx init && cx scan' first")
+	}
+	projectRoot := filepath.Dir(cxDir)
+
+	// Open store
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	// Create inline drift analyzer
+	analyzer := diff.NewInlineDriftAnalyzer(storeDB, projectRoot)
+
+	// Analyze the target file
+	report, err := analyzer.AnalyzeFile(target)
+	if err != nil {
+		return fmt.Errorf("failed to analyze file: %w", err)
+	}
+
+	// Format output
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	density, err := output.ParseDensity(outputDensity)
+	if err != nil {
+		return fmt.Errorf("invalid density: %w", err)
+	}
+
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	if err := formatter.FormatToWriter(cmd.OutOrStdout(), report, density); err != nil {
+		return fmt.Errorf("failed to format output: %w", err)
+	}
+
+	// Exit with error if strict mode and drift detected
+	if safeStrict && report.Summary.Status == "drifted" {
+		return fmt.Errorf("drift detected: %d signature changes, %d body changes, %d missing",
+			report.Summary.SignatureChanges, report.Summary.BodyChanges, report.Summary.MissingEntities)
+	}
+
+	return nil
+}
+
 // runSafeChanges shows what changed since last scan - equivalent to old cx diff
 func runSafeChanges(cmd *cobra.Command, args []string) error {
 	// Find .cx directory
@@ -1307,6 +1381,30 @@ func enrichWithCoverageSafe(affected map[string]*safeEntity, storeDB *store.Stor
 	}
 }
 
+// enrichWithTagsSafe adds tags data to affected entities
+func enrichWithTagsSafe(affected map[string]*safeEntity, storeDB *store.Store) {
+	for _, e := range affected {
+		tags, err := storeDB.GetTags(e.entity.ID)
+		if err == nil && len(tags) > 0 {
+			tagNames := make([]string, len(tags))
+			for i, t := range tags {
+				tagNames[i] = t.Tag
+			}
+			e.tags = tagNames
+		}
+	}
+}
+
+// warningTagsSafe defines tags that should generate warnings when entities are modified
+var warningTagsSafe = map[string]string{
+	"critical":      "CRITICAL: Entity '%s' is tagged as critical - changes require careful review",
+	"deprecated":    "DEPRECATED: Entity '%s' is tagged as deprecated - consider removing references instead of modifying",
+	"unstable":      "UNSTABLE: Entity '%s' is tagged as unstable - API may change",
+	"do-not-modify": "DO NOT MODIFY: Entity '%s' is tagged as do-not-modify - requires special approval",
+	"security":      "SECURITY: Entity '%s' is tagged as security-sensitive - changes require security review",
+	"breaking":      "BREAKING: Entity '%s' is tagged as breaking - changes may affect downstream consumers",
+}
+
 // detectDriftSafe checks for code drift in affected entities
 func detectDriftSafe(affected map[string]*safeEntity, storeDB *store.Store, baseDir string) int {
 	driftCount := 0
@@ -1520,6 +1618,24 @@ func buildSafeOutput(target string, affected map[string]*safeEntity, cfg *config
 	for _, k := range keystones {
 		if k.CoverageGap {
 			warnings = append(warnings, fmt.Sprintf("Keystone '%s' has low coverage (%s) - add tests before modifying", k.Name, k.Coverage))
+		}
+	}
+
+	// Add tag-based warnings for affected entities
+	tagWarningsAdded := make(map[string]bool) // Prevent duplicate warnings
+	for _, e := range affected {
+		if len(e.tags) == 0 {
+			continue
+		}
+		for _, tag := range e.tags {
+			tagLower := strings.ToLower(tag)
+			if msgTemplate, hasWarning := warningTagsSafe[tagLower]; hasWarning {
+				warningKey := e.entity.Name + ":" + tagLower
+				if !tagWarningsAdded[warningKey] {
+					tagWarningsAdded[warningKey] = true
+					warnings = append(warnings, fmt.Sprintf(msgTemplate, e.entity.Name))
+				}
+			}
 		}
 	}
 
