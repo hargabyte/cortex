@@ -44,11 +44,11 @@ Cortex gives me answers in milliseconds, using a few hundred tokens instead of t
 
 Grab the latest release from [GitHub Releases](https://github.com/hargabyte/cortex/releases):
 
-| Platform | Binary |
-|----------|--------|
-| **Linux** (amd64) | `cx-linux-amd64` |
-| **Windows** (amd64) | `cx-windows-amd64.exe` |
-| **macOS** (arm64) | `cx-darwin-arm64` |
+| Platform | Binary | Status |
+|----------|--------|--------|
+| **Linux** (amd64) | `cx-linux-amd64` | ✅ Tested |
+| **Windows** (amd64) | `cx-windows-amd64.exe` | ✅ Tested |
+| **macOS** (amd64) | `cx-darwin-amd64` | ⚠️ Untested |
 
 ```bash
 # Linux/macOS - make it executable and move to PATH
