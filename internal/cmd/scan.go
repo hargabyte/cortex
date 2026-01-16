@@ -810,6 +810,12 @@ func isSourceFile(path string, lang parser.Language) bool {
 		return ext == ".cs"
 	case parser.PHP:
 		return ext == ".php"
+	case parser.Kotlin:
+		return ext == ".kt" || ext == ".kts"
+	case parser.Ruby:
+		return ext == ".rb" || ext == ".rake"
+	case parser.Cpp:
+		return ext == ".cpp" || ext == ".cc" || ext == ".cxx" || ext == ".hpp" || ext == ".hxx" || ext == ".h"
 	default:
 		return false
 	}
