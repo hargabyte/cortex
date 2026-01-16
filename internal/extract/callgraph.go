@@ -92,28 +92,41 @@ type CallGraphExtractor struct {
 	entityByID   map[string]*CallGraphEntity // Lookup by ID
 }
 
-// NewCallGraphExtractor creates a call graph extractor
+// NewCallGraphExtractor creates a call graph extractor (builds lookup maps internally)
 func NewCallGraphExtractor(result *parser.ParseResult, entities []CallGraphEntity) *CallGraphExtractor {
-	cge := &CallGraphExtractor{
-		result:       result,
-		entities:     entities,
-		entityByName: make(map[string]*CallGraphEntity),
-		entityByID:   make(map[string]*CallGraphEntity),
-	}
+	entityByName := make(map[string]*CallGraphEntity)
+	entityByID := make(map[string]*CallGraphEntity)
 
 	// Build lookup maps
 	for i := range entities {
 		e := &entities[i]
-		cge.entityByName[e.Name] = e
+		entityByName[e.Name] = e
 		if e.QualifiedName != "" {
-			cge.entityByName[e.QualifiedName] = e
+			entityByName[e.QualifiedName] = e
 		}
 		if e.ID != "" {
-			cge.entityByID[e.ID] = e
+			entityByID[e.ID] = e
 		}
 	}
 
-	return cge
+	return &CallGraphExtractor{
+		result:       result,
+		entities:     entities,
+		entityByName: entityByName,
+		entityByID:   entityByID,
+	}
+}
+
+// NewCallGraphExtractorWithMaps creates an extractor with pre-built lookup maps (for performance)
+// Use this when processing multiple files to avoid rebuilding maps for each file.
+func NewCallGraphExtractorWithMaps(result *parser.ParseResult, entities []CallGraphEntity,
+	entityByName map[string]*CallGraphEntity, entityByID map[string]*CallGraphEntity) *CallGraphExtractor {
+	return &CallGraphExtractor{
+		result:       result,
+		entities:     entities,
+		entityByName: entityByName,
+		entityByID:   entityByID,
+	}
 }
 
 // ExtractDependencies extracts all dependencies from the parsed code
@@ -193,17 +206,18 @@ func (cge *CallGraphExtractor) extractFunctionCalls(entity *CallGraphEntity) []D
 					dep.ToName = parts[len(parts)-1]
 				}
 
-				// Check if call is conditional
-				if cge.isConditionalCall(node) {
-					dep.Optional = true
-				}
-
-				// Try to resolve to entity ID
+				// Try to resolve to entity ID - only keep resolved dependencies
+				// Unresolved calls (stdlib, external packages) are skipped for performance
 				if target := cge.resolveTarget(callTarget); target != nil {
 					dep.ToID = target.ID
-				}
 
-				deps = append(deps, dep)
+					// Check if call is conditional
+					if cge.isConditionalCall(node) {
+						dep.Optional = true
+					}
+
+					deps = append(deps, dep)
+				}
 			}
 		}
 		return true
@@ -221,28 +235,25 @@ func (cge *CallGraphExtractor) extractTypeReferences(entity *CallGraphEntity) []
 	cge.walkNode(entity.Node, func(node *sitter.Node) bool {
 		nodeType := node.Type()
 
-		// Check for type identifiers
+		// Check for type identifiers - only keep resolved references
 		if nodeType == "type_identifier" {
 			typeName := cge.nodeText(node)
 			if !seen[typeName] && !isBuiltinType(typeName) {
-				seen[typeName] = true
-				dep := Dependency{
-					FromID:   entity.ID,
-					ToName:   typeName,
-					DepType:  UsesType,
-					Location: cge.nodeLocation(node),
-				}
-
-				// Try to resolve
+				// Only track if it resolves to a known entity
 				if target := cge.resolveTarget(typeName); target != nil {
-					dep.ToID = target.ID
+					seen[typeName] = true
+					deps = append(deps, Dependency{
+						FromID:   entity.ID,
+						ToName:   typeName,
+						ToID:     target.ID,
+						DepType:  UsesType,
+						Location: cge.nodeLocation(node),
+					})
 				}
-
-				deps = append(deps, dep)
 			}
 		}
 
-		// Check for qualified types (e.g., pkg.Type)
+		// Check for qualified types (e.g., pkg.Type) - only keep resolved references
 		if nodeType == "qualified_type" || nodeType == "selector_expression" {
 			// Only process selector_expression in type context
 			if nodeType == "selector_expression" && !cge.isInTypeContext(node) {
@@ -251,20 +262,18 @@ func (cge *CallGraphExtractor) extractTypeReferences(entity *CallGraphEntity) []
 
 			typeName := cge.nodeText(node)
 			if !seen[typeName] && !isBuiltinType(typeName) {
-				seen[typeName] = true
-				dep := Dependency{
-					FromID:      entity.ID,
-					ToName:      typeName,
-					ToQualified: typeName,
-					DepType:     UsesType,
-					Location:    cge.nodeLocation(node),
-				}
-
+				// Only track if it resolves to a known entity
 				if target := cge.resolveTarget(typeName); target != nil {
-					dep.ToID = target.ID
+					seen[typeName] = true
+					deps = append(deps, Dependency{
+						FromID:      entity.ID,
+						ToName:      typeName,
+						ToQualified: typeName,
+						ToID:        target.ID,
+						DepType:     UsesType,
+						Location:    cge.nodeLocation(node),
+					})
 				}
-
-				deps = append(deps, dep)
 			}
 		}
 
@@ -275,6 +284,7 @@ func (cge *CallGraphExtractor) extractTypeReferences(entity *CallGraphEntity) []
 }
 
 // extractMethodReceiver extracts method_of dependency for methods
+// Returns nil if the receiver type doesn't resolve to a known entity
 func (cge *CallGraphExtractor) extractMethodReceiver(entity *CallGraphEntity) *Dependency {
 	if entity.Node == nil {
 		return nil
@@ -292,19 +302,19 @@ func (cge *CallGraphExtractor) extractMethodReceiver(entity *CallGraphEntity) *D
 		return nil
 	}
 
-	dep := &Dependency{
+	// Only return if it resolves to a known entity
+	target := cge.resolveTarget(receiverType)
+	if target == nil {
+		return nil
+	}
+
+	return &Dependency{
 		FromID:   entity.ID,
 		ToName:   receiverType,
+		ToID:     target.ID,
 		DepType:  MethodOf,
 		Location: entity.Location,
 	}
-
-	// Try to resolve
-	if target := cge.resolveTarget(receiverType); target != nil {
-		dep.ToID = target.ID
-	}
-
-	return dep
 }
 
 // extractEmbeddedTypes extracts extends dependencies for embedded types in structs
@@ -329,7 +339,7 @@ func (cge *CallGraphExtractor) extractEmbeddedTypes(entity *CallGraphEntity) []D
 		return deps
 	}
 
-	// Look for embedded fields (fields without names)
+	// Look for embedded fields (fields without names) - only keep resolved
 	for i := uint32(0); i < structBody.NamedChildCount(); i++ {
 		child := structBody.NamedChild(int(i))
 		if child.Type() == "field_declaration" {
@@ -337,18 +347,16 @@ func (cge *CallGraphExtractor) extractEmbeddedTypes(entity *CallGraphEntity) []D
 			if cge.isEmbeddedField(child) {
 				typeName := cge.extractFieldType(child)
 				if typeName != "" && !isBuiltinType(typeName) {
-					dep := Dependency{
-						FromID:   entity.ID,
-						ToName:   typeName,
-						DepType:  Extends,
-						Location: cge.nodeLocation(child),
-					}
-
+					// Only track if it resolves to a known entity
 					if target := cge.resolveTarget(typeName); target != nil {
-						dep.ToID = target.ID
+						deps = append(deps, Dependency{
+							FromID:   entity.ID,
+							ToName:   typeName,
+							ToID:     target.ID,
+							DepType:  Extends,
+							Location: cge.nodeLocation(child),
+						})
 					}
-
-					deps = append(deps, dep)
 				}
 			}
 		}
@@ -381,25 +389,23 @@ func (cge *CallGraphExtractor) extractImplements(entity *CallGraphEntity) []Depe
 		return deps
 	}
 
-	// Look for embedded interfaces
+	// Look for embedded interfaces - only keep resolved
 	for i := uint32(0); i < interfaceBody.NamedChildCount(); i++ {
 		child := interfaceBody.NamedChild(int(i))
 		// Type identifiers at the interface level are embedded interfaces
 		if child.Type() == "type_identifier" || child.Type() == "qualified_type" {
 			typeName := cge.nodeText(child)
 			if !isBuiltinType(typeName) {
-				dep := Dependency{
-					FromID:   entity.ID,
-					ToName:   typeName,
-					DepType:  Implements,
-					Location: cge.nodeLocation(child),
-				}
-
+				// Only track if it resolves to a known entity
 				if target := cge.resolveTarget(typeName); target != nil {
-					dep.ToID = target.ID
+					deps = append(deps, Dependency{
+						FromID:   entity.ID,
+						ToName:   typeName,
+						ToID:     target.ID,
+						DepType:  Implements,
+						Location: cge.nodeLocation(child),
+					})
 				}
-
-				deps = append(deps, dep)
 			}
 		}
 	}

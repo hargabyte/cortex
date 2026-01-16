@@ -41,6 +41,17 @@ func NewCSharpCallGraphExtractor(result *parser.ParseResult, entities []CallGrap
 	return cge
 }
 
+// NewCSharpCallGraphExtractorWithMaps creates an extractor with pre-built lookup maps
+func NewCSharpCallGraphExtractorWithMaps(result *parser.ParseResult, entities []CallGraphEntity,
+	entityByName map[string]*CallGraphEntity, entityByID map[string]*CallGraphEntity) *CSharpCallGraphExtractor {
+	return &CSharpCallGraphExtractor{
+		result:       result,
+		entities:     entities,
+		entityByName: entityByName,
+		entityByID:   entityByID,
+	}
+}
+
 // ExtractDependencies extracts all dependencies from the parsed C# code
 func (cge *CSharpCallGraphExtractor) ExtractDependencies() ([]Dependency, error) {
 	var deps []Dependency

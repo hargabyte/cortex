@@ -41,6 +41,17 @@ func NewRustCallGraphExtractor(result *parser.ParseResult, entities []CallGraphE
 	return rcge
 }
 
+// NewRustCallGraphExtractorWithMaps creates an extractor with pre-built lookup maps
+func NewRustCallGraphExtractorWithMaps(result *parser.ParseResult, entities []CallGraphEntity,
+	entityByName map[string]*CallGraphEntity, entityByID map[string]*CallGraphEntity) *RustCallGraphExtractor {
+	return &RustCallGraphExtractor{
+		result:       result,
+		entities:     entities,
+		entityByName: entityByName,
+		entityByID:   entityByID,
+	}
+}
+
 // ExtractDependencies extracts all dependencies from the parsed Rust code
 func (rcge *RustCallGraphExtractor) ExtractDependencies() ([]Dependency, error) {
 	var deps []Dependency

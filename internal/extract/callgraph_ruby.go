@@ -42,6 +42,17 @@ func NewRubyCallGraphExtractor(result *parser.ParseResult, entities []CallGraphE
 	return cge
 }
 
+// NewRubyCallGraphExtractorWithMaps creates an extractor with pre-built lookup maps
+func NewRubyCallGraphExtractorWithMaps(result *parser.ParseResult, entities []CallGraphEntity,
+	entityByName map[string]*CallGraphEntity, entityByID map[string]*CallGraphEntity) *RubyCallGraphExtractor {
+	return &RubyCallGraphExtractor{
+		result:       result,
+		entities:     entities,
+		entityByName: entityByName,
+		entityByID:   entityByID,
+	}
+}
+
 // ExtractDependencies extracts all dependencies from the parsed Ruby code.
 func (cge *RubyCallGraphExtractor) ExtractDependencies() ([]Dependency, error) {
 	var deps []Dependency

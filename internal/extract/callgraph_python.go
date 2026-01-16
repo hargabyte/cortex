@@ -42,6 +42,17 @@ func NewPythonCallGraphExtractor(result *parser.ParseResult, entities []CallGrap
 	return cge
 }
 
+// NewPythonCallGraphExtractorWithMaps creates an extractor with pre-built lookup maps
+func NewPythonCallGraphExtractorWithMaps(result *parser.ParseResult, entities []CallGraphEntity,
+	entityByName map[string]*CallGraphEntity, entityByID map[string]*CallGraphEntity) *PythonCallGraphExtractor {
+	return &PythonCallGraphExtractor{
+		result:       result,
+		entities:     entities,
+		entityByName: entityByName,
+		entityByID:   entityByID,
+	}
+}
+
 // ExtractDependencies extracts all dependencies from the parsed Python code
 func (cge *PythonCallGraphExtractor) ExtractDependencies() ([]Dependency, error) {
 	var deps []Dependency

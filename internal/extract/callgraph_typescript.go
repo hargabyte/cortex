@@ -21,26 +21,37 @@ type TypeScriptCallGraphExtractor struct {
 
 // NewTypeScriptCallGraphExtractor creates a call graph extractor for TypeScript/JavaScript
 func NewTypeScriptCallGraphExtractor(result *parser.ParseResult, entities []CallGraphEntity) *TypeScriptCallGraphExtractor {
-	cge := &TypeScriptCallGraphExtractor{
-		result:       result,
-		entities:     entities,
-		entityByName: make(map[string]*CallGraphEntity),
-		entityByID:   make(map[string]*CallGraphEntity),
-	}
+	entityByName := make(map[string]*CallGraphEntity)
+	entityByID := make(map[string]*CallGraphEntity)
 
-	// Build lookup maps
 	for i := range entities {
 		e := &entities[i]
-		cge.entityByName[e.Name] = e
+		entityByName[e.Name] = e
 		if e.QualifiedName != "" {
-			cge.entityByName[e.QualifiedName] = e
+			entityByName[e.QualifiedName] = e
 		}
 		if e.ID != "" {
-			cge.entityByID[e.ID] = e
+			entityByID[e.ID] = e
 		}
 	}
 
-	return cge
+	return &TypeScriptCallGraphExtractor{
+		result:       result,
+		entities:     entities,
+		entityByName: entityByName,
+		entityByID:   entityByID,
+	}
+}
+
+// NewTypeScriptCallGraphExtractorWithMaps creates an extractor with pre-built lookup maps
+func NewTypeScriptCallGraphExtractorWithMaps(result *parser.ParseResult, entities []CallGraphEntity,
+	entityByName map[string]*CallGraphEntity, entityByID map[string]*CallGraphEntity) *TypeScriptCallGraphExtractor {
+	return &TypeScriptCallGraphExtractor{
+		result:       result,
+		entities:     entities,
+		entityByName: entityByName,
+		entityByID:   entityByID,
+	}
 }
 
 // ExtractDependencies extracts all dependencies from the parsed TypeScript/JavaScript code

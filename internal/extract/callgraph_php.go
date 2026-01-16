@@ -41,6 +41,17 @@ func NewPHPCallGraphExtractor(result *parser.ParseResult, entities []CallGraphEn
 	return pcge
 }
 
+// NewPHPCallGraphExtractorWithMaps creates an extractor with pre-built lookup maps
+func NewPHPCallGraphExtractorWithMaps(result *parser.ParseResult, entities []CallGraphEntity,
+	entityByName map[string]*CallGraphEntity, entityByID map[string]*CallGraphEntity) *PHPCallGraphExtractor {
+	return &PHPCallGraphExtractor{
+		result:       result,
+		entities:     entities,
+		entityByName: entityByName,
+		entityByID:   entityByID,
+	}
+}
+
 // ExtractDependencies extracts all dependencies from the parsed PHP code
 func (pcge *PHPCallGraphExtractor) ExtractDependencies() ([]Dependency, error) {
 	var deps []Dependency

@@ -41,6 +41,17 @@ func NewJavaCallGraphExtractor(result *parser.ParseResult, entities []CallGraphE
 	return jcge
 }
 
+// NewJavaCallGraphExtractorWithMaps creates an extractor with pre-built lookup maps
+func NewJavaCallGraphExtractorWithMaps(result *parser.ParseResult, entities []CallGraphEntity,
+	entityByName map[string]*CallGraphEntity, entityByID map[string]*CallGraphEntity) *JavaCallGraphExtractor {
+	return &JavaCallGraphExtractor{
+		result:       result,
+		entities:     entities,
+		entityByName: entityByName,
+		entityByID:   entityByID,
+	}
+}
+
 // ExtractDependencies extracts all dependencies from the parsed Java code
 func (jcge *JavaCallGraphExtractor) ExtractDependencies() ([]Dependency, error) {
 	var deps []Dependency
