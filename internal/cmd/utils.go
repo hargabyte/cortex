@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -405,4 +406,16 @@ func inferVisibility(name string) string {
 // formatEntityLocation is an alias for formatStoreLocation for backward compatibility
 func formatEntityLocation(e *store.Entity) string {
 	return formatStoreLocation(e)
+}
+
+// normalizeFilePath cleans a file path for database queries.
+// It removes leading "./" and cleans the path for consistency with stored paths.
+func normalizeFilePath(path string) string {
+	// Clean the path (removes ./, resolves .., etc.)
+	cleaned := filepath.Clean(path)
+	// Remove leading "./" if still present after cleaning
+	if strings.HasPrefix(cleaned, "./") {
+		cleaned = cleaned[2:]
+	}
+	return cleaned
 }

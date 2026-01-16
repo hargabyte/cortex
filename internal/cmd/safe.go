@@ -338,8 +338,10 @@ func runSafeQuick(cmd *cobra.Command, target string) error {
 	var directEntries []*impactEntry
 
 	if isFilePath(target) {
+		// Normalize the file path for database query
+		normalizedTarget := normalizeFilePath(target)
 		entities, err := storeDB.QueryEntities(store.EntityFilter{
-			FilePath: target,
+			FilePath: normalizedTarget,
 			Status:   "active",
 		})
 		if err == nil {
@@ -1258,8 +1260,10 @@ func findDirectEntitiesSafe(target string, storeDB *store.Store) ([]*safeEntity,
 	var results []*safeEntity
 
 	if isFilePath(target) {
+		// Normalize the file path for database query
+		normalizedTarget := normalizeFilePath(target)
 		entities, err := storeDB.QueryEntities(store.EntityFilter{
-			FilePath: target,
+			FilePath: normalizedTarget,
 			Status:   "active",
 		})
 		if err != nil {
