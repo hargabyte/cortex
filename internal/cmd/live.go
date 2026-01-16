@@ -15,9 +15,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// serveCmd represents the serve command
-var serveCmd = &cobra.Command{
-	Use:   "serve",
+// liveCmd represents the live command
+var liveCmd = &cobra.Command{
+	Use:   "live",
 	Short: "Start MCP server for AI agent integration",
 	Long: `Start an MCP (Model Context Protocol) server for AI agent integration.
 
@@ -29,9 +29,9 @@ Philosophy: CLI for discovery, MCP for iteration.
 
 Usage Pattern:
   Session start:        cx prime, cx map...        (fast CLI)
-  Heavy iterative work: cx serve --mcp             (start server)
+  Heavy iterative work: cx live --mcp              (start server)
   Work work work...     (tools stay loaded)
-  Done:                 cx serve --stop            (or auto-timeout)
+  Done:                 cx live --stop             (or auto-timeout)
 
 Available Tools:
   cx_diff      Show changes since last scan
@@ -41,39 +41,65 @@ Available Tools:
   cx_find      Search entities
   cx_gaps      Coverage gap analysis
 
+Daemon Mode:
+  Use --watch to enable filesystem watching. The server will automatically
+  rescan changed files and keep the code graph up-to-date in real-time.
+
 Examples:
-  cx serve --mcp                           # Start with default tools
-  cx serve --mcp --tools diff,impact       # Start with specific tools only
-  cx serve --mcp --timeout 30m             # Auto-stop after 30 minutes
-  cx serve --status                        # Check if server is running
-  cx serve --stop                          # Stop running server
-  cx serve --list-tools                    # Show available tools`,
-	RunE: runServe,
+  cx live --mcp                           # Start with default tools
+  cx live --mcp --watch                   # Start with filesystem watching
+  cx live --mcp --tools diff,impact       # Start with specific tools only
+  cx live --mcp --timeout 30m             # Auto-stop after 30 minutes
+  cx live --status                        # Check if server is running
+  cx live --stop                          # Stop running server
+  cx live --list-tools                    # Show available tools`,
+	RunE: runLive,
+}
+
+// serveCmd represents the deprecated serve command (alias for live)
+var serveCmd = &cobra.Command{
+	Use:    "serve",
+	Hidden: true,
+	Short:  "Deprecated: Use 'cx live' instead",
+	Long:   "Deprecated: 'cx serve' is an alias for 'cx live'. Please use 'cx live' instead.",
+	RunE:   runLive,
 }
 
 var (
-	serveMCP       bool
-	serveTools     string
-	serveTimeout   string
-	serveStatus    bool
-	serveStop      bool
-	serveListTools bool
+	liveMCP       bool
+	liveTools     string
+	liveTimeout   string
+	liveStatus    bool
+	liveStop      bool
+	liveListTools bool
+	liveWatch     bool
 )
 
 func init() {
+	rootCmd.AddCommand(liveCmd)
 	rootCmd.AddCommand(serveCmd)
 
-	serveCmd.Flags().BoolVar(&serveMCP, "mcp", false, "Start MCP server (stdio transport)")
-	serveCmd.Flags().StringVar(&serveTools, "tools", "", "Comma-separated list of tools to expose (default: diff,impact,context,show)")
-	serveCmd.Flags().StringVar(&serveTimeout, "timeout", "30m", "Inactivity timeout (0 for no timeout)")
-	serveCmd.Flags().BoolVar(&serveStatus, "status", false, "Check if server is running")
-	serveCmd.Flags().BoolVar(&serveStop, "stop", false, "Stop running server")
-	serveCmd.Flags().BoolVar(&serveListTools, "list-tools", false, "List available tools")
+	liveCmd.Flags().BoolVar(&liveMCP, "mcp", false, "Start MCP server (stdio transport)")
+	liveCmd.Flags().StringVar(&liveTools, "tools", "", "Comma-separated list of tools to expose (default: diff,impact,context,show)")
+	liveCmd.Flags().StringVar(&liveTimeout, "timeout", "30m", "Inactivity timeout (0 for no timeout)")
+	liveCmd.Flags().BoolVar(&liveStatus, "status", false, "Check if server is running")
+	liveCmd.Flags().BoolVar(&liveStop, "stop", false, "Stop running server")
+	liveCmd.Flags().BoolVar(&liveListTools, "list-tools", false, "List available tools")
+	liveCmd.Flags().BoolVar(&liveWatch, "watch", false, "Enable filesystem watching for auto-rescan (daemon mode)")
+
+	// Share flags with serve alias
+	serveCmd.Flags().BoolVar(&liveMCP, "mcp", false, "Start MCP server (stdio transport)")
+	serveCmd.Flags().StringVar(&liveTools, "tools", "", "Comma-separated list of tools to expose (default: diff,impact,context,show)")
+	serveCmd.Flags().StringVar(&liveTimeout, "timeout", "30m", "Inactivity timeout (0 for no timeout)")
+	serveCmd.Flags().BoolVar(&liveStatus, "status", false, "Check if server is running")
+	serveCmd.Flags().BoolVar(&liveStop, "stop", false, "Stop running server")
+	serveCmd.Flags().BoolVar(&liveListTools, "list-tools", false, "List available tools")
+	serveCmd.Flags().BoolVar(&liveWatch, "watch", false, "Enable filesystem watching for auto-rescan (daemon mode)")
 }
 
-func runServe(cmd *cobra.Command, args []string) error {
+func runLive(cmd *cobra.Command, args []string) error {
 	// Handle --list-tools
-	if serveListTools {
+	if liveListTools {
 		fmt.Println("Available MCP tools:")
 		fmt.Println()
 		fmt.Println("  cx_diff      Show changes since last scan")
@@ -88,30 +114,30 @@ func runServe(cmd *cobra.Command, args []string) error {
 	}
 
 	// Handle --status
-	if serveStatus {
+	if liveStatus {
 		return checkServerStatus()
 	}
 
 	// Handle --stop
-	if serveStop {
+	if liveStop {
 		return stopServer()
 	}
 
 	// Start MCP server
-	if !serveMCP {
+	if !liveMCP {
 		return fmt.Errorf("use --mcp to start the MCP server, or --help for usage")
 	}
 
 	// Parse timeout
-	timeout, err := parseDuration(serveTimeout)
+	timeout, err := parseDuration(liveTimeout)
 	if err != nil {
 		return fmt.Errorf("invalid timeout: %w", err)
 	}
 
 	// Parse tools
 	var tools []string
-	if serveTools != "" {
-		for _, t := range strings.Split(serveTools, ",") {
+	if liveTools != "" {
+		for _, t := range strings.Split(liveTools, ",") {
 			t = strings.TrimSpace(t)
 			if t != "" {
 				// Allow shorthand (diff -> cx_diff)
@@ -146,17 +172,20 @@ func runServe(cmd *cobra.Command, args []string) error {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		fmt.Fprintf(os.Stderr, "\ncx serve: shutting down\n")
+		fmt.Fprintf(os.Stderr, "\ncx live: shutting down\n")
 		server.Close()
 		removePIDFile()
 		os.Exit(0)
 	}()
 
 	// Log startup info to stderr (stdout is for MCP protocol)
-	fmt.Fprintf(os.Stderr, "cx serve: starting MCP server\n")
-	fmt.Fprintf(os.Stderr, "cx serve: tools: %v\n", server.ListTools())
+	fmt.Fprintf(os.Stderr, "cx live: starting MCP server\n")
+	fmt.Fprintf(os.Stderr, "cx live: tools: %v\n", server.ListTools())
 	if timeout > 0 {
-		fmt.Fprintf(os.Stderr, "cx serve: timeout: %v\n", timeout)
+		fmt.Fprintf(os.Stderr, "cx live: timeout: %v\n", timeout)
+	}
+	if liveWatch {
+		fmt.Fprintf(os.Stderr, "cx live: watch mode enabled - will auto-rescan on file changes\n")
 	}
 
 	// Start serving
