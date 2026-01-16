@@ -34,7 +34,7 @@ var (
 func init() {
 	rootCmd.AddCommand(doctorCmd)
 	doctorCmd.Flags().BoolVar(&doctorFix, "fix", false, "Auto-fix issues found")
-	doctorCmd.Flags().BoolVar(&doctorDeep, "deep", false, "Run deep checks including archived entity ratio")
+	doctorCmd.Flags().BoolVar(&doctorDeep, "deep", false, "Run additional deep checks (currently: full graph validation)")
 	doctorCmd.Flags().BoolVar(&doctorYes, "yes", false, "Auto-confirm fixes without prompting")
 }
 

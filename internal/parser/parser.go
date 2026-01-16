@@ -32,8 +32,14 @@ const (
 	CSharp Language = "csharp"
 	// C represents the C programming language.
 	C Language = "c"
+	// Cpp represents the C++ programming language.
+	Cpp Language = "cpp"
 	// PHP represents the PHP programming language.
 	PHP Language = "php"
+	// Kotlin represents the Kotlin programming language.
+	Kotlin Language = "kotlin"
+	// Ruby represents the Ruby programming language.
+	Ruby Language = "ruby"
 )
 
 // Parser wraps tree-sitter for code parsing.
@@ -81,8 +87,14 @@ func NewParser(lang Language) (*Parser, error) {
 		p, err = newCSharpParser()
 	case C:
 		p, err = newCParser()
+	case Cpp:
+		p, err = newCppParser()
 	case PHP:
 		p, err = newPHPParser()
+	case Kotlin:
+		p, err = newKotlinParser()
+	case Ruby:
+		p, err = newRubyParser()
 	default:
 		return nil, &UnsupportedLanguageError{Language: string(lang)}
 	}

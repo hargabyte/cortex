@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/anthropics/cx/internal/config"
@@ -21,16 +22,52 @@ const (
 	queryTypeDirect
 )
 
+// entityTypePriority returns a priority score for entity types.
+// Lower is better. Types/structs/functions are preferred over imports/constants.
+func entityTypePriority(entityType string) int {
+	switch strings.ToLower(entityType) {
+	case "struct", "type", "class":
+		return 1
+	case "interface":
+		return 2
+	case "function", "func":
+		return 3
+	case "method":
+		return 4
+	case "constant", "const":
+		return 5
+	case "variable", "var":
+		return 6
+	case "import":
+		return 100 // Lowest priority - imports are usually noise
+	default:
+		return 50
+	}
+}
+
 // resolveEntityByName resolves an entity by name, ID, or qualified name.
 // It supports the same query formats as the find command:
 // - Direct IDs: sa-fn-a7f9b2-LoginUser
 // - Simple names: LoginUser (prefix match)
 // - Qualified names: auth.LoginUser (package.symbol)
 // - Path-qualified: auth/login.LoginUser (path/file.symbol)
+// - File-path hints: Store@internal/store/db.go (name@file-path)
+//
+// Resolution priority:
+// 1. Exact ID match
+// 2. Types/structs/interfaces over functions over imports
+// 3. Higher PageRank (more important) entities first
 //
 // If multiple entities match, it returns an error listing the options.
 // If typeFilter is non-empty, only entities of that type are considered.
 func resolveEntityByName(query string, storeDB *store.Store, typeFilter string) (*store.Entity, error) {
+	// Check for file-path hint syntax: name@path
+	var fileHint string
+	if atIdx := strings.LastIndex(query, "@"); atIdx > 0 && atIdx < len(query)-1 {
+		fileHint = query[atIdx+1:]
+		query = query[:atIdx]
+	}
+
 	// If query looks like a direct ID, try direct lookup first
 	if isDirectIDQuery(query) {
 		entity, err := storeDB.GetEntity(query)
@@ -59,6 +96,11 @@ func resolveEntityByName(query string, storeDB *store.Store, typeFilter string) 
 	var prefixMatches []*store.Entity
 
 	for _, e := range entities {
+		// Apply file hint filter if provided
+		if fileHint != "" && !strings.Contains(e.FilePath, fileHint) {
+			continue
+		}
+
 		if matchesQueryExact(e, query) {
 			exactMatches = append(exactMatches, e)
 		} else if matchesQueryPrefix(e, query) {
@@ -74,6 +116,9 @@ func resolveEntityByName(query string, storeDB *store.Store, typeFilter string) 
 
 	// Handle results
 	if len(matches) == 0 {
+		if fileHint != "" {
+			return nil, fmt.Errorf("entity not found: %q with file hint %q", query, fileHint)
+		}
 		return nil, fmt.Errorf("entity not found: %q", query)
 	}
 
@@ -81,17 +126,67 @@ func resolveEntityByName(query string, storeDB *store.Store, typeFilter string) 
 		return matches[0], nil
 	}
 
-	// Multiple matches - return helpful error
-	var suggestions []string
-	for i, e := range matches {
-		if i >= 10 {
-			suggestions = append(suggestions, fmt.Sprintf("  ... and %d more", len(matches)-10))
-			break
-		}
-		suggestions = append(suggestions, fmt.Sprintf("  - %s (%s) at %s", e.Name, e.EntityType, formatStoreLocation(e)))
+	// Multiple matches - try smart resolution
+	// Sort by: entity type priority, then by PageRank (importance)
+	type rankedMatch struct {
+		entity   *store.Entity
+		priority int
+		pagerank float64
 	}
 
-	return nil, fmt.Errorf("multiple entities match %q:\n%s\n\nUse a more specific name or the full entity ID", query, strings.Join(suggestions, "\n"))
+	ranked := make([]rankedMatch, len(matches))
+	for i, e := range matches {
+		priority := entityTypePriority(e.EntityType)
+		var pagerank float64
+		if m, err := storeDB.GetMetrics(e.ID); err == nil && m != nil {
+			pagerank = m.PageRank
+		}
+		ranked[i] = rankedMatch{entity: e, priority: priority, pagerank: pagerank}
+	}
+
+	// Sort: lower priority number first, then higher pagerank
+	sort.Slice(ranked, func(i, j int) bool {
+		if ranked[i].priority != ranked[j].priority {
+			return ranked[i].priority < ranked[j].priority
+		}
+		return ranked[i].pagerank > ranked[j].pagerank
+	})
+
+	// Check if top match is clearly better (different priority tier)
+	if ranked[0].priority < ranked[1].priority {
+		// Count how many share the top priority
+		topPriority := ranked[0].priority
+		topCount := 0
+		for _, r := range ranked {
+			if r.priority == topPriority {
+				topCount++
+			}
+		}
+		// If only one entity at top priority tier, return it
+		if topCount == 1 {
+			return ranked[0].entity, nil
+		}
+	}
+
+	// Still ambiguous - return helpful error with sorted suggestions
+	var suggestions []string
+	for i, r := range ranked {
+		if i >= 10 {
+			suggestions = append(suggestions, fmt.Sprintf("  ... and %d more", len(ranked)-10))
+			break
+		}
+		// Include pagerank hint for disambiguation
+		prHint := ""
+		if r.pagerank > 0 {
+			prHint = fmt.Sprintf(" [pr=%.3f]", r.pagerank)
+		}
+		suggestions = append(suggestions, fmt.Sprintf("  - %s (%s) at %s%s",
+			r.entity.Name, r.entity.EntityType, formatStoreLocation(r.entity), prHint))
+	}
+
+	// Add helpful hint about file-path syntax
+	hint := "\n\nUse a more specific name, full entity ID, or file hint: name@path"
+	return nil, fmt.Errorf("multiple entities match %q:\n%s%s", query, strings.Join(suggestions, "\n"), hint)
 }
 
 // matchesQueryExact checks if an entity exactly matches the query

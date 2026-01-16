@@ -131,6 +131,15 @@ func generatePrimeContent(stats primeDBStats, full bool) string {
 - **Files indexed**: %d
 `, stats.active, stats.archived, stats.dependencies, stats.files)
 
+		// Warn about stale database state
+		if stats.archived > stats.active*10 && stats.archived > 100 {
+			content += fmt.Sprintf(`
+> **WARNING**: Database appears stale (%d archived vs %d active entities).
+> Run `+"`cx reset`"+` to reinitialize, or `+"`cx doctor --fix`"+` to clean up.
+
+`, stats.archived, stats.active)
+		}
+
 		// Add keystones if --full and we have entities
 		if full && stats.active > 0 {
 			content += getKeystonesSection(stats.path)

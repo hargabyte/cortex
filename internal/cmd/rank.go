@@ -185,9 +185,14 @@ func runRank(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Metrics computed and saved.\n")
 	}
 
-	// Build ranked list
+	// Build ranked list (filter out imports - they're noise for ranking)
 	ranked := make([]rankedEntity, 0, len(entities))
 	for _, e := range entities {
+		// Skip imports - they clutter the rankings with noise
+		if e.EntityType == "import" {
+			continue
+		}
+
 		m, err := storeDB.GetMetrics(e.ID)
 		if err != nil || m == nil {
 			continue
