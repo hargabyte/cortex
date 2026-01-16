@@ -45,7 +45,7 @@ type StoreProviderOptions struct {
 // DefaultStoreProviderOptions returns the default options.
 func DefaultStoreProviderOptions() StoreProviderOptions {
 	return StoreProviderOptions{
-		UseDaemon:     true,
+		UseDaemon:     false, // DISABLED: Daemon causes spawn storms. Use direct DB access.
 		RequireDaemon: false,
 	}
 }

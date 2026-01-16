@@ -98,9 +98,13 @@ func (e *CppExtractor) ExtractAll() ([]Entity, error) {
 func (e *CppExtractor) ExtractAllWithNodes() ([]EntityWithNode, error) {
 	var result []EntityWithNode
 
-	// Extract function definitions
+	// Extract function definitions (only top-level, not inside classes)
 	funcNodes := e.result.FindNodesByType("function_definition")
 	for _, node := range funcNodes {
+		// Skip if this function is inside a class/struct body - it will be extracted with the class
+		if e.isInsideClassBody(node) {
+			continue
+		}
 		entity := e.extractFunctionDefinition(node)
 		if entity != nil {
 			result = append(result, EntityWithNode{Entity: entity, Node: node})
@@ -1004,6 +1008,19 @@ func (e *CppExtractor) findParentClass(node *sitter.Node) *sitter.Node {
 		parent = parent.Parent()
 	}
 	return nil
+}
+
+// isInsideClassBody checks if a node is inside a class or struct body (field_declaration_list).
+// Used to avoid double-extracting methods that are defined inline in a class.
+func (e *CppExtractor) isInsideClassBody(node *sitter.Node) bool {
+	parent := node.Parent()
+	for parent != nil {
+		if parent.Type() == "field_declaration_list" {
+			return true
+		}
+		parent = parent.Parent()
+	}
+	return false
 }
 
 // extractDeclaratorName extracts the name from a declarator.

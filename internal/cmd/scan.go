@@ -34,7 +34,7 @@ The scan process:
   4. Compares with existing entities (create/update/archive)
   5. Updates the .cx/cortex.db file index
 
-Supported languages: Go, TypeScript, JavaScript, Java, Rust, Python
+Supported languages: Go, TypeScript, JavaScript, Java, Rust, Python, C, C++, C#, PHP, Kotlin, Ruby
 
 Examples:
   cx scan                    # Scan current directory (auto-init if needed)
@@ -91,6 +91,7 @@ type fileScanResult struct {
 	parseResult *parser.ParseResult
 	entities    []extract.EntityWithNode
 	language    parser.Language
+	unchanged   bool // true if file was unchanged and skipped (entities should be preserved)
 }
 
 // runScan implements the scan command logic
@@ -120,32 +121,27 @@ func runScan(cmd *cobra.Command, args []string) error {
 		excludes = append(excludes, scanExclude...)
 	}
 
-	// Determine language to scan
-	lang := parser.Go // Default to Go
+	// Determine language(s) to scan
+	var languages []parser.Language
 	if scanLang != "" {
-		switch strings.ToLower(scanLang) {
-		case "go":
-			lang = parser.Go
-		case "typescript", "ts":
-			lang = parser.TypeScript
-		case "javascript", "js":
-			lang = parser.JavaScript
-		case "java":
-			lang = parser.Java
-		case "rust", "rs":
-			lang = parser.Rust
-		case "python", "py":
-			lang = parser.Python
-		case "c":
-			lang = parser.C
-		case "csharp", "cs":
-			lang = parser.CSharp
-		case "php":
-			lang = parser.PHP
-		default:
-			return fmt.Errorf("unsupported language: %s", scanLang)
+		// Explicit language specified
+		lang, err := parseLanguageFlag(scanLang)
+		if err != nil {
+			return err
+		}
+		languages = []parser.Language{lang}
+	} else {
+		// Auto-detect languages from file extensions
+		languages = detectLanguages(scanPath, excludes)
+		if len(languages) == 0 {
+			// Fallback to Go if no recognizable source files found
+			languages = []parser.Language{parser.Go}
 		}
 	}
+
+	// Use the first detected language for the main scan
+	// (multi-language scanning is handled by scanning each language in sequence)
+	lang := languages[0]
 
 	// Find existing .cx directory or create one
 	// First, look for an existing project by walking up from scanPath
@@ -157,12 +153,18 @@ func runScan(cmd *cobra.Command, args []string) error {
 		cxDir = existingCxDir
 		projectRoot = filepath.Dir(cxDir) // Project root is parent of .cx
 	} else {
-		// No existing .cx found - create new project at scanPath
-		cxDir, err = config.EnsureConfigDir(scanPath)
+		// No existing .cx found - create new project
+		// Use current working directory as project root (not scanPath)
+		// This ensures `cx scan ./src` creates .cx in cwd, not in ./src
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get working directory: %w", err)
+		}
+		cxDir, err = config.EnsureConfigDir(cwd)
 		if err != nil {
 			return fmt.Errorf("failed to create .cx directory: %w", err)
 		}
-		projectRoot = scanPath
+		projectRoot = cwd
 	}
 
 	// Compute scan path relative to project root for archival scoping
@@ -267,6 +269,25 @@ func runScan(cmd *cobra.Command, args []string) error {
 	var entitiesToUpdate []*store.Entity
 
 	for _, fr := range fileResults {
+		// Handle unchanged files: preserve their existing entities
+		if fr.unchanged {
+			// Query existing entities for this file and mark them as scanned
+			// This prevents them from being archived
+			fileEntities, err := storeDB.QueryEntities(store.EntityFilter{
+				Status:   "active",
+				FilePath: fr.relPath,
+			})
+			if err == nil {
+				for _, e := range fileEntities {
+					// Only include entities that exactly match this file (not prefix matches)
+					if e.FilePath == fr.relPath {
+						scannedEntityIDs[e.ID] = true
+					}
+				}
+			}
+			continue // Skip further processing for unchanged files
+		}
+
 		for _, ewn := range fr.entities {
 			entity := ewn.Entity
 			entityID := entity.GenerateEntityID()
@@ -483,7 +504,13 @@ func scanFilePass1(path, basePath string, p *parser.Parser, storeDB *store.Store
 		if err == nil && !changed {
 			stats.skipped++
 			stats.filesScanned-- // Don't count skipped files
-			return nil
+			// Return a marker for unchanged file so its entities can be preserved
+			return &fileScanResult{
+				path:      path,
+				relPath:   relPath,
+				fileHash:  fileHash,
+				unchanged: true,
+			}
 		}
 	}
 
@@ -969,4 +996,98 @@ func formatOverviewLocation(filePath string, line int) string {
 		filePath = strings.Join(parts[len(parts)-2:], "/")
 	}
 	return fmt.Sprintf("%s:%d", filePath, line)
+}
+
+// parseLanguageFlag parses the --lang flag value into a parser.Language.
+func parseLanguageFlag(langStr string) (parser.Language, error) {
+	switch strings.ToLower(langStr) {
+	case "go":
+		return parser.Go, nil
+	case "typescript", "ts":
+		return parser.TypeScript, nil
+	case "javascript", "js":
+		return parser.JavaScript, nil
+	case "java":
+		return parser.Java, nil
+	case "rust", "rs":
+		return parser.Rust, nil
+	case "python", "py":
+		return parser.Python, nil
+	case "c":
+		return parser.C, nil
+	case "csharp", "cs":
+		return parser.CSharp, nil
+	case "php":
+		return parser.PHP, nil
+	case "kotlin", "kt":
+		return parser.Kotlin, nil
+	case "ruby", "rb":
+		return parser.Ruby, nil
+	case "cpp", "c++":
+		return parser.Cpp, nil
+	default:
+		return "", fmt.Errorf("unsupported language: %s", langStr)
+	}
+}
+
+// detectLanguages walks the directory and returns detected languages based on file extensions.
+// Returns languages sorted by file count (most common first).
+func detectLanguages(scanPath string, excludes []string) []parser.Language {
+	// Count files by language
+	langCounts := make(map[parser.Language]int)
+
+	filepath.Walk(scanPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+
+		// Skip directories
+		if info.IsDir() {
+			if shouldExcludeDir(path, scanPath, excludes) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		// Skip excluded files
+		if shouldExcludeFile(path, scanPath, excludes) {
+			return nil
+		}
+
+		// Detect language from extension
+		ext := filepath.Ext(path)
+		lang := parser.LanguageFromExtension(ext)
+		if lang != "" {
+			langCounts[lang]++
+		}
+
+		return nil
+	})
+
+	// Convert to slice and sort by count (descending)
+	type langCount struct {
+		lang  parser.Language
+		count int
+	}
+	var counts []langCount
+	for lang, count := range langCounts {
+		counts = append(counts, langCount{lang, count})
+	}
+
+	// Sort by count descending
+	for i := 0; i < len(counts); i++ {
+		for j := i + 1; j < len(counts); j++ {
+			if counts[j].count > counts[i].count {
+				counts[i], counts[j] = counts[j], counts[i]
+			}
+		}
+	}
+
+	// Extract just the languages
+	var languages []parser.Language
+	for _, lc := range counts {
+		languages = append(languages, lc.lang)
+	}
+
+	return languages
 }

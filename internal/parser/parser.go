@@ -224,3 +224,54 @@ func (r *ParseResult) NodeText(node *sitter.Node) string {
 	}
 	return node.Content(r.Source)
 }
+
+// LanguageFromExtension returns the language for a file extension.
+// Returns empty string if the extension is not recognized.
+func LanguageFromExtension(ext string) Language {
+	switch ext {
+	case ".go":
+		return Go
+	case ".ts", ".tsx":
+		return TypeScript
+	case ".js", ".jsx", ".mjs", ".cjs":
+		return JavaScript
+	case ".py", ".pyi":
+		return Python
+	case ".rs":
+		return Rust
+	case ".java":
+		return Java
+	case ".cs":
+		return CSharp
+	case ".c", ".h":
+		return C
+	case ".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx":
+		return Cpp
+	case ".php":
+		return PHP
+	case ".kt", ".kts":
+		return Kotlin
+	case ".rb", ".rake":
+		return Ruby
+	default:
+		return ""
+	}
+}
+
+// SupportedExtensions returns all file extensions supported for parsing.
+func SupportedExtensions() []string {
+	return []string{
+		".go",
+		".ts", ".tsx",
+		".js", ".jsx", ".mjs", ".cjs",
+		".py", ".pyi",
+		".rs",
+		".java",
+		".cs",
+		".c", ".h",
+		".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx",
+		".php",
+		".kt", ".kts",
+		".rb", ".rake",
+	}
+}
