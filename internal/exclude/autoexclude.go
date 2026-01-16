@@ -4,6 +4,7 @@ package exclude
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // AutoExcludeResult contains the directories to exclude and why.
@@ -16,70 +17,122 @@ type AutoExcludeResult struct {
 
 // DetectAutoExcludes scans the project root for dependency directories that should be excluded.
 // Only uses 100% confidence detection methods (file existence checks).
+// Recursively detects nested projects (e.g., tools/svg-generator/src-tauri/target/).
 func DetectAutoExcludes(projectRoot string) *AutoExcludeResult {
 	result := &AutoExcludeResult{
 		Directories: []string{},
 		Reasons:     make(map[string]string),
 	}
 
-	// Check for each language ecosystem
-	// Order doesn't matter since we check independent conditions
-
-	// Rust: target/ if Cargo.toml exists
-	if fileExists(filepath.Join(projectRoot, "Cargo.toml")) {
-		targetDir := "target"
-		if dirExists(filepath.Join(projectRoot, targetDir)) {
-			result.Directories = append(result.Directories, targetDir)
-			result.Reasons[targetDir] = "Rust build artifacts (Cargo.toml detected)"
+	// Walk the directory tree to find marker files at any depth
+	_ = filepath.WalkDir(projectRoot, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil // Skip directories we can't read
 		}
-	}
 
-	// Go: vendor/ if vendor/modules.txt exists
-	vendorModules := filepath.Join(projectRoot, "vendor", "modules.txt")
-	if fileExists(vendorModules) {
-		vendorDir := "vendor"
-		result.Directories = append(result.Directories, vendorDir)
-		result.Reasons[vendorDir] = "Go vendored dependencies (vendor/modules.txt detected)"
-	}
-
-	// Node/TypeScript: node_modules/ if package.json exists
-	if fileExists(filepath.Join(projectRoot, "package.json")) {
-		nodeModules := "node_modules"
-		if dirExists(filepath.Join(projectRoot, nodeModules)) {
-			result.Directories = append(result.Directories, nodeModules)
-			result.Reasons[nodeModules] = "Node.js dependencies (package.json detected)"
+		// Skip if this is the project root itself
+		if path == projectRoot {
+			return nil
 		}
-	}
 
-	// PHP: vendor/ if vendor/autoload.php exists
-	vendorAutoload := filepath.Join(projectRoot, "vendor", "autoload.php")
-	if fileExists(vendorAutoload) {
-		vendorDir := "vendor"
-		// Avoid duplicate if Go already added vendor/
-		if !contains(result.Directories, vendorDir) {
-			result.Directories = append(result.Directories, vendorDir)
-			result.Reasons[vendorDir] = "PHP Composer dependencies (vendor/autoload.php detected)"
+		// Get relative path for this entry
+		relPath, err := filepath.Rel(projectRoot, path)
+		if err != nil {
+			return nil
 		}
-	}
 
-	// Python: Find any top-level directory containing pyvenv.cfg (virtual environments)
-	// Scan all top-level directories rather than hardcoding names, since users can name
-	// their virtual environments anything (e.g., "myproject-env", "py311-venv", etc.)
-	entries, err := os.ReadDir(projectRoot)
-	if err == nil {
-		for _, entry := range entries {
-			if entry.IsDir() {
-				dirName := entry.Name()
-				pyvenvCfg := filepath.Join(projectRoot, dirName, "pyvenv.cfg")
-				if fileExists(pyvenvCfg) {
-					if !contains(result.Directories, dirName) {
-						result.Directories = append(result.Directories, dirName)
-						result.Reasons[dirName] = "Python virtual environment (pyvenv.cfg detected)"
-					}
+		// If this is a directory, check if it's already excluded or should be skipped
+		if d.IsDir() {
+			// Skip if this directory is already in our exclude list
+			if contains(result.Directories, relPath) {
+				return filepath.SkipDir
+			}
+
+			// Skip if any parent directory is already excluded
+			for _, excluded := range result.Directories {
+				if strings.HasPrefix(relPath, excluded+string(filepath.Separator)) {
+					return filepath.SkipDir
 				}
 			}
+
+			// Don't descend into common dependency directories even if not yet excluded
+			dirName := d.Name()
+			if dirName == "node_modules" || dirName == "target" || dirName == "vendor" {
+				return filepath.SkipDir
+			}
+
+			return nil
 		}
-	}
+
+		// This is a file - check if it's a marker file
+		dirPath := filepath.Dir(path)
+		relDirPath, err := filepath.Rel(projectRoot, dirPath)
+		if err != nil {
+			return nil
+		}
+
+		fileName := d.Name()
+
+		switch fileName {
+		case "Cargo.toml":
+			// Rust: target/ sibling if it exists
+			targetDir := filepath.Join(relDirPath, "target")
+			if relDirPath == "." {
+				targetDir = "target"
+			}
+			absTargetDir := filepath.Join(projectRoot, targetDir)
+			if dirExists(absTargetDir) && !contains(result.Directories, targetDir) {
+				result.Directories = append(result.Directories, targetDir)
+				result.Reasons[targetDir] = "Rust build artifacts (Cargo.toml detected)"
+			}
+
+		case "package.json":
+			// Node: node_modules/ sibling if it exists
+			nodeModulesDir := filepath.Join(relDirPath, "node_modules")
+			if relDirPath == "." {
+				nodeModulesDir = "node_modules"
+			}
+			absNodeModulesDir := filepath.Join(projectRoot, nodeModulesDir)
+			if dirExists(absNodeModulesDir) && !contains(result.Directories, nodeModulesDir) {
+				result.Directories = append(result.Directories, nodeModulesDir)
+				result.Reasons[nodeModulesDir] = "Node.js dependencies (package.json detected)"
+			}
+
+		case "go.mod":
+			// Go: vendor/ sibling if vendor/modules.txt exists
+			vendorDir := filepath.Join(relDirPath, "vendor")
+			if relDirPath == "." {
+				vendorDir = "vendor"
+			}
+			absVendorModules := filepath.Join(projectRoot, vendorDir, "modules.txt")
+			if fileExists(absVendorModules) && !contains(result.Directories, vendorDir) {
+				result.Directories = append(result.Directories, vendorDir)
+				result.Reasons[vendorDir] = "Go vendored dependencies (vendor/modules.txt detected)"
+			}
+
+		case "composer.json":
+			// PHP: vendor/ sibling if vendor/autoload.php exists
+			vendorDir := filepath.Join(relDirPath, "vendor")
+			if relDirPath == "." {
+				vendorDir = "vendor"
+			}
+			absVendorAutoload := filepath.Join(projectRoot, vendorDir, "autoload.php")
+			if fileExists(absVendorAutoload) && !contains(result.Directories, vendorDir) {
+				result.Directories = append(result.Directories, vendorDir)
+				result.Reasons[vendorDir] = "PHP Composer dependencies (vendor/autoload.php detected)"
+			}
+
+		case "pyvenv.cfg":
+			// Python: the directory containing pyvenv.cfg is the venv
+			venvDir := relDirPath
+			if !contains(result.Directories, venvDir) {
+				result.Directories = append(result.Directories, venvDir)
+				result.Reasons[venvDir] = "Python virtual environment (pyvenv.cfg detected)"
+			}
+		}
+
+		return nil
+	})
 
 	return result
 }
