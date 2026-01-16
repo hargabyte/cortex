@@ -1,23 +1,27 @@
 # CX Enhancement Session Handoff
 
 **Date**: 2026-01-16
-**Last Commit**: c7fc454 - Complete CX orchestration: tagging, safe command, docs, tests
-**Status**: Partial completion - many features implemented, several groups remain open
+**Last Commit**: 260615d - Complete quick wins: trace command, tag export/import, safe path fix
+**Status**: ~70% complete - core features working, daemon/test intelligence remain
 **GitHub Issue**: https://github.com/hargabyte/cortex/issues/1
 
 ---
 
 ## Executive Summary
 
-A multi-agent orchestration session implemented ~60% of the planned CX enhancements. The session crashed mid-execution, but recovery was successful. Core features (tagging, safe command, test intelligence basics) are working. Several advanced features remain incomplete.
+This session completed the 3 quick wins from the previous handoff:
+1. `cx trace` command - activated from WIP file
+2. `cx tags export/import` - new subcommands added
+3. `cx safe <file>` path fix - normalized file paths for database queries
+
+Core features (tagging, safe command, trace, test basics) are fully working. Remaining work is daemon/live mode and advanced test intelligence.
 
 ---
 
-## What Works (Verified by Testing)
+## What Works (Verified)
 
-### 1. Entity Tagging (`cx tag`, `cx tags`, `cx untag`)
+### 1. Entity Tagging - COMPLETE
 ```bash
-# All working:
 cx tag <entity> <tags...>             # Add tags
 cx tag <entity> -n "note"             # Add tag with note
 cx untag <entity> <tag>               # Remove tag
@@ -26,303 +30,178 @@ cx tags                               # List all tags with counts
 cx tags --find <tag>                  # Find entities by tag
 cx tags --find a --find b --all       # AND matching
 cx tags --find a --find b --any       # OR matching
+cx tags export                        # Export to stdout
+cx tags export tags.yaml              # Export to file
+cx tags import tags.yaml              # Import tags
+cx tags import tags.yaml --dry-run    # Preview import
+cx tags import tags.yaml --overwrite  # Overwrite existing
 cx show <entity>                      # Tags appear in output
 ```
 
-**Test commands run**:
+### 2. Safe Command - COMPLETE
 ```bash
-cx tag runContext important           # ✓ Works
-cx tags runContext                    # ✓ Shows tag
-cx tags --find important              # ✓ Finds tagged entities
-cx show runContext                    # ✓ Tags shown at bottom
-```
-
-### 2. Safe Command (`cx safe`)
-```bash
-# Working modes:
+cx safe <file>                        # Full safety assessment
+cx safe <file> --quick                # Just blast radius (FIXED)
+cx safe ./path/to/file.go             # Works with ./ prefix (FIXED)
 cx safe --coverage                    # Coverage gaps mode
 cx safe --coverage --keystones-only   # Only keystone gaps
 cx safe --drift                       # Staleness check
 cx safe --changes                     # What changed since scan
-
-# NOT working:
-cx safe <file> --quick               # Entity resolution fails for file paths
+cx safe --create-task                 # Create bead for findings
 ```
 
-**Issue**: The `--quick` mode with file paths fails because entity resolution doesn't match file paths properly. Needs investigation.
-
-### 3. Test Intelligence (`cx test`)
+### 3. Trace Command - COMPLETE (NEW)
 ```bash
-# Working:
-cx test --diff                        # Find tests for uncommitted changes
-cx test --gaps                        # Coverage gaps (calls safe --coverage)
+cx trace <from> <to>                  # Shortest path between entities
+cx trace <from> <to> --all            # All paths
+cx trace <entity> --callers           # What calls this entity
+cx trace <entity> --callees           # What this entity calls
+cx trace <entity> --depth 5           # Limit trace depth
+```
+
+### 4. Test Intelligence - PARTIAL
+```bash
+cx test --diff                        # Tests for uncommitted changes
+cx test --gaps                        # Coverage gaps
 cx test --run                         # Actually run tests
 
 # NOT implemented:
-cx test --affected <entity>           # Not implemented
 cx test suggest                       # Not implemented
+cx test --affected <entity>           # Not implemented
 cx test impact <file>                 # Not implemented
 ```
 
-### 4. Status Command
+### 5. Other Working Commands
 ```bash
-cx status                             # Works (deprecated alias for cx db info)
+cx status                             # Daemon/graph status
+cx map                                # Project skeleton
+cx context --smart "task"             # Smart context assembly
+cx rank --keystones                   # Critical entities
+cx find <pattern>                     # Entity search
+cx show <entity>                      # Entity details with tags
+cx graph <entity>                     # Dependency visualization
 ```
 
 ---
 
-## What's NOT Working / Incomplete
+## What's NOT Done (Remaining Work)
 
-### Critical Issues to Fix
+### Priority 1: Daemon & Live Mode (cortex-b44)
 
-1. **`cx safe <file> --quick`** - Entity resolution doesn't work for file paths
-   - Location: `internal/cmd/safe.go`
-   - Error: "no entities found matching: internal/cmd/tag.go"
-   - Needs: File path to entity mapping logic
+| Bead | Task | Notes |
+|------|------|-------|
+| cortex-b44.5.1 | Rename `cx serve` → `cx live` | Simple rename |
+| cortex-b44.5.2 | Add `cx live --watch` flag | File watching |
+| cortex-b44.5.3 | Add `cx daemon stop/status` | Control commands |
+| cortex-b44.5.4 | Update help text | Documentation |
+| cortex-b44.4.1-4.3 | Auto-start integration | Route through daemon |
+| cortex-b44.2.2 | Incremental scan algorithm | WIP file exists |
+| cortex-b44.2.4 | `cx scan --incremental` flag | Uses above |
 
-2. **Tag Export/Import** - Types exist but commands don't
-   - Types: `TagExport`, `ExportedTag` in `internal/cmd/tag.go`
-   - Need: `cx tags export` and `cx tags import` subcommands
-   - Test file exists: `internal/cmd/tag_export_test.go`
+**Files**:
+- `internal/cmd/serve.go` - needs rename
+- `internal/daemon/incremental.go.wip` - WIP implementation
+- `internal/daemon/incremental_test.go.wip` - WIP tests
 
-3. **`cx trace`** - WIP file exists but not integrated
-   - Location: `internal/cmd/trace.go.wip`
-   - Needs: Rename to `.go`, integrate into root command
-   - Uses: `internal/graph/pathfinding.go` (already committed)
+### Priority 2: Test Intelligence (cortex-9dk)
 
----
+| Bead | Task | Notes |
+|------|------|-------|
+| cortex-9dk.2.3 | Generate test case ideas | Logic exists in suggestions.go |
+| cortex-9dk.2.4 | `cx test suggest` command | Wire up suggestions |
+| cortex-9dk.3.1 | Identify affected tests | Graph traversal |
+| cortex-9dk.3.3 | `cx test --affected` flag | Uses above |
 
-## Open Beads by Priority
+**Files**:
+- `internal/coverage/suggestions.go` - has suggestion logic
+- `internal/cmd/test.go` - needs new flags
 
-### P1 - High Priority (Should Complete)
+### Priority 3: CX + Beads Integration (cortex-1he)
 
-#### cortex-b44: Daemon & Live Mode
-| Bead | Task | Status |
-|------|------|--------|
-| cortex-b44.5.1 | Rename cx serve to cx live | Open |
-| cortex-b44.5.2 | Add cx live --watch flag | Open |
-| cortex-b44.5.3 | Add cx daemon stop/status | Open |
-| cortex-b44.5.4 | Update help text | Open |
-| cortex-b44.4.1-4.3 | Auto-start integration | Open |
-| cortex-b44.2.2 | Incremental scan algorithm | Open |
-| cortex-b44.2.4 | cx scan --incremental flag | Open |
+| Bead | Task | Notes |
+|------|------|-------|
+| cortex-1he.1.* | Context output for beads | JSON schema |
+| cortex-1he.2.* | `bd create` integration | `--cx-smart` flag |
+| cortex-1he.3.* | Bi-directional entity linking | `cx link` command |
 
-**Files involved**:
-- `internal/daemon/` - storeproxy.go, client.go exist
-- `internal/daemon/incremental.go.wip` - WIP file
-- `internal/cmd/serve.go` - needs rename logic
+### Priority 4: Smart Context (cortex-dsr)
 
-#### cortex-ali: Entity Tagging
-| Bead | Task | Status |
-|------|------|--------|
-| cortex-ali.3.3 | --tag-all for AND matching | **DONE** (verified working) |
-
-**Action**: Close cortex-ali.3.3 - it's implemented and working
-
-#### cortex-9dk: Test Intelligence
-| Bead | Task | Status |
-|------|------|--------|
-| cortex-9dk.2.3 | Generate test case ideas from signatures | Open |
-| cortex-9dk.2.4 | cx test suggest command | Open |
-| cortex-9dk.3.1 | Identify tests affected by changed code | Open |
-| cortex-9dk.3.3 | cx test --affected flag | Open |
-
-**Files involved**:
-- `internal/coverage/suggestions.go` - exists
-- `internal/cmd/test.go` - needs --affected implementation
-
-#### cortex-dsr: Smart Context
-| Bead | Task | Status |
-|------|------|--------|
-| cortex-dsr.4.1 | Improve keyword extraction | Open |
-| cortex-dsr.4.3 | Include test files covering entry points | Open |
-| cortex-dsr.4.4 | Add 'why included' reasoning | Open |
-
-**Files involved**:
-- `internal/context/smart.go` - main implementation
-- `internal/diff/inlinedrift.go` - exists for drift detection
-
-#### cortex-1he: CX + Beads Integration
-| Bead | Task | Status |
-|------|------|--------|
-| cortex-1he.1.1-1.4 | CX Context Output for Beads | Open |
-| cortex-1he.2.1-2.4 | BD Create Integration | Open |
-| cortex-1he.3.1-3.4 | Bi-Directional Entity Linking | Open |
-
-**Scope**: This epic integrates CX with the beads issue tracker. Lower priority unless beads integration is critical.
-
-### P2 - Medium Priority
-
-- cortex-b44.3.* - Filesystem watching (fsnotify integration)
-- cortex-9dk.4.* - Coverage gaps report enhancements
-- cortex-9dk.5.* - Test impact analysis
-- cortex-dsr.3.2 - Find shortest path between entities (pathfinding.go ready)
-- cortex-1he.4.* - Task decomposition
-- cortex-1he.5.* - Context refresh & staleness
-
-### P3/P4 - Low Priority / Future
-- cortex-1he.6.* - GasTown coordination
-- cortex-zxn - Semantic search with embeddings
-- cortex-5a7 - Codebase tour & documentation
+| Bead | Task | Notes |
+|------|------|-------|
+| cortex-dsr.2.3 | Improve keyword extraction | Better relevance |
+| cortex-dsr.2.4 | Include test files | Related tests |
+| cortex-dsr.3.3 | Add "why included" reasoning | Context explanations |
 
 ---
 
-## Files to Review
+## Quick Reference
 
-### Modified (staged and committed)
+### Files Changed This Session
 ```
-CLAUDE.md                    - Updated with tagging commands
-internal/cmd/helpagents.go   - Updated with tag/status commands
-internal/cmd/safe.go         - Full safety assessment (has issue with file paths)
-internal/cmd/show.go         - Displays tags
-internal/cmd/tag.go          - Added TagExport/ExportedTag types
-internal/cmd/test.go         - Test intelligence command
-internal/context/smart.go    - Smart context improvements
-internal/output/schema.go    - Output schema updates
-internal/store/tags.go       - Tag storage
+internal/cmd/trace.go      # NEW - renamed from .wip
+internal/cmd/tag.go        # MODIFIED - added export/import
+internal/cmd/safe.go       # MODIFIED - path normalization
+internal/cmd/utils.go      # MODIFIED - normalizeFilePath()
 ```
 
-### New Files (committed)
+### WIP Files (Not Yet Integrated)
 ```
-docs/NEW_FEATURES.md              - Feature documentation
-internal/cmd/status.go            - Status command (db info alias)
-internal/cmd/tag_export_test.go   - Test for tag export (tests fail - missing impl)
-internal/coverage/gaps.go         - Coverage gap analysis
-internal/coverage/gaps_test.go
-internal/coverage/impact.go       - Test impact analysis
-internal/coverage/impact_test.go
-internal/coverage/suggestions.go  - Test suggestions
-internal/daemon/client.go         - Daemon client
-internal/daemon/client_test.go
-internal/daemon/storeproxy.go     - Store proxy for daemon
-internal/daemon/storeproxy_test.go
-internal/diff/inlinedrift.go      - Inline drift detection
-internal/diff/inlinedrift_test.go
-internal/graph/pathfinding.go     - Path finding (for trace)
-internal/graph/pathfinding_test.go
-internal/store/tags_export_test.go
-```
-
-### WIP Files (not committed)
-```
-internal/cmd/trace.go.wip              - Call chain tracer
-internal/daemon/incremental.go.wip     - Incremental scanning
+internal/daemon/incremental.go.wip
 internal/daemon/incremental_test.go.wip
 ```
+
+### Key Packages
+- `internal/cmd/` - CLI commands (cobra)
+- `internal/store/` - SQLite storage
+- `internal/context/` - Smart context assembly
+- `internal/coverage/` - Test coverage analysis
+- `internal/daemon/` - Background daemon (partial)
+- `internal/graph/` - Graph algorithms (pathfinding)
 
 ---
 
 ## Recommended Next Steps
 
-### Quick Wins (30 min each)
+### Option A: Finish Test Intelligence (Easier)
+1. Wire up `cx test suggest` using existing `internal/coverage/suggestions.go`
+2. Add `cx test --affected` flag with graph traversal
+3. Close cortex-9dk beads
 
-1. **Close cortex-ali.3.3** - Already working
-   ```bash
-   bd close cortex-ali.3.3 --reason "Implemented: cx tags --find a --find b --all works"
-   ```
+### Option B: Finish Daemon/Live Mode (More Complex)
+1. Rename `cx serve` → `cx live` (simple)
+2. Activate incremental scanning from .wip files
+3. Add daemon control commands
+4. Close cortex-b44 beads
 
-2. **Finish trace command**
-   ```bash
-   mv internal/cmd/trace.go.wip internal/cmd/trace.go
-   # Add to root command in internal/cmd/root.go
-   # Test: cx trace <from> <to>
-   ```
-
-3. **Add tag export/import commands**
-   - Add `tagsExportCmd` and `tagsImportCmd` to `internal/cmd/tag.go`
-   - Use existing `TagExport`/`ExportedTag` types
-   - Wire into init() as subcommands of tagsCmd
-
-### Medium Effort (1-2 hours each)
-
-4. **Fix cx safe <file> --quick**
-   - Issue in `internal/cmd/safe.go`
-   - Need to resolve file paths to entities
-   - Look at how `cx show file.go:45` does entity resolution
-
-5. **Implement cx test --affected**
-   - Add flag to `internal/cmd/test.go`
-   - Use coverage data + call graph to find affected tests
-
-6. **Implement cx test suggest**
-   - Logic exists in `internal/coverage/suggestions.go`
-   - Need to wire up as a command/subcommand
-
-### Larger Efforts (half-day+)
-
-7. **Daemon rename and cleanup (cortex-b44.5.x)**
-   - Rename `cx serve` to `cx live`
-   - Add `cx daemon stop/status` subcommands
-   - Update all help text
-
-8. **Incremental scanning (cortex-b44.2.x)**
-   - Finish `internal/daemon/incremental.go.wip`
-   - Add `cx scan --incremental` flag
-   - Track file modification times
+### Option C: Quick Cleanup
+1. Update CLAUDE.md with new commands (trace, tags export/import)
+2. Close remaining open beads that are done
+3. Run `bd stats` to see progress
 
 ---
 
-## Testing Commands
-
-Before closing beads, verify with these tests:
+## Session Commands
 
 ```bash
-# Build
-go build -o /tmp/cx ./cmd/cx
+# Start of session
+cx prime                    # Context recovery
+bd ready                    # What's unblocked
+bd list --status open       # All open issues
 
-# All tests pass
-go test ./...
-
-# Feature tests
-/tmp/cx tag runContext critical           # Tag entity
-/tmp/cx tags --find critical              # Find by tag
-/tmp/cx safe --coverage --keystones-only  # Coverage gaps
-/tmp/cx test --diff                       # Test selection
-/tmp/cx status                            # DB info
-/tmp/cx show runContext                   # Shows tags
+# End of session
+git add <files>
+git commit -m "..."
+bd sync
+git push
 ```
 
 ---
 
-## Known Issues
+## Commit History (This Session)
 
-1. **bd sync prefix mismatch**: Database has `cortex-` prefix but some issues have `Superhero-AI-` prefix. Use `--rename-on-import` to fix.
-
-2. **Kotlin test failure**: Pre-existing issue in `internal/extract/kotlin_test.go:339` - not related to this work.
-
-3. **gh CLI not available**: Can't create GitHub issues programmatically. Create issues manually or install gh CLI.
-
----
-
-## Session Close Checklist
-
-Before ending any future session:
-```bash
-[ ] go build ./...                    # Verify build
-[ ] go test ./internal/cmd/... ./internal/store/...  # Key tests
-[ ] git status                        # Check changes
-[ ] git add <files>                   # Stage changes
-[ ] bd sync --flush-only              # Export beads
-[ ] git add .beads/issues.jsonl       # Stage beads
-[ ] git commit -m "..."               # Commit
-[ ] git push                          # Push to remote
 ```
-
----
-
-## Context for New Session
-
-The CX tool is a codebase analysis tool that:
-- Scans source code to build an entity/dependency graph
-- Provides commands to explore and query the graph
-- Integrates with the `bd` (beads) issue tracker
-
-Key packages:
-- `internal/cmd/` - CLI commands (cobra)
-- `internal/store/` - SQLite storage
-- `internal/context/` - Smart context assembly
-- `internal/coverage/` - Test coverage analysis
-- `internal/daemon/` - Background daemon (partially implemented)
-- `internal/graph/` - Graph algorithms (pathfinding)
-
-The beads (bd) integration allows linking code entities to issues for tracking work.
+260615d Complete quick wins: trace command, tag export/import, safe path fix
+e758917 Add GitHub issue link to handoff document
+2f2437f Add comprehensive handoff document for CX enhancement session
+c7fc454 Complete CX orchestration: tagging, safe command, docs, tests
+```
