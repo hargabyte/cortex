@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"syscall"
 	"time"
 )
 
@@ -151,10 +150,8 @@ func startDaemonProcess(opts EnsureDaemonOptions) error {
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 
-	// Set process group for proper detachment on Unix
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setsid: true, // Create new session, detach from controlling terminal
-	}
+	// Set platform-specific process attributes for daemon detachment
+	setSysProcAttr(cmd)
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("start daemon process: %w", err)

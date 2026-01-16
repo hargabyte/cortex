@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	// Version is the current version of cx
-	Version = "0.1.0"
+	// Version is the current version of cx, injected at build time via:
+	// go build -ldflags="-X github.com/anthropics/cx/internal/cmd.Version=v1.0.0"
+	Version = "dev"
 
 	// Global flags
 	verbose       bool

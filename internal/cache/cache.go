@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // Cache manages the .cx/cache.db SQLite database for storing computed metrics
@@ -23,7 +23,7 @@ type Cache struct {
 func Open(cxDir string) (*Cache, error) {
 	dbPath := filepath.Join(cxDir, "cache.db")
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("open cache db: %w", err)
 	}

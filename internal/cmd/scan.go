@@ -186,6 +186,8 @@ func runScan(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		relScanPath = "." // Fall back to full scan
 	}
+	// Normalize paths to forward slashes for cross-platform consistency
+	relScanPath = filepath.ToSlash(relScanPath)
 	// Normalize: "." means full project scan
 	isFullScan := relScanPath == "."
 
@@ -356,16 +358,16 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	// Bulk create new entities
 	if len(entitiesToCreate) > 0 && !scanDryRun {
-		if err := storeDB.CreateEntitiesBulk(entitiesToCreate); err != nil && verbose {
-			w.WriteComment(fmt.Sprintf("Warning: bulk entity creation failed: %v", err))
+		if err := storeDB.CreateEntitiesBulk(entitiesToCreate); err != nil {
+			w.WriteComment(fmt.Sprintf("Error: bulk entity creation failed: %v", err))
 		}
 	}
 
 	// Update changed entities
 	if len(entitiesToUpdate) > 0 && !scanDryRun {
 		for _, e := range entitiesToUpdate {
-			if err := storeDB.UpdateEntity(e); err != nil && verbose {
-				w.WriteComment(fmt.Sprintf("Warning: entity update failed for %s: %v", e.ID, err))
+			if err := storeDB.UpdateEntity(e); err != nil {
+				w.WriteComment(fmt.Sprintf("Error: entity update failed for %s: %v", e.ID, err))
 			}
 		}
 	}
@@ -378,60 +380,85 @@ func runScan(cmd *cobra.Command, args []string) error {
 		w.WriteComment("Extracting call graph dependencies...")
 	}
 
-	// Build global entity map for cross-file resolution
-	var allCallGraphEntities []extract.CallGraphEntity
+	// Build global entity lookup maps ONCE for cross-file resolution
+	// These maps are shared by all extractors to avoid O(files × entities) overhead
+	entityByName := make(map[string]*extract.CallGraphEntity)
+	entityByID := make(map[string]*extract.CallGraphEntity)
+
+	// First pass: collect all entities into a slice to avoid loop variable aliasing
+	var allEntities []extract.CallGraphEntity
 	for _, fr := range fileResults {
 		for _, ewn := range fr.entities {
 			cge := ewn.Entity.ToCallGraphEntity()
 			cge.Node = ewn.Node // Set the AST node
-			allCallGraphEntities = append(allCallGraphEntities, cge)
+			allEntities = append(allEntities, cge)
 		}
 	}
 
-	// Extract dependencies from each file using the global entity map
+	// Second pass: build lookup maps with stable pointers
+	for i := range allEntities {
+		e := &allEntities[i]
+		entityByName[e.Name] = e
+		if e.QualifiedName != "" {
+			entityByName[e.QualifiedName] = e
+		}
+		if e.ID != "" {
+			entityByID[e.ID] = e
+		}
+	}
+
+	// Extract dependencies from each file using shared lookup maps
 	for _, fr := range fileResults {
 		if fr.parseResult == nil {
 			continue
 		}
 
-		// Create call graph extractor with global entities for cross-file resolution
+		// Convert this file's entities to CallGraphEntity slice (only for iteration)
+		var fileEntities []extract.CallGraphEntity
+		for _, ewn := range fr.entities {
+			cge := ewn.Entity.ToCallGraphEntity()
+			cge.Node = ewn.Node
+			fileEntities = append(fileEntities, cge)
+		}
+
+		// Create call graph extractor with shared lookup maps
 		// Dispatch to language-specific extractor
 		var deps []extract.Dependency
 		var extractErr error
 
 		switch fr.parseResult.Language {
 		case parser.Go:
-			extractor := extract.NewCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		case parser.TypeScript, parser.JavaScript:
-			extractor := extract.NewTypeScriptCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewTypeScriptCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		case parser.Python:
-			extractor := extract.NewPythonCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewPythonCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		case parser.Java:
-			extractor := extract.NewJavaCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewJavaCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		case parser.Rust:
-			extractor := extract.NewRustCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewRustCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		case parser.C:
-			extractor := extract.NewCCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewCCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		case parser.Cpp:
-			extractor := extract.NewCppCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewCppCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		case parser.CSharp:
-			extractor := extract.NewCSharpCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewCSharpCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		case parser.PHP:
-			extractor := extract.NewPHPCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewPHPCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		case parser.Ruby:
-			extractor := extract.NewRubyCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewRubyCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		case parser.Kotlin:
-			extractor := extract.NewKotlinCallGraphExtractor(fr.parseResult, allCallGraphEntities)
+			extractor := extract.NewKotlinCallGraphExtractorWithMaps(fr.parseResult, fileEntities, entityByName, entityByID)
 			deps, extractErr = extractor.ExtractDependencies()
 		default:
 			// Unsupported language for call graph extraction
@@ -891,13 +918,14 @@ func isSourceFile(path string, lang parser.Language) bool {
 	}
 }
 
-// getRelativePath returns path relative to basePath
+// getRelativePath returns path relative to basePath.
+// Always uses forward slashes for cross-platform consistency.
 func getRelativePath(path, basePath string) string {
 	rel, err := filepath.Rel(basePath, path)
 	if err != nil {
-		return path
+		return filepath.ToSlash(path)
 	}
-	return rel
+	return filepath.ToSlash(rel)
 }
 
 // isFileChanged checks if a file has changed since last scan

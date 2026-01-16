@@ -391,16 +391,17 @@ func (e *Entity) formatFields() string {
 }
 
 // GenerateEntityID creates a stable entity ID.
-// Format: sa-<type>-<path-hash>-<name>
+// Format: sa-<type>-<path-hash>-<line>-<name>
 //
 // Components:
 //   - sa: Static analysis prefix
 //   - type: fn/type/const/enum/mod/imp
-//   - path-hash: Truncated SHA-256 of file path (6 chars)
+//   - path-hash: Truncated SHA-256 of file path (8 chars for lower collision rate)
+//   - line: Start line number
 //   - name: Symbol name (sanitized, max 32 chars)
 func (e *Entity) GenerateEntityID() string {
 	typeCode := e.getTypeCode()
-	pathHash := hashString(e.File)[:6]
+	pathHash := hashString(e.File)[:8]
 	name := sanitizeName(e.Name)
 	// Include line number to disambiguate entities with same name in same file
 	// (e.g., local variables named 'err' in different functions)
@@ -529,15 +530,16 @@ func DetermineVisibility(name string) Visibility {
 }
 
 // NormalizePath normalizes file path for consistent storage.
+// Always uses forward slashes for cross-platform consistency.
 func NormalizePath(path, basePath string) string {
 	if basePath == "" {
-		return filepath.Clean(path)
+		return filepath.ToSlash(filepath.Clean(path))
 	}
 	rel, err := filepath.Rel(basePath, path)
 	if err != nil {
-		return filepath.Clean(path)
+		return filepath.ToSlash(filepath.Clean(path))
 	}
-	return rel
+	return filepath.ToSlash(rel)
 }
 
 // ToCallGraphEntity converts an Entity to a CallGraphEntity for use with CallGraphExtractor.

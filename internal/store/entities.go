@@ -36,22 +36,21 @@ func (s *Store) CreateEntitiesBulk(entities []*Entity) error {
 
 	tx, err := s.db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO entities (id, name, entity_type, kind, file_path, line_start, line_end,
+		INSERT OR IGNORE INTO entities (id, name, entity_type, kind, file_path, line_start, line_end,
 			signature, sig_hash, body_hash, receiver, visibility, fields, language, status,
 			body_text, doc_comment, skeleton, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return err
+		tx.Rollback()
+		return fmt.Errorf("prepare statement: %w", err)
 	}
-	defer stmt.Close()
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	for _, e := range entities {
+	for i, e := range entities {
 		if e.Status == "" {
 			e.Status = "active"
 		}
@@ -63,11 +62,18 @@ func (s *Store) CreateEntitiesBulk(entities []*Entity) error {
 			e.Signature, e.SigHash, e.BodyHash, e.Receiver, e.Visibility, e.Fields, e.Language, e.Status,
 			e.BodyText, e.DocComment, e.Skeleton, now, now)
 		if err != nil {
-			return err
+			stmt.Close()
+			tx.Rollback()
+			return fmt.Errorf("insert entity %d (%s): %w", i, e.ID, err)
 		}
 	}
 
-	return tx.Commit()
+	stmt.Close()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction (%d entities): %w", len(entities), err)
+	}
+
+	return nil
 }
 
 // GetEntity retrieves an entity by ID.
