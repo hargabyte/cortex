@@ -347,7 +347,7 @@ This catches:
 
 ## Why This Tool Exists
 
-I built this with a Hargabyte because I needed it.
+I built this with Hargabyte because I needed it.
 
 AI assistants are good at many things, but **perfectly inferring codebase structure from partial file reads** isn't one of them. Every time I grep for a function name, I might miss renamed imports. Every time I read a file, I'm guessing it's relevant. Every token I spend exploring is a token I can't spend helping.
 
