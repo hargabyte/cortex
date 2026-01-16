@@ -139,27 +139,41 @@ func runScan(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Use the first detected language for the main scan
-	// (multi-language scanning is handled by scanning each language in sequence)
-	lang := languages[0]
-
 	// Find existing .cx directory or create one
 	// First, look for an existing project by walking up from scanPath
 	var cxDir string
 	var projectRoot string
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
 	existingCxDir, err := config.FindConfigDir(scanPath)
 	if err == nil {
-		// Found existing .cx - this is an incremental scan
-		cxDir = existingCxDir
-		projectRoot = filepath.Dir(cxDir) // Project root is parent of .cx
+		foundProjectRoot := filepath.Dir(existingCxDir)
+		// Check if the found .cx is in cwd or a direct parent of scanPath
+		// If .cx is in a distant parent (like home directory), prefer creating a new local one
+		// This prevents accidentally using a stale/unrelated database
+		cwdHasCx := existingCxDir == filepath.Join(cwd, config.ConfigDirName)
+		scanPathHasCx := existingCxDir == filepath.Join(scanPath, config.ConfigDirName)
+
+		if cwdHasCx || scanPathHasCx || foundProjectRoot == cwd {
+			// Found .cx in cwd or scanPath - use it for incremental scan
+			cxDir = existingCxDir
+			projectRoot = foundProjectRoot
+		} else {
+			// Found .cx in a distant parent directory
+			// Create a new local .cx to avoid path mismatches
+			cxDir, err = config.EnsureConfigDir(cwd)
+			if err != nil {
+				return fmt.Errorf("failed to create .cx directory: %w", err)
+			}
+			projectRoot = cwd
+		}
 	} else {
 		// No existing .cx found - create new project
 		// Use current working directory as project root (not scanPath)
 		// This ensures `cx scan ./src` creates .cx in cwd, not in ./src
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("failed to get working directory: %w", err)
-		}
 		cxDir, err = config.EnsureConfigDir(cwd)
 		if err != nil {
 			return fmt.Errorf("failed to create .cx directory: %w", err)
@@ -210,55 +224,70 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	// ============================================================
 	// PASS 1: Scan all files, extract entities, keep ASTs in memory
+	// Iterate through all detected languages to support multi-language projects
 	// ============================================================
 	var fileResults []fileScanResult
-	var filePaths []string
 
-	// Collect all file paths first
-	err = filepath.Walk(scanPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			stats.errors++
-			return nil
-		}
+	for _, lang := range languages {
+		var filePaths []string
 
-		if info.IsDir() {
-			if shouldExcludeDir(path, scanPath, excludes) {
-				return filepath.SkipDir
+		// Collect all file paths for this language
+		err = filepath.Walk(scanPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				stats.errors++
+				return nil
 			}
+
+			if info.IsDir() {
+				if shouldExcludeDir(path, scanPath, excludes) {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+
+			if !isSourceFile(path, lang) {
+				return nil
+			}
+
+			if shouldExcludeFile(path, scanPath, excludes) {
+				stats.skipped++
+				return nil
+			}
+
+			filePaths = append(filePaths, path)
 			return nil
+		})
+
+		if err != nil {
+			return fmt.Errorf("walking directory: %w", err)
 		}
 
-		if !isSourceFile(path, lang) {
-			return nil
+		// Skip if no files found for this language
+		if len(filePaths) == 0 {
+			continue
 		}
 
-		if shouldExcludeFile(path, scanPath, excludes) {
-			stats.skipped++
-			return nil
+		// Create parser for this language
+		p, err := parser.NewParser(lang)
+		if err != nil {
+			// Log warning but continue with other languages
+			if verbose {
+				w.WriteComment(fmt.Sprintf("Warning: failed to create parser for %s: %v", lang, err))
+			}
+			continue
 		}
 
-		filePaths = append(filePaths, path)
-		return nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("walking directory: %w", err)
-	}
-
-	// Create a single parser instance for efficiency
-	p, err := parser.NewParser(lang)
-	if err != nil {
-		return fmt.Errorf("creating parser: %w", err)
-	}
-	defer p.Close()
-
-	// Process each file in pass 1
-	// Use projectRoot as base path so entity file paths match existing DB entries
-	for _, path := range filePaths {
-		result := scanFilePass1(path, projectRoot, p, storeDB, stats)
-		if result != nil {
-			fileResults = append(fileResults, *result)
+		// Process each file in pass 1
+		// Use projectRoot as base path so entity file paths match existing DB entries
+		for _, path := range filePaths {
+			result := scanFilePass1(path, projectRoot, p, storeDB, stats)
+			if result != nil {
+				fileResults = append(fileResults, *result)
+			}
 		}
+
+		// Close parser for this language before moving to next
+		p.Close()
 	}
 
 	// ============================================================
