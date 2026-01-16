@@ -60,6 +60,15 @@ type EntityLink struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+// EntityTag represents a tag/bookmark on a code entity
+type EntityTag struct {
+	EntityID  string    `json:"entity_id"`
+	Tag       string    `json:"tag"`
+	CreatedAt time.Time `json:"created_at"`
+	CreatedBy string    `json:"created_by,omitempty"` // who created the tag (user, agent, etc.)
+	Note      string    `json:"note,omitempty"`       // optional note about why the tag was added
+}
+
 // EntityFilter contains filters for querying entities
 type EntityFilter struct {
 	EntityType string // function, type, etc.

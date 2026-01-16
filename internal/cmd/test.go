@@ -82,6 +82,47 @@ var testCoverageCmd = &cobra.Command{
 	Long:  `Manage test coverage data. Use 'cx test coverage import' to import coverage files.`,
 }
 
+// testDiscoverCmd discovers test functions in the codebase
+var testDiscoverCmd = &cobra.Command{
+	Use:   "discover",
+	Short: "Discover test functions in the codebase",
+	Long: `Scan the codebase for test files and discover test functions.
+
+This command:
+  1. Walks the project directory looking for test files
+  2. Parses test files to identify test functions
+  3. Stores discovered tests as entities in the database
+  4. Links tests to coverage data if available
+
+Supported patterns:
+  Go:         func Test*, Benchmark*, Example*, Fuzz* in *_test.go
+  TypeScript: it(), test(), describe() in *.test.ts, *.spec.ts
+  JavaScript: it(), test(), describe() in *.test.js, *.spec.js
+  Python:     test_* in test_*.py, *_test.py
+  Rust:       #[test] in tests/ or *_test.rs
+  Java:       @Test in *Test.java
+
+Examples:
+  cx test discover              # Discover all tests in project
+  cx test discover --language go  # Only Go tests`,
+	RunE: runTestDiscover,
+}
+
+// testListCmd lists discovered test functions
+var testListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List discovered test functions",
+	Long: `List test functions discovered in the codebase.
+
+Use 'cx test discover' first to scan for tests.
+
+Examples:
+  cx test list                  # List all discovered tests
+  cx test list --language go    # Only Go tests
+  cx test list --for-entity <id>  # Tests covering a specific entity`,
+	RunE: runTestList,
+}
+
 // testCoverageImportCmd imports coverage data
 var testCoverageImportCmd = &cobra.Command{
 	Use:   "import <coverage.out | directory>",
@@ -136,6 +177,11 @@ var (
 
 	// Coverage import flags
 	testCoverageBasePath string
+
+	// Test discover/list flags
+	testDiscoverLanguage string
+	testListLanguage     string
+	testListForEntity    string
 )
 
 func init() {
@@ -161,6 +207,15 @@ func init() {
 
 	// Coverage import flags
 	testCoverageImportCmd.Flags().StringVar(&testCoverageBasePath, "base-path", "", "Base path for normalizing file paths (default: current directory)")
+
+	// Add discover subcommand
+	testCmd.AddCommand(testDiscoverCmd)
+	testDiscoverCmd.Flags().StringVar(&testDiscoverLanguage, "language", "", "Filter by language (go, typescript, javascript, python, rust, java)")
+
+	// Add list subcommand
+	testCmd.AddCommand(testListCmd)
+	testListCmd.Flags().StringVar(&testListLanguage, "language", "", "Filter by language")
+	testListCmd.Flags().StringVar(&testListForEntity, "for-entity", "", "Show tests covering this entity ID")
 }
 
 func runTest(cmd *cobra.Command, args []string) error {
@@ -1147,4 +1202,216 @@ func estimateTestTimeSaved(totalTests, affectedTests int) string {
 
 	return fmt.Sprintf("Run %d tests (~%.1fmin) instead of %d tests (~%.1fmin)",
 		affectedTests, affectedMinutes, totalTests, totalMinutes)
+}
+
+// runTestDiscover discovers and stores test functions
+func runTestDiscover(cmd *cobra.Command, args []string) error {
+	// Get current working directory as base path
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+
+	// Open store
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx scan' first")
+	}
+
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	// Create test discovery instance
+	discovery := coverage.NewTestDiscovery(storeDB, cwd)
+
+	fmt.Fprintf(os.Stderr, "Discovering test functions...\n")
+
+	// Discover tests
+	tests, err := discovery.DiscoverTests()
+	if err != nil {
+		return fmt.Errorf("discover tests: %w", err)
+	}
+
+	// Filter by language if specified
+	if testDiscoverLanguage != "" {
+		var filtered []coverage.DiscoveredTest
+		for _, t := range tests {
+			if t.Language == testDiscoverLanguage {
+				filtered = append(filtered, t)
+			}
+		}
+		tests = filtered
+	}
+
+	if len(tests) == 0 {
+		fmt.Fprintf(os.Stderr, "No test functions found\n")
+		return nil
+	}
+
+	// Store discovered tests
+	fmt.Fprintf(os.Stderr, "Found %d test functions, storing...\n", len(tests))
+	if err := discovery.StoreDiscoveredTests(tests); err != nil {
+		return fmt.Errorf("store tests: %w", err)
+	}
+
+	// Build output
+	testOutput := &TestDiscoverOutput{
+		TotalTests: len(tests),
+		ByLanguage: make(map[string]int),
+		ByType:     make(map[string]int),
+	}
+
+	for _, t := range tests {
+		testOutput.ByLanguage[t.Language]++
+		testOutput.ByType[string(t.TestType)]++
+	}
+
+	// Parse format
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	// Get formatter and output
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), testOutput, output.DensityMedium)
+}
+
+// TestDiscoverOutput represents the output of test discovery
+type TestDiscoverOutput struct {
+	TotalTests int            `yaml:"total_tests" json:"total_tests"`
+	ByLanguage map[string]int `yaml:"by_language" json:"by_language"`
+	ByType     map[string]int `yaml:"by_type" json:"by_type"`
+}
+
+// runTestList lists discovered test functions
+func runTestList(cmd *cobra.Command, args []string) error {
+	// Open store
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx scan' first")
+	}
+
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	// If --for-entity is specified, show tests that cover that entity
+	if testListForEntity != "" {
+		return runTestListForEntity(cmd, storeDB, testListForEntity)
+	}
+
+	// Get discovered tests
+	tests, err := coverage.GetDiscoveredTests(storeDB, testListLanguage)
+	if err != nil {
+		return fmt.Errorf("get tests: %w", err)
+	}
+
+	if len(tests) == 0 {
+		fmt.Fprintf(os.Stderr, "No discovered tests found. Run 'cx test discover' first.\n")
+		return nil
+	}
+
+	// Build output
+	testListOutput := &TestListOutput{
+		Tests: make([]TestListItem, 0, len(tests)),
+	}
+
+	for _, t := range tests {
+		testListOutput.Tests = append(testListOutput.Tests, TestListItem{
+			Name:     t.Name,
+			FilePath: t.FilePath,
+			Line:     t.StartLine,
+			Language: t.Language,
+			Type:     string(t.TestType),
+		})
+	}
+
+	// Parse format and density
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	density, err := output.ParseDensity(outputDensity)
+	if err != nil {
+		return fmt.Errorf("invalid density: %w", err)
+	}
+
+	// Get formatter and output
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), testListOutput, density)
+}
+
+// runTestListForEntity shows tests that cover a specific entity
+func runTestListForEntity(cmd *cobra.Command, storeDB *store.Store, entityID string) error {
+	tests, err := coverage.GetTestsForEntity(storeDB, entityID)
+	if err != nil {
+		return fmt.Errorf("get tests for entity: %w", err)
+	}
+
+	if len(tests) == 0 {
+		fmt.Fprintf(os.Stderr, "No tests found covering entity %s\n", entityID)
+		return nil
+	}
+
+	// Build output
+	testOutput := &TestsForEntityOutput{
+		EntityID: entityID,
+		Tests:    make([]TestListItem, 0, len(tests)),
+	}
+
+	for _, t := range tests {
+		testOutput.Tests = append(testOutput.Tests, TestListItem{
+			Name:     t.TestName,
+			FilePath: t.TestFile,
+		})
+	}
+
+	// Parse format
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	// Get formatter and output
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), testOutput, output.DensityMedium)
+}
+
+// TestListOutput represents the output of listing tests
+type TestListOutput struct {
+	Tests []TestListItem `yaml:"tests" json:"tests"`
+}
+
+// TestListItem represents a single test in the list
+type TestListItem struct {
+	Name     string `yaml:"name" json:"name"`
+	FilePath string `yaml:"file,omitempty" json:"file,omitempty"`
+	Line     int    `yaml:"line,omitempty" json:"line,omitempty"`
+	Language string `yaml:"language,omitempty" json:"language,omitempty"`
+	Type     string `yaml:"type,omitempty" json:"type,omitempty"`
+}
+
+// TestsForEntityOutput represents tests covering a specific entity
+type TestsForEntityOutput struct {
+	EntityID string         `yaml:"entity_id" json:"entity_id"`
+	Tests    []TestListItem `yaml:"tests" json:"tests"`
 }

@@ -98,9 +98,9 @@ func TestDetectLanguage(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := detectLanguage(tt.path)
+		got := DetectLanguage(tt.path)
 		if got != tt.want {
-			t.Errorf("detectLanguage(%q) = %q, want %q", tt.path, got, tt.want)
+			t.Errorf("DetectLanguage(%q) = %q, want %q", tt.path, got, tt.want)
 		}
 	}
 }

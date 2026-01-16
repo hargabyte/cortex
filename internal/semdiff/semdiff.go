@@ -274,7 +274,7 @@ func (a *Analyzer) analyzeModifiedFile(filePath string, content []byte) ([]Seman
 
 // extractCurrentEntities extracts entities from file content.
 func (a *Analyzer) extractCurrentEntities(filePath string, content []byte) ([]extract.Entity, error) {
-	lang := detectLanguage(filePath)
+	lang := DetectLanguage(filePath)
 	if lang == "" {
 		return nil, fmt.Errorf("unsupported file type: %s", filePath)
 	}
@@ -432,7 +432,7 @@ func (a *Analyzer) findNewFiles(storedHashes map[string]string, filterPath strin
 		}
 
 		// Only check source files
-		lang := detectLanguage(path)
+		lang := DetectLanguage(path)
 		if lang == "" {
 			return nil
 		}
@@ -525,8 +525,9 @@ func matchesPath(filePath, filterPath string) bool {
 	return false
 }
 
-// detectLanguage detects programming language from file extension.
-func detectLanguage(path string) string {
+// DetectLanguage detects programming language from file extension.
+// Exported for use by other packages (e.g., diff context).
+func DetectLanguage(path string) string {
 	ext := filepath.Ext(path)
 	switch ext {
 	case ".go":

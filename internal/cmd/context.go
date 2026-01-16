@@ -10,6 +10,7 @@ import (
 	"github.com/anthropics/cx/internal/config"
 	"github.com/anthropics/cx/internal/context"
 	"github.com/anthropics/cx/internal/coverage"
+	"github.com/anthropics/cx/internal/diff"
 	"github.com/anthropics/cx/internal/graph"
 	"github.com/anthropics/cx/internal/integration"
 	"github.com/anthropics/cx/internal/output"
@@ -26,6 +27,8 @@ var contextCmd = &cobra.Command{
 Modes:
   cx context                      Session recovery (workflow context)
   cx context --smart "<task>"     Intent-aware context assembly
+  cx context --diff               Context for uncommitted changes
+  cx context --staged             Context for staged changes only
   cx context <target>             Entity/file/bead context
 
 Target can be:
@@ -48,6 +51,17 @@ Smart Context (--smart):
   cx context --smart "add rate limiting to API endpoints" --budget 8000
   cx context --smart "fix auth bug in login" --budget 6000
   cx context --smart "optimize database queries" --budget 10000
+
+Diff-Based Context (--diff, --staged, --commit-range):
+  Get context focused on code changes. Analyzes git diff to identify:
+  - Modified entities (signature vs body changes)
+  - Added and removed entities
+  - Callers affected by the changes
+
+  cx context --diff                  # All uncommitted changes
+  cx context --staged                # Only staged changes
+  cx context --commit-range HEAD~3   # Changes in last 3 commits
+  cx context --commit-range main..   # Changes since branching from main
 
 Output Structure:
   context:      Metadata (target, budget, tokens_used)
@@ -104,7 +118,10 @@ Examples:
   cx context bd-a7c --format=json                  # JSON output
   cx context --smart "add rate limiting to API"    # Smart context assembly
   cx context --smart "task" --with-coverage        # Include coverage data
-  cx context <entity> --with-coverage              # Entity context with coverage`,
+  cx context <entity> --with-coverage              # Entity context with coverage
+  cx context --diff                                # Context for uncommitted changes
+  cx context --staged                              # Context for staged changes only
+  cx context --commit-range HEAD~5                 # Context for recent commits`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runContext,
 }
@@ -121,6 +138,9 @@ var (
 	contextDepth        int
 	contextWithCoverage bool
 	contextFull         bool // For session recovery mode (--full)
+	contextDiff         bool // For diff-based context (uncommitted changes)
+	contextStaged       bool // For staged-only diff context
+	contextCommitRange  string // For commit range diff context (e.g., HEAD~3)
 )
 
 func init() {
@@ -145,6 +165,11 @@ func init() {
 
 	// Session recovery flags
 	contextCmd.Flags().BoolVar(&contextFull, "full", false, "Extended session recovery with keystones and map")
+
+	// Diff-based context flags
+	contextCmd.Flags().BoolVar(&contextDiff, "diff", false, "Context for uncommitted changes (staged + unstaged)")
+	contextCmd.Flags().BoolVar(&contextStaged, "staged", false, "Context for staged changes only")
+	contextCmd.Flags().StringVar(&contextCommitRange, "commit-range", "", "Context for commit range (e.g., HEAD~3, main..feature)")
 }
 
 // contextEntry represents an entity in the context graph with metadata
@@ -166,6 +191,11 @@ func runContext(cmd *cobra.Command, args []string) error {
 	// Handle --smart mode (intent-aware context assembly)
 	if contextSmart != "" {
 		return runSmartContext(cmd, contextSmart)
+	}
+
+	// Handle diff-based context modes
+	if contextDiff || contextStaged || contextCommitRange != "" {
+		return runDiffContext(cmd)
 	}
 
 	// Handle no-arg session recovery mode (was: cx prime)
@@ -1061,5 +1091,69 @@ func sessionRecoverySplitPath(path string) []string {
 		path = filepath.Clean(dir)
 	}
 	return parts
+}
+
+// runDiffContext handles diff-based context assembly.
+// This provides context focused on uncommitted or staged changes.
+func runDiffContext(cmd *cobra.Command) error {
+	// Parse format and density
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	density, err := output.ParseDensity(outputDensity)
+	if err != nil {
+		return fmt.Errorf("invalid density: %w", err)
+	}
+
+	// Find project root and open store
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx scan' first")
+	}
+	projectRoot := filepath.Dir(cxDir)
+
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	// Build graph for caller tracing
+	g, err := graph.BuildFromStore(storeDB)
+	if err != nil {
+		return fmt.Errorf("failed to build graph: %w", err)
+	}
+
+	// Load config
+	cfg, err := config.Load(projectRoot)
+	if err != nil {
+		cfg = config.DefaultConfig()
+	}
+
+	// Build diff context options
+	opts := diff.DefaultDiffContextOptions()
+	opts.Budget = contextMaxTokens
+	opts.Depth = contextDepth
+	opts.Staged = contextStaged
+	opts.CommitRange = contextCommitRange
+
+	// Create diff context assembler
+	dc := diff.NewDiffContext(storeDB, g, projectRoot, cfg, opts)
+
+	// Assemble context
+	result, err := dc.Assemble()
+	if err != nil {
+		return fmt.Errorf("diff context assembly failed: %w", err)
+	}
+
+	// Get formatter and output
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), result, density)
 }
 

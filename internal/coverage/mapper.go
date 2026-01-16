@@ -446,6 +446,112 @@ func deriveTestFile(testName string) string {
 	return testName + "_test.go"
 }
 
+// GetTestMappingStats returns statistics about test-to-entity mappings.
+func GetTestMappingStats(s *store.Store) (map[string]interface{}, error) {
+	stats := make(map[string]interface{})
+
+	// Count total mappings
+	var totalMappings int
+	err := s.DB().QueryRow(`SELECT COUNT(*) FROM test_entity_map`).Scan(&totalMappings)
+	if err != nil {
+		return nil, fmt.Errorf("count mappings: %w", err)
+	}
+	stats["total_mappings"] = totalMappings
+
+	// Count unique tests
+	var uniqueTests int
+	err = s.DB().QueryRow(`SELECT COUNT(DISTINCT test_name) FROM test_entity_map`).Scan(&uniqueTests)
+	if err != nil {
+		return nil, fmt.Errorf("count tests: %w", err)
+	}
+	stats["unique_tests"] = uniqueTests
+
+	// Count unique entities covered
+	var uniqueEntities int
+	err = s.DB().QueryRow(`SELECT COUNT(DISTINCT entity_id) FROM test_entity_map`).Scan(&uniqueEntities)
+	if err != nil {
+		return nil, fmt.Errorf("count entities: %w", err)
+	}
+	stats["unique_entities_covered"] = uniqueEntities
+
+	// Average entities per test
+	if uniqueTests > 0 {
+		stats["avg_entities_per_test"] = float64(totalMappings) / float64(uniqueTests)
+	}
+
+	return stats, nil
+}
+
+// LookupTestFileFromDiscovery tries to find the actual test file for a test name
+// by querying discovered test entities in the database.
+func LookupTestFileFromDiscovery(s *store.Store, testName string) (string, bool) {
+	var filePath string
+	err := s.DB().QueryRow(`
+		SELECT file_path FROM entities
+		WHERE name = ? AND entity_type = 'function' AND status = 'active'
+		AND file_path LIKE '%_test.go'
+		LIMIT 1
+	`, testName).Scan(&filePath)
+
+	if err != nil {
+		return "", false
+	}
+	return filePath, true
+}
+
+// StoreTestEntityMappingsWithDiscovery is an enhanced version of StoreTestEntityMappings
+// that uses discovered test functions to get accurate test file paths.
+func StoreTestEntityMappingsWithDiscovery(s *store.Store, gocoverData *GOCOVERDIRData, basePath string) (int, error) {
+	if !gocoverData.HasPerTestAttribution() {
+		return 0, nil
+	}
+
+	// Clear existing test mappings (we're replacing them)
+	_, err := s.DB().Exec(`DELETE FROM test_entity_map`)
+	if err != nil {
+		return 0, fmt.Errorf("clear test_entity_map: %w", err)
+	}
+
+	totalMappings := 0
+
+	// For each test, map its coverage to entities
+	for testName, coverageData := range gocoverData.PerTest {
+		// Create mapper for this test's coverage
+		mapper := NewMapper(s, coverageData, basePath)
+		entityCoverages, err := mapper.MapCoverageToEntities()
+		if err != nil {
+			// Log warning but continue with other tests
+			continue
+		}
+
+		// Try to find the actual test file from discovered tests
+		testFile, found := LookupTestFileFromDiscovery(s, testName)
+		if !found {
+			// Fall back to derived file name
+			testFile = deriveTestFile(testName)
+		}
+
+		// For each entity that this test covers (has any covered lines)
+		for _, cov := range entityCoverages {
+			if len(cov.CoveredLines) == 0 {
+				continue // Test didn't actually cover this entity
+			}
+
+			// Insert the mapping
+			_, err := s.DB().Exec(`
+				INSERT OR IGNORE INTO test_entity_map (test_file, test_name, entity_id)
+				VALUES (?, ?, ?)
+			`, testFile, testName, cov.EntityID)
+			if err != nil {
+				return totalMappings, fmt.Errorf("insert test mapping for %s -> %s: %w", testName, cov.EntityID, err)
+			}
+			totalMappings++
+		}
+	}
+
+	return totalMappings, nil
+}
+
 // GetEntitiesForTest retrieves all entities covered by a specific test.
 func GetEntitiesForTest(s *store.Store, testName string) ([]string, error) {
 	rows, err := s.DB().Query(`

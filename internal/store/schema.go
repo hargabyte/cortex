@@ -62,6 +62,17 @@ CREATE TABLE IF NOT EXISTS entity_links (
     PRIMARY KEY (entity_id, external_system, external_id)
 );
 
+-- entity tags (bookmarks/labels)
+CREATE TABLE IF NOT EXISTS entity_tags (
+    entity_id TEXT NOT NULL,
+    tag TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    created_by TEXT,                  -- who created the tag (user, agent, etc.)
+    note TEXT,                        -- optional note about why the tag was added
+    PRIMARY KEY (entity_id, tag),
+    FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE
+);
+
 -- coverage data (imported from go test -coverprofile)
 CREATE TABLE IF NOT EXISTS entity_coverage (
     entity_id TEXT PRIMARY KEY,
@@ -93,6 +104,8 @@ CREATE INDEX IF NOT EXISTS idx_deps_type ON dependencies(dep_type);
 CREATE INDEX IF NOT EXISTS idx_metrics_pagerank ON metrics(pagerank DESC);
 CREATE INDEX IF NOT EXISTS idx_metrics_betweenness ON metrics(betweenness DESC);
 CREATE INDEX IF NOT EXISTS idx_links_external ON entity_links(external_system, external_id);
+CREATE INDEX IF NOT EXISTS idx_tags_tag ON entity_tags(tag);
+CREATE INDEX IF NOT EXISTS idx_tags_entity ON entity_tags(entity_id);
 CREATE INDEX IF NOT EXISTS idx_coverage_percent ON entity_coverage(coverage_percent DESC);
 CREATE INDEX IF NOT EXISTS idx_test_entity ON test_entity_map(entity_id);
 
