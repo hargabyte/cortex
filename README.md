@@ -40,10 +40,10 @@ Cortex gives me answers in milliseconds, using a few hundred tokens instead of t
 
 ## Quick Start
 
-### 1. Download the Binary
+**Ask Claude to do it all:**
+> Install cx from github.com/hargabyte/cortex - download the latest release binary for my platform, rename it to cx, make it executable, and move it to my PATH. Then set up the Claude Code session hook - download cx-session-hook.sh from the repo's scripts folder to ~/bin/, make it executable, and add a SessionStart hook to ~/.claude/settings.json that runs it.
 
-**Ask Claude to do it:**
-> Install cx from github.com/hargabyte/cortex - download the latest release binary for my platform, rename it to cx, make it executable, and move it to my PATH.
+### 1. Download the Binary
 
 Or do it manually - grab the latest release from [GitHub Releases](https://github.com/hargabyte/cortex/releases):
 
@@ -76,11 +76,6 @@ Invoke-WebRequest -Uri "https://github.com/hargabyte/cortex/releases/latest/down
 ```
 
 ### 2. Set Up Claude Code Integration (Recommended)
-
-**Ask Claude to do it:**
-> Set up the cx session hook for Claude Code - download cx-session-hook.sh from github.com/hargabyte/cortex/main/scripts/ to ~/bin/, make it executable, and add a SessionStart hook to ~/.claude/settings.json that runs it.
-
-Or do it manually:
 
 1. Download the session hook script:
 ```bash
