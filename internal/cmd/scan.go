@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/anthropics/cx/internal/config"
+	"github.com/anthropics/cx/internal/exclude"
 	"github.com/anthropics/cx/internal/extract"
 	"github.com/anthropics/cx/internal/graph"
 	"github.com/anthropics/cx/internal/metrics"
@@ -36,24 +37,34 @@ The scan process:
 
 Supported languages: Go, TypeScript, JavaScript, Java, Rust, Python, C, C++, C#, PHP, Kotlin, Ruby
 
+Auto-excludes dependency directories (disable with --no-auto-exclude):
+  - Rust target/ (when Cargo.toml exists)
+  - Go vendor/ (when vendor/modules.txt exists)
+  - Node node_modules/ (when package.json exists)
+  - PHP vendor/ (when vendor/autoload.php exists)
+  - Python virtual environments (directories with pyvenv.cfg)
+
 Examples:
   cx scan                    # Scan current directory (auto-init if needed)
   cx scan ./src              # Scan specific directory
   cx scan --force            # Force full rescan
   cx scan --overview         # Scan + show project overview
   cx scan --lang go          # Scan only Go files
-  cx scan --dry-run          # Show what would be created`,
+  cx scan --dry-run          # Show what would be created
+  cx scan --no-auto-exclude  # Don't auto-exclude dependency directories
+  cx scan -v                 # Verbose: shows auto-excluded directories`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runScan,
 }
 
 // Command-line flags
 var (
-	scanLang     string
-	scanExclude  []string
-	scanDryRun   bool
-	scanForce    bool
-	scanOverview bool
+	scanLang          string
+	scanExclude       []string
+	scanDryRun        bool
+	scanForce         bool
+	scanOverview      bool
+	scanNoAutoExclude bool
 )
 
 func init() {
@@ -65,6 +76,7 @@ func init() {
 	scanCmd.Flags().BoolVar(&scanDryRun, "dry-run", false, "Show what would be created")
 	scanCmd.Flags().BoolVar(&scanForce, "force", false, "Rescan even if file unchanged")
 	scanCmd.Flags().BoolVar(&scanOverview, "overview", false, "Show project overview after scan (replaces quickstart)")
+	scanCmd.Flags().BoolVar(&scanNoAutoExclude, "no-auto-exclude", false, "Disable automatic exclusion of dependency directories")
 }
 
 // scanStats tracks scan statistics for summary output
@@ -119,6 +131,22 @@ func runScan(cmd *cobra.Command, args []string) error {
 	excludes := cfg.Scan.Exclude
 	if len(scanExclude) > 0 {
 		excludes = append(excludes, scanExclude...)
+	}
+
+	// Auto-exclude dependency directories (unless disabled)
+	var autoExcludeResult *exclude.AutoExcludeResult
+	if !scanNoAutoExclude {
+		autoExcludeResult = exclude.DetectAutoExcludes(absPath)
+		excludes = append(excludes, autoExcludeResult.Directories...)
+
+		// Verbose output for auto-excludes
+		if verbose && len(autoExcludeResult.Directories) > 0 && !quiet {
+			fmt.Println("Auto-excluded dependency directories:")
+			for _, dir := range autoExcludeResult.Directories {
+				fmt.Printf("  %s: %s\n", dir, autoExcludeResult.Reasons[dir])
+			}
+			fmt.Println()
+		}
 	}
 
 	// Determine language(s) to scan

@@ -1,46 +1,66 @@
 # Session Handoff: CX Auto-Exclude Implementation
 
 **Date:** 2026-01-16
-**Last Session:** Health check, binary update, .cxignore feature planning
+**Last Session:** Implemented cortex-z49.7 auto-exclude feature
 **Branch:** master
 
-## Current Focus
+## Completed: cortex-z49.7 - Auto-exclude dependency directories (Phase 1)
 
-### cortex-z49.7: Auto-exclude dependency directories (Phase 1) - IN PROGRESS
+### What Was Implemented
 
-Implement automatic exclusion of dependency directories during `cx scan` with 100% confidence detection only.
+Automatic exclusion of dependency directories during `cx scan` with 100% confidence detection.
 
-**Detection Rules (all verified 100% confidence):**
+**Detection Rules:**
 
 | Language | Exclude | Condition |
 |----------|---------|-----------|
-| Rust | `target/` | `Cargo.toml` exists in project |
+| Rust | `target/` | `Cargo.toml` exists AND `target/` exists |
 | Go | `vendor/` | `vendor/modules.txt` exists |
-| Python | Any dir with `pyvenv.cfg` | File exists inside directory |
+| Python | Any dir with `pyvenv.cfg` | Scans all top-level dirs |
 | PHP | `vendor/` | `vendor/autoload.php` exists |
-| Node/TS | `node_modules/` | `package.json` exists in project |
+| Node/TS | `node_modules/` | `package.json` exists AND `node_modules/` exists |
 
 **Behavior:**
 - Silent by default (just excludes)
-- `--verbose`: prints what was auto-excluded
+- `--verbose` / `-v`: prints what was auto-excluded
 - `--no-auto-exclude`: disables this feature entirely
 
-**Files to modify:**
-- `internal/cmd/scan.go` - add pre-scan exclusion logic
-- Possibly new: `internal/exclude/autoexclude.go`
+### Files Changed
 
-**Estimated size:** 100-150 lines of code
+1. **`internal/exclude/autoexclude.go`** (new) - Detection logic
+   - `DetectAutoExcludes(projectRoot)` returns directories and reasons
+   - Scans top-level directories for Python venvs (not just hardcoded names)
+   - Handles Go+PHP monorepo (vendor/ only added once)
 
-## Research Completed
+2. **`internal/exclude/autoexclude_test.go`** (new) - Test coverage
+   - Tests for all 5 ecosystems
+   - Edge cases: no target dir, no node_modules, Go+PHP combo
 
-Full language-specific research document created at `docs/cxignore-language-research.md` covering:
-- Dependency directories for all 12 supported languages
-- Generated code patterns (protobuf, annotation processors, etc.)
-- Minification detection heuristics
-- Monorepo considerations
-- False positive danger zones
+3. **`internal/cmd/scan.go`** - Integration
+   - Added `scanNoAutoExclude` flag variable
+   - Registered `--no-auto-exclude` flag in `init()`
+   - Integrated auto-exclude after exclude merge (lines 127-138)
+   - Updated help text with auto-exclude documentation
 
-## What's NOT in Phase 1 (deferred to Phase 2+)
+### Testing Done
+
+- Tested with test repos from `~/cortex-test-repos/`:
+  - TypeScript (ts-simple) - node_modules detected
+  - Rust (rust-structure) - target detected
+  - PHP (php-laravel-quickstart) - vendor detected
+  - Go (with vendor/modules.txt) - vendor detected
+  - Python (python-mini) - custom venv detected
+- Verified `--no-auto-exclude` disables feature
+- Verified silent without `-v`
+- All unit tests pass
+
+### Binary Updated
+
+```bash
+cp dist/cx ~/.local/bin/cx
+```
+
+## What's NOT in Phase 1 (deferred)
 
 - Ruby `vendor/bundle` (needs `.bundle/config` parsing)
 - C/C++ vcpkg/conan (not 100% confidence)
@@ -50,59 +70,24 @@ Full language-specific research document created at `docs/cxignore-language-rese
 - `.cxignore` file support
 - `cx suggest-ignore` command
 
-## Session Maintenance Done
+## Next Steps
 
-1. **Updated cx binary:** Copied `dist/cx-linux-amd64` to `~/.local/bin/cx`
-   - Fixed `--keystones` and `--bottlenecks` returning empty results
-   - Fixed entity/dependency double-counting bug
-
-2. **Database reset:** Cleared `.cx/` and rescanned with correct counts:
-   - Entities: 3,444 (was incorrectly 6,888)
-   - Dependencies: 9,493 (was incorrectly 20,895)
-
-## Quick Start for Next Session
+Close the bead and sync:
 
 ```bash
-# Context recovery
-cx prime
-bd show cortex-z49.7
-
-# Understand the current scan implementation
-cx safe internal/cmd/scan.go
-cx show runScan --related
-
-# Check research doc
-cat docs/cxignore-language-research.md | head -100
-
-# Implement the feature
-# 1. Add detection functions for each language
-# 2. Call before file discovery in scan
-# 3. Add --verbose and --no-auto-exclude flags
-# 4. Test with real projects
-
-# When done
-bd close cortex-z49.7 --reason "Implemented auto-exclude for Rust, Go, Python, PHP, Node"
+bd close cortex-z49.7 --reason "Implemented auto-exclude for Rust, Go, Python, PHP, Node with --no-auto-exclude flag and verbose output"
 bd sync
+git add .
+git commit -m "feat(scan): auto-exclude dependency directories (cortex-z49.7)"
+git push
 ```
 
 ## Related Beads
 
 - **cortex-z49:** Smart .cxignore suggestion system (parent feature)
 - **cortex-z49.1-6:** Other subtasks (deferred - .cxignore parsing, heuristics, etc.)
-- **cortex-z49.7:** This task (Phase 1 auto-exclude) - IN PROGRESS
+- **cortex-z49.7:** This task - COMPLETE
 
-## Architecture Note
+## Research Reference
 
-The auto-exclude should happen early in the scan process, before file discovery walks the tree. This avoids even stat-ing files in excluded directories.
-
-```
-cx scan
-    ↓
-detectProjectTypes()     ← Check for Cargo.toml, go.mod, package.json, composer.json
-    ↓
-buildAutoExcludeList()   ← For each detected type, check signature files
-    ↓
-walkFiles(excludeList)   ← Pass exclusions to file walker
-    ↓
-... normal scan ...
-```
+Full language-specific research at `docs/cxignore-language-research.md`
