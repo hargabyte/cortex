@@ -43,9 +43,11 @@ Cortex gives me answers in milliseconds, using a few hundred tokens instead of t
 **Ask Claude to do it all:**
 > Install cx for me:
 > 1. Get the latest release URL from https://api.github.com/repos/hargabyte/cortex/releases/latest (look for browser_download_url matching my platform: cx-linux-amd64, cx-darwin-amd64, or cx-windows-amd64.exe)
-> 2. Download the binary, rename it to cx (or cx.exe on Windows), make it executable, and move it to a directory in my PATH
-> 3. Download the session hook from https://raw.githubusercontent.com/hargabyte/cortex/master/scripts/cx-session-hook.sh to ~/bin/cx-session-hook.sh and make it executable
-> 4. Add a SessionStart hook to ~/.claude/settings.json that runs ~/bin/cx-session-hook.sh
+> 2. Download the binary to ~/bin/cx (or ~/bin/cx.exe on Windows), create ~/bin if needed, and make it executable
+> 3. Add ~/bin to my PATH if not already there (update ~/.bashrc or ~/.zshrc with: export PATH="$HOME/bin:$PATH")
+> 4. Download the session hook from https://raw.githubusercontent.com/hargabyte/cortex/master/scripts/cx-session-hook.sh to ~/bin/cx-session-hook.sh and make it executable
+> 5. Add a SessionStart hook to ~/.claude/settings.json that runs ~/bin/cx-session-hook.sh
+> 6. Verify with: source ~/.bashrc && cx --version
 
 ### 1. Download the Binary
 
