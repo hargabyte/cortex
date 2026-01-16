@@ -228,6 +228,10 @@ func runScan(cmd *cobra.Command, args []string) error {
 	// ============================================================
 	var fileResults []fileScanResult
 
+	// Track files already scanned to avoid processing the same file with multiple languages.
+	// This is important for .h files which can match both C and C++ in mixed projects.
+	scannedFiles := make(map[string]bool)
+
 	for _, lang := range languages {
 		var filePaths []string
 
@@ -251,6 +255,11 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 			if shouldExcludeFile(path, scanPath, excludes) {
 				stats.skipped++
+				return nil
+			}
+
+			// Skip files already scanned by a previous language
+			if scannedFiles[path] {
 				return nil
 			}
 
@@ -284,6 +293,8 @@ func runScan(cmd *cobra.Command, args []string) error {
 			if result != nil {
 				fileResults = append(fileResults, *result)
 			}
+			// Mark file as scanned to avoid re-processing with another language
+			scannedFiles[path] = true
 		}
 
 		// Close parser for this language before moving to next
@@ -871,7 +882,10 @@ func isSourceFile(path string, lang parser.Language) bool {
 	case parser.Ruby:
 		return ext == ".rb" || ext == ".rake"
 	case parser.Cpp:
-		return ext == ".cpp" || ext == ".cc" || ext == ".cxx" || ext == ".hpp" || ext == ".hxx" || ext == ".h"
+		// Note: .h files are included here for pure C++ projects.
+		// The detectLanguages function handles C/C++ disambiguation by removing C
+		// from the language list when .h files exist with C++ sources but no .c files.
+		return ext == ".cpp" || ext == ".cc" || ext == ".cxx" || ext == ".hpp" || ext == ".hh" || ext == ".hxx" || ext == ".h"
 	default:
 		return false
 	}
@@ -1061,9 +1075,14 @@ func parseLanguageFlag(langStr string) (parser.Language, error) {
 
 // detectLanguages walks the directory and returns detected languages based on file extensions.
 // Returns languages sorted by file count (most common first).
+// Handles the C/C++ ambiguity for .h files: if C++ source files exist but no .c files,
+// .h files are treated as C++ headers and C is not added to the language list.
 func detectLanguages(scanPath string, excludes []string) []parser.Language {
-	// Count files by language
+	// Count files by language and track specific extensions for C/C++ disambiguation
 	langCounts := make(map[parser.Language]int)
+	hasDotC := false   // Has .c files (definitively C)
+	hasDotH := false   // Has .h files (ambiguous)
+	hasCppSrc := false // Has .cpp/.cc/.cxx files (definitively C++)
 
 	filepath.Walk(scanPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -1085,6 +1104,17 @@ func detectLanguages(scanPath string, excludes []string) []parser.Language {
 
 		// Detect language from extension
 		ext := filepath.Ext(path)
+
+		// Track specific extensions for C/C++ disambiguation
+		switch ext {
+		case ".c":
+			hasDotC = true
+		case ".h":
+			hasDotH = true
+		case ".cpp", ".cc", ".cxx":
+			hasCppSrc = true
+		}
+
 		lang := parser.LanguageFromExtension(ext)
 		if lang != "" {
 			langCounts[lang]++
@@ -1092,6 +1122,14 @@ func detectLanguages(scanPath string, excludes []string) []parser.Language {
 
 		return nil
 	})
+
+	// Handle C/C++ .h file ambiguity:
+	// If we have .h files and C++ source files, but NO .c files,
+	// the .h files should be parsed as C++ (not C).
+	// Remove C from the language list in this case.
+	if hasDotH && hasCppSrc && !hasDotC {
+		delete(langCounts, parser.C)
+	}
 
 	// Convert to slice and sort by count (descending)
 	type langCount struct {
