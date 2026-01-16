@@ -28,9 +28,5 @@ SESSION_HANDOFF.md
 MIGRATION_STATUS.md
 OUTPUT_EXAMPLES.md
 
-# Beads database cache (regenerated from issues.jsonl)
-.beads/*.db
-.beads/*.db-shm
-.beads/*.db-wal
-.beads/.local_version
-.beads/.gitignore
+# Beads directory
+.beads/
