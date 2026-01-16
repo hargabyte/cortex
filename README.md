@@ -50,13 +50,26 @@ Grab the latest release from [GitHub Releases](https://github.com/hargabyte/cort
 | **Windows** (amd64) | `cx-windows-amd64.exe` | ✅ Tested |
 | **macOS** (amd64) | `cx-darwin-amd64` | ⚠️ Untested |
 
-```bash
-# Linux/macOS - make it executable and move to PATH
-chmod +x cx-linux-amd64
-sudo mv cx-linux-amd64 /usr/local/bin/cx
+> **Note:** The binary must be renamed to `cx` (or `cx.exe` on Windows) after downloading.
 
-# Windows - rename and add to PATH
-# Rename to cx.exe and add its location to your PATH
+**Linux:**
+```bash
+curl -L https://github.com/hargabyte/cortex/releases/latest/download/cx-linux-amd64 -o cx
+chmod +x cx
+sudo mv cx /usr/local/bin/
+```
+
+**macOS:**
+```bash
+curl -L https://github.com/hargabyte/cortex/releases/latest/download/cx-darwin-amd64 -o cx
+chmod +x cx
+sudo mv cx /usr/local/bin/
+```
+
+**Windows (PowerShell):**
+```powershell
+Invoke-WebRequest -Uri "https://github.com/hargabyte/cortex/releases/latest/download/cx-windows-amd64.exe" -OutFile "cx.exe"
+# Move cx.exe to a directory in your PATH
 ```
 
 ### 2. Set Up Claude Code Integration (Recommended)
