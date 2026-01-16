@@ -3,6 +3,7 @@
 **Date**: 2026-01-16
 **Last Commit**: c7fc454 - Complete CX orchestration: tagging, safe command, docs, tests
 **Status**: Partial completion - many features implemented, several groups remain open
+**GitHub Issue**: https://github.com/hargabyte/cortex/issues/1
 
 ---
 
