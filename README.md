@@ -80,7 +80,7 @@ Invoke-WebRequest -Uri "https://github.com/hargabyte/cortex/releases/latest/down
 1. Download the session hook script:
 ```bash
 mkdir -p ~/bin
-curl -o ~/bin/cx-session-hook.sh https://raw.githubusercontent.com/hargabyte/cortex/main/scripts/cx-session-hook.sh
+curl -o ~/bin/cx-session-hook.sh https://raw.githubusercontent.com/hargabyte/cortex/master/scripts/cx-session-hook.sh
 chmod +x ~/bin/cx-session-hook.sh
 ```
 
