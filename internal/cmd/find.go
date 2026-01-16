@@ -519,33 +519,24 @@ func runFindWithRanking(cmd *cobra.Command, storeDB *store.Store, cfg *config.Co
 		})
 	}
 
-	// Filter by importance category if requested
-	if findKeystones {
-		filtered := []rankedEntity{}
-		for _, r := range ranked {
-			if r.pagerank >= cfg.Metrics.KeystoneThreshold {
-				filtered = append(filtered, r)
-			}
-		}
-		ranked = filtered
-	} else if findBottlenecks {
-		filtered := []rankedEntity{}
-		for _, r := range ranked {
-			if r.betweenness >= cfg.Metrics.BottleneckThreshold {
-				filtered = append(filtered, r)
-			}
-		}
-		ranked = filtered
-	}
-
 	// Sort by appropriate metric
+	// Note: We sort first and take top-N, rather than filtering by threshold.
+	// This ensures --keystones/--bottlenecks always return the top N most
+	// important entities, even if none meet the strict threshold (which can
+	// happen in large codebases where PageRank is distributed thinly).
+	// The threshold is used only for labeling importance in output.
 	if findBottlenecks {
 		// Sort by betweenness descending
 		sort.Slice(ranked, func(i, j int) bool {
 			return ranked[i].betweenness > ranked[j].betweenness
 		})
+	} else if findKeystones || findImportant {
+		// Sort by PageRank descending (for --keystones and --important)
+		sort.Slice(ranked, func(i, j int) bool {
+			return ranked[i].pagerank > ranked[j].pagerank
+		})
 	} else {
-		// Sort by PageRank descending (default and keystones)
+		// Default: sort by PageRank descending
 		sort.Slice(ranked, func(i, j int) bool {
 			return ranked[i].pagerank > ranked[j].pagerank
 		})
