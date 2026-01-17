@@ -71,13 +71,14 @@ type EntityTag struct {
 
 // EntityFilter contains filters for querying entities
 type EntityFilter struct {
-	EntityType string // function, type, etc.
-	Status     string // active, archived
-	FilePath   string // filter by file path (prefix match)
-	Name       string // filter by name (contains match)
-	Language   string // go, typescript, python, rust, java
-	Limit      int    // max results (0 = no limit)
-	Offset     int    // pagination offset
+	EntityType     string // function, type, etc.
+	Status         string // active, archived
+	FilePath       string // filter by file path (prefix match)
+	FilePathSuffix string // filter by file path (suffix match)
+	Name           string // filter by name (contains match)
+	Language       string // go, typescript, python, rust, java
+	Limit          int    // max results (0 = no limit)
+	Offset         int    // pagination offset
 }
 
 // DependencyFilter contains filters for querying dependencies

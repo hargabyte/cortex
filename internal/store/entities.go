@@ -158,6 +158,10 @@ func (s *Store) QueryEntities(filter EntityFilter) ([]*Entity, error) {
 		query += " AND file_path LIKE ?"
 		args = append(args, filter.FilePath+"%")
 	}
+	if filter.FilePathSuffix != "" {
+		query += " AND file_path LIKE ?"
+		args = append(args, "%"+filter.FilePathSuffix)
+	}
 	if filter.Name != "" {
 		query += " AND name LIKE ?"
 		args = append(args, "%"+filter.Name+"%")
@@ -412,6 +416,10 @@ func (s *Store) CountEntities(filter EntityFilter) (int, error) {
 	if filter.FilePath != "" {
 		query += " AND file_path LIKE ?"
 		args = append(args, filter.FilePath+"%")
+	}
+	if filter.FilePathSuffix != "" {
+		query += " AND file_path LIKE ?"
+		args = append(args, "%"+filter.FilePathSuffix)
 	}
 	if filter.Name != "" {
 		query += " AND name LIKE ?"

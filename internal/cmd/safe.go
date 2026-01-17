@@ -337,82 +337,42 @@ func runSafeQuick(cmd *cobra.Command, target string) error {
 		return fmt.Errorf("failed to build graph: %w", err)
 	}
 
-	// Find direct entities
+	// Find direct entities using shared resolution logic
 	var directEntries []*impactEntry
+	var entities []*store.Entity
 
 	if isFilePath(target) {
-		// Normalize the file path for database query
-		normalizedTarget := normalizeFilePath(target)
-		entities, err := storeDB.QueryEntities(store.EntityFilter{
-			FilePath: normalizedTarget,
-			Status:   "active",
-		})
-		if err == nil {
-			for _, e := range entities {
-				m, _ := storeDB.GetMetrics(e.ID)
-				var pr float64
-				var deps int
-				if m != nil {
-					pr = m.PageRank
-					deps = m.InDegree
-				}
-				directEntries = append(directEntries, &impactEntry{
-					entityID:   e.ID,
-					name:       e.Name,
-					location:   formatStoreLocation(e),
-					entityType: mapStoreTypeToCGF(e.EntityType),
-					pagerank:   pr,
-					deps:       deps,
-					importance: computeImportanceLevel(pr),
-				})
-			}
-		}
+		entities = resolveFilePathToEntities(target, storeDB)
 	} else {
 		entity, err := storeDB.GetEntity(target)
 		if err == nil && entity != nil {
-			m, _ := storeDB.GetMetrics(entity.ID)
-			var pr float64
-			var deps int
-			if m != nil {
-				pr = m.PageRank
-				deps = m.InDegree
-			}
-			directEntries = append(directEntries, &impactEntry{
-				entityID:   entity.ID,
-				name:       entity.Name,
-				location:   formatStoreLocation(entity),
-				entityType: mapStoreTypeToCGF(entity.EntityType),
-				pagerank:   pr,
-				deps:       deps,
-				importance: computeImportanceLevel(pr),
-			})
+			entities = []*store.Entity{entity}
 		} else {
-			entities, err := storeDB.QueryEntities(store.EntityFilter{
+			entities, _ = storeDB.QueryEntities(store.EntityFilter{
 				Name:   target,
 				Status: "active",
 				Limit:  10,
 			})
-			if err == nil {
-				for _, e := range entities {
-					m, _ := storeDB.GetMetrics(e.ID)
-					var pr float64
-					var deps int
-					if m != nil {
-						pr = m.PageRank
-						deps = m.InDegree
-					}
-					directEntries = append(directEntries, &impactEntry{
-						entityID:   e.ID,
-						name:       e.Name,
-						location:   formatStoreLocation(e),
-						entityType: mapStoreTypeToCGF(e.EntityType),
-						pagerank:   pr,
-						deps:       deps,
-						importance: computeImportanceLevel(pr),
-					})
-				}
-			}
 		}
+	}
+
+	for _, e := range entities {
+		m, _ := storeDB.GetMetrics(e.ID)
+		var pr float64
+		var deps int
+		if m != nil {
+			pr = m.PageRank
+			deps = m.InDegree
+		}
+		directEntries = append(directEntries, &impactEntry{
+			entityID:   e.ID,
+			name:       e.Name,
+			location:   formatStoreLocation(e),
+			entityType: mapStoreTypeToCGF(e.EntityType),
+			pagerank:   pr,
+			deps:       deps,
+			importance: computeImportanceLevel(pr),
+		})
 	}
 
 	if len(directEntries) == 0 {
@@ -1266,16 +1226,7 @@ func findDirectEntitiesSafe(target string, storeDB *store.Store) ([]*safeEntity,
 	var results []*safeEntity
 
 	if isFilePath(target) {
-		// Normalize the file path for database query
-		normalizedTarget := normalizeFilePath(target)
-		entities, err := storeDB.QueryEntities(store.EntityFilter{
-			FilePath: normalizedTarget,
-			Status:   "active",
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to query entities: %w", err)
-		}
-
+		entities := resolveFilePathToEntities(target, storeDB)
 		for _, e := range entities {
 			m, _ := storeDB.GetMetrics(e.ID)
 			results = append(results, &safeEntity{
@@ -1318,6 +1269,84 @@ func findDirectEntitiesSafe(target string, storeDB *store.Store) ([]*safeEntity,
 	}
 
 	return results, nil
+}
+
+// resolveFilePathToEntities tries multiple strategies to match a file path to entities
+func resolveFilePathToEntities(target string, storeDB *store.Store) []*store.Entity {
+	normalizedTarget := normalizeFilePath(target)
+
+	// Strategy 1: Exact/prefix match (current behavior)
+	entities, err := storeDB.QueryEntities(store.EntityFilter{
+		FilePath: normalizedTarget,
+		Status:   "active",
+	})
+	if err == nil && len(entities) > 0 {
+		return entities
+	}
+
+	// Strategy 2: Suffix match (handles partial paths like cmd/safe.go -> internal/cmd/safe.go)
+	// Strip leading slash for absolute paths to get a usable suffix
+	suffix := normalizedTarget
+	if strings.HasPrefix(suffix, "/") {
+		// For absolute paths, try to find a reasonable suffix
+		// e.g., /home/user/project/internal/cmd/safe.go -> internal/cmd/safe.go
+		parts := strings.Split(suffix, "/")
+		// Try progressively shorter suffixes until we find a match
+		for i := 1; i < len(parts); i++ {
+			testSuffix := strings.Join(parts[i:], "/")
+			if testSuffix == "" {
+				continue
+			}
+			entities, err = storeDB.QueryEntities(store.EntityFilter{
+				FilePathSuffix: "/" + testSuffix,
+				Status:         "active",
+			})
+			if err == nil && len(entities) > 0 {
+				return entities
+			}
+		}
+	} else {
+		// For relative paths, try suffix match directly
+		entities, err = storeDB.QueryEntities(store.EntityFilter{
+			FilePathSuffix: "/" + normalizedTarget,
+			Status:         "active",
+		})
+		if err == nil && len(entities) > 0 {
+			return entities
+		}
+	}
+
+	// Strategy 3: Basename match (handles just filename like safe.go)
+	if !strings.Contains(normalizedTarget, "/") {
+		entities, err = storeDB.QueryEntities(store.EntityFilter{
+			FilePathSuffix: "/" + normalizedTarget,
+			Status:         "active",
+		})
+		if err == nil && len(entities) > 0 {
+			return entities
+		}
+	}
+
+	// Strategy 4: Try resolving via filesystem if it exists
+	if absPath, err := filepath.Abs(target); err == nil {
+		if _, statErr := os.Stat(absPath); statErr == nil {
+			// File exists - try to find it relative to working directory
+			if wd, wdErr := os.Getwd(); wdErr == nil {
+				if relPath, relErr := filepath.Rel(wd, absPath); relErr == nil {
+					relPath = filepath.ToSlash(relPath) // Normalize to forward slashes
+					entities, err = storeDB.QueryEntities(store.EntityFilter{
+						FilePath: relPath,
+						Status:   "active",
+					})
+					if err == nil && len(entities) > 0 {
+						return entities
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // findAffectedEntitiesSafe performs BFS to find all transitively affected entities
