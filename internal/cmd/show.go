@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -82,6 +85,12 @@ var (
 	showHops           int
 	showDirection      string
 	showEdgeType       string
+	// Graph output format flags
+	graphFormat   string // "yaml", "d2", "mermaid"
+	graphOutput   string // output file path (optional)
+	graphMaxNodes int    // max nodes before collapsing
+	graphRender   bool   // call d2 CLI to render image
+	graphAscii    bool   // render D2 to ASCII art
 )
 
 func init() {
@@ -100,6 +109,13 @@ func init() {
 	showCmd.Flags().IntVar(&showHops, "hops", 2, "Traversal depth for graph (used with --graph)")
 	showCmd.Flags().StringVar(&showDirection, "direction", "both", "Edge direction: in|out|both (used with --related or --graph)")
 	showCmd.Flags().StringVar(&showEdgeType, "type", "all", "Edge types: calls|uses_type|implements|all (used with --graph)")
+
+	// Graph format output flags (used with --graph)
+	showCmd.Flags().StringVar(&graphFormat, "graph-format", "yaml", "Graph output format: yaml|d2|mermaid (used with --graph)")
+	showCmd.Flags().StringVarP(&graphOutput, "output", "o", "", "Write graph to file instead of stdout (used with --graph)")
+	showCmd.Flags().IntVar(&graphMaxNodes, "max-nodes", 30, "Maximum nodes before auto-collapsing to modules (used with --graph)")
+	showCmd.Flags().BoolVar(&graphRender, "render", false, "Render D2 diagram to SVG (requires d2 CLI, used with --graph-format=d2)")
+	showCmd.Flags().BoolVar(&graphAscii, "ascii", false, "Render D2 diagram to ASCII art in terminal (requires d2 CLI, used with --graph-format=d2)")
 }
 
 func runShow(cmd *cobra.Command, args []string) error {
@@ -115,6 +131,32 @@ func runShow(cmd *cobra.Command, args []string) error {
 		validTypes := map[string]bool{"calls": true, "uses_type": true, "implements": true, "all": true}
 		if !validTypes[showEdgeType] {
 			return fmt.Errorf("invalid type %q: must be one of calls, uses_type, implements, all", showEdgeType)
+		}
+
+		// Validate graph format
+		validFormats := map[string]bool{"yaml": true, "d2": true, "mermaid": true}
+		if !validFormats[graphFormat] {
+			return fmt.Errorf("invalid graph-format %q: must be one of yaml, d2, mermaid", graphFormat)
+		}
+
+		// Validate max-nodes
+		if graphMaxNodes < 1 {
+			return fmt.Errorf("max-nodes must be at least 1")
+		}
+
+		// Validate render flag only works with d2
+		if graphRender && graphFormat != "d2" {
+			return fmt.Errorf("--render flag only works with --graph-format=d2")
+		}
+
+		// Validate ascii flag only works with d2
+		if graphAscii && graphFormat != "d2" {
+			return fmt.Errorf("--ascii flag only works with --graph-format=d2")
+		}
+
+		// Can't use both render and ascii
+		if graphRender && graphAscii {
+			return fmt.Errorf("--render and --ascii flags are mutually exclusive")
 		}
 	}
 
@@ -529,7 +571,7 @@ func runShowGraph(cmd *cobra.Command, entity *store.Entity, storeDB *store.Store
 	}
 
 	// Build GraphOutput structure
-	graphOutput := &output.GraphOutput{
+	graphData := &output.GraphOutput{
 		Graph: &output.GraphMetadata{
 			Root:      entity.Name,
 			Direction: showDirection,
@@ -561,7 +603,7 @@ func runShowGraph(cmd *cobra.Command, entity *store.Entity, storeDB *store.Store
 		}
 
 		// Add node to graph output
-		graphOutput.Nodes[currentEntity.Name] = &output.GraphNode{
+		graphData.Nodes[currentEntity.Name] = &output.GraphNode{
 			Type:      mapStoreEntityTypeToString(currentEntity.EntityType),
 			Location:  formatStoreLocation(currentEntity),
 			Depth:     current.depth,
@@ -597,7 +639,7 @@ func runShowGraph(cmd *cobra.Command, entity *store.Entity, storeDB *store.Store
 									targetName = targetEntity.Name
 								}
 
-								graphOutput.Edges = append(graphOutput.Edges, []string{
+								graphData.Edges = append(graphData.Edges, []string{
 									currentEntity.Name,
 									targetName,
 									dep.DepType,
@@ -629,7 +671,7 @@ func runShowGraph(cmd *cobra.Command, entity *store.Entity, storeDB *store.Store
 						sourceName = sourceEntity.Name
 					}
 
-					graphOutput.Edges = append(graphOutput.Edges, []string{
+					graphData.Edges = append(graphData.Edges, []string{
 						sourceName,
 						currentEntity.Name,
 						"calls",
@@ -644,13 +686,135 @@ func runShowGraph(cmd *cobra.Command, entity *store.Entity, storeDB *store.Store
 		}
 	}
 
-	// Get formatter and output
-	formatter, err := output.GetFormatter(format)
-	if err != nil {
-		return fmt.Errorf("failed to get formatter: %w", err)
+	// Handle different output formats
+	var outputStr string
+
+	switch graphFormat {
+	case "d2":
+		// Convert direction to D2 format
+		d2Direction := "right"
+		if showDirection == "down" || showDirection == "in" {
+			d2Direction = "down"
+		}
+
+		opts := &graph.D2Options{
+			MaxNodes:   graphMaxNodes,
+			Direction:  d2Direction,
+			ShowLabels: true,
+			Collapse:   true,
+			Title:      entity.Name,
+		}
+		outputStr = graph.GenerateD2(graphData.Nodes, graphData.Edges, opts)
+
+		// Handle render flag - call d2 CLI to render SVG
+		if graphRender {
+			return renderD2(cmd, outputStr, graphOutput, "svg")
+		}
+
+		// Handle ascii flag - render to ASCII art
+		if graphAscii {
+			return renderD2(cmd, outputStr, "", "ascii")
+		}
+
+	case "mermaid":
+		// Convert direction to Mermaid format
+		mermaidDirection := "LR"
+		if showDirection == "down" || showDirection == "in" {
+			mermaidDirection = "TD"
+		}
+
+		opts := &graph.MermaidOptions{
+			MaxNodes:  graphMaxNodes,
+			Direction: mermaidDirection,
+			ChartType: "flowchart",
+			Collapse:  true,
+			Title:     entity.Name,
+		}
+		outputStr = graph.GenerateMermaid(graphData.Nodes, graphData.Edges, opts)
+
+	default: // "yaml"
+		// Use existing formatter for YAML/JSON output
+		formatter, err := output.GetFormatter(format)
+		if err != nil {
+			return fmt.Errorf("failed to get formatter: %w", err)
+		}
+		return formatter.FormatToWriter(cmd.OutOrStdout(), graphData, density)
 	}
 
-	return formatter.FormatToWriter(cmd.OutOrStdout(), graphOutput, density)
+	// Write output to file or stdout
+	if graphOutput != "" {
+		if err := writeGraphToFile(graphOutput, outputStr); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "Graph written to %s\n", graphOutput)
+		return nil
+	}
+
+	fmt.Fprintln(cmd.OutOrStdout(), outputStr)
+	return nil
+}
+
+// renderD2 calls the d2 CLI to render a D2 diagram
+// format can be "svg", "png", or "ascii"
+func renderD2(cmd *cobra.Command, d2Content string, outputFile string, format string) error {
+	// Create temp file for D2 input
+	tmpFile, err := os.CreateTemp("", "cx-graph-*.d2")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(d2Content); err != nil {
+		return fmt.Errorf("failed to write D2 content: %w", err)
+	}
+	tmpFile.Close()
+
+	// Find d2 binary - check common locations
+	d2Path, err := exec.LookPath("d2")
+	if err != nil {
+		// Try ~/.local/bin/d2
+		homeDir, _ := os.UserHomeDir()
+		localD2 := filepath.Join(homeDir, ".local", "bin", "d2")
+		if _, statErr := os.Stat(localD2); statErr == nil {
+			d2Path = localD2
+		} else {
+			return fmt.Errorf("d2 CLI not found. Install with: curl -fsSL https://d2lang.com/install.sh | sh")
+		}
+	}
+
+	// Handle ASCII output to stdout
+	if format == "ascii" {
+		runCmd := exec.Command(d2Path, tmpFile.Name(), "-", "--stdout-format", "ascii")
+		output, err := runCmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("d2 render failed: %s\n%s", err, string(output))
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(output))
+		return nil
+	}
+
+	// Determine output file for SVG/PNG
+	renderOutput := outputFile
+	if renderOutput == "" {
+		renderOutput = "graph." + format
+	} else if !strings.HasSuffix(renderOutput, "."+format) {
+		renderOutput = strings.TrimSuffix(renderOutput, filepath.Ext(renderOutput)) + "." + format
+	}
+
+	// Run d2 command
+	runCmd := exec.Command(d2Path, tmpFile.Name(), renderOutput)
+	output, err := runCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("d2 render failed: %s\n%s", err, string(output))
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "Rendered to %s\n", renderOutput)
+	return nil
+}
+
+// writeGraphToFile writes graph output to a file
+func writeGraphToFile(filePath, content string) error {
+	return os.WriteFile(filePath, []byte(content), 0644)
 }
 
 // shouldIncludeShowEdge checks if a dependency type matches the filter

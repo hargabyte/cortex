@@ -1,191 +1,130 @@
 # CX Enhancement Session Handoff
 
-**Date**: 2026-01-16
-**Last Commit**: 260615d - Complete quick wins: trace command, tag export/import, safe path fix
-**Status**: ~70% complete - core features working, daemon/test intelligence remain
-**GitHub Issue**: https://github.com/hargabyte/cortex/issues/1
+**Date**: 2026-01-17
+**Session Focus**: cx guide feature - ready for implementation
+**Status**: Spec complete, tasks created, **ready to code**
 
 ---
 
-## Executive Summary
+## Next Session Prompt
 
-This session completed the 3 quick wins from the previous handoff:
-1. `cx trace` command - activated from WIP file
-2. `cx tags export/import` - new subcommands added
-3. `cx safe <file>` path fix - normalized file paths for database queries
-
-Core features (tagging, safe command, trace, test basics) are fully working. Remaining work is daemon/live mode and advanced test intelligence.
-
----
-
-## What Works (Verified)
-
-### 1. Entity Tagging - COMPLETE
-```bash
-cx tag <entity> <tags...>             # Add tags
-cx tag <entity> -n "note"             # Add tag with note
-cx untag <entity> <tag>               # Remove tag
-cx tags <entity>                      # List tags for entity
-cx tags                               # List all tags with counts
-cx tags --find <tag>                  # Find entities by tag
-cx tags --find a --find b --all       # AND matching
-cx tags --find a --find b --any       # OR matching
-cx tags export                        # Export to stdout
-cx tags export tags.yaml              # Export to file
-cx tags import tags.yaml              # Import tags
-cx tags import tags.yaml --dry-run    # Preview import
-cx tags import tags.yaml --overwrite  # Overwrite existing
-cx show <entity>                      # Tags appear in output
 ```
+Continue implementing cx guide for cortex. Read handoff.md for full context.
 
-### 2. Safe Command - COMPLETE
-```bash
-cx safe <file>                        # Full safety assessment
-cx safe <file> --quick                # Just blast radius (FIXED)
-cx safe ./path/to/file.go             # Works with ./ prefix (FIXED)
-cx safe --coverage                    # Coverage gaps mode
-cx safe --coverage --keystones-only   # Only keystone gaps
-cx safe --drift                       # Staleness check
-cx safe --changes                     # What changed since scan
-cx safe --create-task                 # Create bead for findings
-```
+The spec is complete and all tasks are created. Your goal is to complete
+Phase 1 (Core Infrastructure).
 
-### 3. Trace Command - COMPLETE (NEW)
-```bash
-cx trace <from> <to>                  # Shortest path between entities
-cx trace <from> <to> --all            # All paths
-cx trace <entity> --callers           # What calls this entity
-cx trace <entity> --callees           # What this entity calls
-cx trace <entity> --depth 5           # Limit trace depth
-```
+Quick start:
+1. cx context                          # Context recovery
+2. bd ready | grep cortex-1tp          # See what's unblocked
+3. /implement cortex-1tp.1.7           # Start with styles.go
 
-### 4. Test Intelligence - PARTIAL
-```bash
-cx test --diff                        # Tests for uncommitted changes
-cx test --gaps                        # Coverage gaps
-cx test --run                         # Actually run tests
+After styles.go is done, d2.go and mermaid.go can be implemented in parallel.
 
-# NOT implemented:
-cx test suggest                       # Not implemented
-cx test --affected <entity>           # Not implemented
-cx test impact <file>                 # Not implemented
-```
+Key decisions from spec:
+- Use D2/Mermaid native styling (no custom colors)
+- MaxNodes default 30, configurable via --max-nodes
+- Auto-collapse to modules when graph is too large
+- --render flag calls external d2 CLI (fail gracefully if not installed)
 
-### 5. Other Working Commands
-```bash
-cx map                                # Project skeleton
-cx context --smart "task"             # Smart context assembly
-cx find --keystones                   # Critical entities
-cx find <pattern>                     # Entity search
-cx show <entity>                      # Entity details with tags
-cx show <entity> --graph              # Dependency visualization
+Goal: Complete Phase 1 - tasks .1.7, .1.2, .1.6, .1.8, .1.4
 ```
 
 ---
 
-## What's NOT Done (Remaining Work)
+## Phase 1 Tasks (Core Infrastructure)
 
-### Priority 1: Daemon & Live Mode (cortex-b44)
+| Task | File | Status | Notes |
+|------|------|--------|-------|
+| cortex-1tp.1.7 | `internal/graph/styles.go` | **READY** | Start here - styling constants |
+| cortex-1tp.1.2 | `internal/graph/d2.go` | blocked by .1.7 | D2 format generator |
+| cortex-1tp.1.6 | `internal/graph/mermaid.go` | blocked by .1.7 | Mermaid format generator |
+| cortex-1tp.1.8 | `internal/cmd/show.go` | blocked by .1.2, .1.6 | Add --format, --output, --max-nodes |
+| cortex-1tp.1.4 | `internal/cmd/guide.go` | blocked by .1.8 | Main command + subcommands |
+| cortex-1tp.1.9 | `testdata/golden/d2/` | blocked by .1.2 | D2 golden tests |
+| cortex-1tp.1.10 | `testdata/golden/mermaid/` | blocked by .1.6 | Mermaid golden tests |
 
-| Bead | Task | Notes |
-|------|------|-------|
-| cortex-b44.5.1 | Rename `cx serve` → `cx live` | Simple rename |
-| cortex-b44.5.2 | Add `cx live --watch` flag | File watching |
-| cortex-b44.5.3 | Add `cx daemon stop/status` | Control commands |
-| cortex-b44.5.4 | Update help text | Documentation |
-| cortex-b44.4.1-4.3 | Auto-start integration | Route through daemon |
-| cortex-b44.2.2 | Incremental scan algorithm | WIP file exists |
-| cortex-b44.2.4 | `cx scan --incremental` flag | Uses above |
+### What styles.go Should Contain
 
-**Files**:
-- `internal/cmd/serve.go` - needs rename
-- `internal/daemon/incremental.go.wip` - WIP implementation
-- `internal/daemon/incremental_test.go.wip` - WIP tests
+```go
+// EntityShapes maps entity types to D2/Mermaid shapes
+var EntityShapes = map[string]string{
+    "function": "rectangle",
+    "method":   "rectangle",
+    "struct":   "class",
+    "interface": "class",
+    // etc.
+}
 
-### Priority 2: Test Intelligence (cortex-9dk)
+// EdgeStyles maps relationship types to line styles
+var EdgeStyles = map[string]string{
+    "calls":     "solid",
+    "implements": "dashed",
+    // etc.
+}
+```
 
-| Bead | Task | Notes |
-|------|------|-------|
-| cortex-9dk.2.3 | Generate test case ideas | Logic exists in suggestions.go |
-| cortex-9dk.2.4 | `cx test suggest` command | Wire up suggestions |
-| cortex-9dk.3.1 | Identify affected tests | Graph traversal |
-| cortex-9dk.3.3 | `cx test --affected` flag | Uses above |
+---
 
-**Files**:
-- `internal/coverage/suggestions.go` - has suggestion logic
-- `internal/cmd/test.go` - needs new flags
+## Task Structure
 
-### Priority 3: CX + Beads Integration (cortex-1he)
+```
+cortex-1tp: cx guide - Human-Readable Codebase Documentation
+├── cortex-1tp.1: Guide Core Infrastructure [READY]
+│   ├── cortex-1tp.1.7: styles.go [READY] ← START HERE
+│   ├── cortex-1tp.1.2: d2.go [blocked by .1.7]
+│   ├── cortex-1tp.1.6: mermaid.go [blocked by .1.7]
+│   ├── cortex-1tp.1.8: show.go flags [blocked by .1.2, .1.6]
+│   ├── cortex-1tp.1.4: guide.go command [blocked by .1.8]
+│   ├── cortex-1tp.1.9: D2 golden tests [blocked by .1.2]
+│   └── cortex-1tp.1.10: Mermaid golden tests [blocked by .1.6]
+├── cortex-1tp.2: Overview Section [blocked by .1] (4 subtasks)
+├── cortex-1tp.3: Modules Section [blocked by .1] (3 subtasks)
+├── cortex-1tp.4: Hotspots Section [blocked by .1] (5 subtasks)
+├── cortex-1tp.5: Dependencies Section [blocked by .1] (4 subtasks)
+└── cortex-1tp.7: Integration verification [blocked by .2-.5]
+```
 
-| Bead | Task | Notes |
-|------|------|-------|
-| cortex-1he.1.* | Context output for beads | JSON schema |
-| cortex-1he.2.* | `bd create` integration | `--cx-smart` flag |
-| cortex-1he.3.* | Bi-directional entity linking | `cx link` command |
+### Parallelization Strategy
 
-### Priority 4: Smart Context (cortex-dsr)
+| Round | Tasks | Agents |
+|-------|-------|--------|
+| 1 | styles.go | 1 |
+| 2 | d2.go, mermaid.go | 2 parallel |
+| 3 | show.go flags | 1 |
+| 4 | guide.go | 1 |
+| 5 | All subcommand subtasks | 16+ parallel |
+| 6 | Integration | 1 |
 
-| Bead | Task | Notes |
-|------|------|-------|
-| cortex-dsr.2.3 | Improve keyword extraction | Better relevance |
-| cortex-dsr.2.4 | Include test files | Related tests |
-| cortex-dsr.3.3 | Add "why included" reasoning | Context explanations |
+---
+
+## Key Design Decisions (from spec)
+
+1. **Use native D2/Mermaid styling** - no custom colors, let tools handle it
+2. **MaxNodes default 30** - configurable via `--max-nodes` flag
+3. **Auto-collapse to modules** when graph exceeds MaxNodes
+4. **--render flag** calls external `d2` CLI - fail gracefully if not installed
+5. **Formats**: d2 (default), mermaid, dot (future)
 
 ---
 
 ## Quick Reference
 
-### Files Changed This Session
-```
-internal/cmd/trace.go      # NEW - renamed from .wip
-internal/cmd/tag.go        # MODIFIED - added export/import
-internal/cmd/safe.go       # MODIFIED - path normalization
-internal/cmd/utils.go      # MODIFIED - normalizeFilePath()
-```
-
-### WIP Files (Not Yet Integrated)
-```
-internal/daemon/incremental.go.wip
-internal/daemon/incremental_test.go.wip
-```
-
-### Key Packages
-- `internal/cmd/` - CLI commands (cobra)
-- `internal/store/` - SQLite storage
-- `internal/context/` - Smart context assembly
-- `internal/coverage/` - Test coverage analysis
-- `internal/daemon/` - Background daemon (partial)
-- `internal/graph/` - Graph algorithms (pathfinding)
-
----
-
-## Recommended Next Steps
-
-### Option A: Finish Test Intelligence (Easier)
-1. Wire up `cx test suggest` using existing `internal/coverage/suggestions.go`
-2. Add `cx test --affected` flag with graph traversal
-3. Close cortex-9dk beads
-
-### Option B: Finish Daemon/Live Mode (More Complex)
-1. Rename `cx serve` → `cx live` (simple)
-2. Activate incremental scanning from .wip files
-3. Add daemon control commands
-4. Close cortex-b44 beads
-
-### Option C: Quick Cleanup
-1. Update CLAUDE.md with new commands (trace, tags export/import)
-2. Close remaining open beads that are done
-3. Run `bd stats` to see progress
-
----
-
-## Session Commands
+### Session Commands
 
 ```bash
 # Start of session
-cx prime                    # Context recovery
+cx context                  # Context recovery
 bd ready                    # What's unblocked
-bd list --status open       # All open issues
+bd show cortex-1tp          # View spec
+
+# Implementation
+/implement cortex-1tp.1.7   # Use skill
+# OR manually:
+bd update cortex-1tp.1.7 --status in_progress
+
+# After completing a task
+bd close cortex-1tp.1.7 --reason "Created styling constants"
 
 # End of session
 git add <files>
@@ -194,13 +133,23 @@ bd sync
 git push
 ```
 
+### Useful Commands
+
+```bash
+bd dep tree cortex-1tp.1    # See infrastructure deps
+bd blocked | grep cortex-1tp # What's blocked
+bd show cortex-1tp.1.7      # View task details
+cx safe internal/graph/     # Check before modifying
+```
+
 ---
 
-## Commit History (This Session)
+## Previous Work (Still Valid)
 
-```
-260615d Complete quick wins: trace command, tag export/import, safe path fix
-e758917 Add GitHub issue link to handoff document
-2f2437f Add comprehensive handoff document for CX enhancement session
-c7fc454 Complete CX orchestration: tagging, safe command, docs, tests
-```
+### File Path Matching (v0.1.6)
+- `cx safe` supports flexible path matching
+- Suffix, basename, and absolute path resolution
+
+### Still Broken/Hidden
+- `cx daemon` / `cx status` (cortex-b44)
+- `cx test suggest` / `--affected` (cortex-9dk)
