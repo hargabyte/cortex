@@ -59,7 +59,7 @@ LoginUser:
     uses_types: [User, AuthError]
 ```
 
-#### cx rank (showing top entities by importance)
+#### cx find --keystones (showing top entities by importance)
 ```yaml
 results:
   HandleRequest:
@@ -100,11 +100,11 @@ cx find LoginUser --format=json
 # Graph analysis with medium density
 cx graph LoginUser --density=medium
 
-# Rank keystones only
-cx rank --keystones
+# Find keystones (most important entities)
+cx find --keystones
 
-# Impact analysis
-cx impact src/auth/jwt.go --depth 3
+# Safety check before modifying
+cx safe src/auth/jwt.go
 
 # Get context for a task
 cx context bd-a7c --max-tokens=8000

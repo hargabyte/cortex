@@ -127,19 +127,6 @@ cx find --tag critical            # Filter by tag
 
 ---
 
-### cx rank
-Find critical code by importance metrics.
-
-` + "```bash" + `
-cx rank                           # Top 20 by PageRank
-cx rank --keystones               # Most depended-on entities
-cx rank --bottlenecks             # Central to call paths
-cx rank --leaves                  # Leaf nodes (no dependents)
-cx rank --top 50                  # More results
-` + "```" + `
-
----
-
 ### cx trace
 Trace call paths between entities.
 
@@ -228,27 +215,6 @@ cx reset --hard --force           # Delete everything
 
 ---
 
-### cx daemon
-Background daemon control.
-
-` + "```bash" + `
-cx daemon status                  # Check status
-cx daemon start --background      # Start in background
-cx daemon stop                    # Stop daemon
-` + "```" + `
-
----
-
-### cx status
-Quick status check.
-
-` + "```bash" + `
-cx status                         # Daemon and graph status
-cx status --json                  # JSON output
-` + "```" + `
-
----
-
 ## Global Flags
 
 ` + "```" + `
@@ -272,7 +238,7 @@ cx status --json                  # JSON output
 | Understand entity | ` + "`cx show <entity> --related`" + ` |
 | Find code | ` + "`cx find <name>`" + ` or ` + "`cx find \"concept\"`" + ` |
 | Project overview | ` + "`cx map`" + ` |
-| Critical code | ` + "`cx rank --keystones`" + ` |
+| Critical code | ` + "`cx find --keystones`" + ` |
 | Call paths | ` + "`cx trace <from> <to>`" + ` |
 | Dead code | ` + "`cx dead`" + ` |
 | Run tests | ` + "`cx test --diff --run`" + ` |
@@ -321,11 +287,6 @@ func generateAgentReferenceJSON() string {
       "usage": "cx find <query>",
       "flags": ["--type", "--exact", "--keystones", "--important", "--tag", "--lang", "--limit"]
     },
-    "rank": {
-      "purpose": "Find critical code by importance",
-      "usage": "cx rank --keystones",
-      "flags": ["--keystones", "--bottlenecks", "--leaves", "--top"]
-    },
     "trace": {
       "purpose": "Trace call paths between entities",
       "usage": "cx trace <from> <to>",
@@ -369,14 +330,6 @@ func generateAgentReferenceJSON() string {
     "reset": {
       "purpose": "Reset database",
       "flags": ["--scan-only", "--hard", "--force"]
-    },
-    "daemon": {
-      "purpose": "Background daemon control",
-      "subcommands": ["start", "status", "stop"]
-    },
-    "status": {
-      "purpose": "Quick status check",
-      "flags": ["--json", "--watch"]
     }
   },
   "global_flags": {

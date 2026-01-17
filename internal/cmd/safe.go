@@ -264,7 +264,10 @@ func runSafeFull(cmd *cobra.Command, target string) error {
 	}
 
 	if len(directEntities) == 0 {
-		return fmt.Errorf("no entities found matching: %s", target)
+		if isFilePath(target) {
+			return fmt.Errorf("no entities found matching: %s\n\nIf this is a file path, ensure:\n  - The file was included in the last scan (run 'cx scan')\n  - The path matches the stored format (try 'cx map' to see paths)\n\nOr use an entity name instead:\n  - Run 'cx find <name>' to discover entities\n  - Use 'cx safe EntityName' with an entity name", target)
+		}
+		return fmt.Errorf("no entities found matching: %s\n\nTry:\n  - 'cx find %s' to search for similar entities\n  - 'cx map' to see available entities", target, target)
 	}
 
 	// Find all affected entities via BFS
@@ -413,7 +416,10 @@ func runSafeQuick(cmd *cobra.Command, target string) error {
 	}
 
 	if len(directEntries) == 0 {
-		return fmt.Errorf("no entities found matching: %s", target)
+		if isFilePath(target) {
+			return fmt.Errorf("no entities found matching: %s\n\nIf this is a file path, ensure:\n  - The file was included in the last scan (run 'cx scan')\n  - The path matches the stored format (try 'cx map' to see paths)\n\nOr use an entity name instead:\n  - Run 'cx find <name>' to discover entities\n  - Use 'cx safe EntityName' with an entity name", target)
+		}
+		return fmt.Errorf("no entities found matching: %s\n\nTry:\n  - 'cx find %s' to search for similar entities\n  - 'cx map' to see available entities", target, target)
 	}
 
 	// Find affected entities using graph traversal

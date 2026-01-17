@@ -17,7 +17,6 @@ Complete reference for all Cortex commands, flags, and output formats. This docu
    - [cx find](#cx-find)
    - [cx show](#cx-show)
    - [cx map](#cx-map)
-   - [cx rank](#cx-rank)
    - [cx trace](#cx-trace)
 4. [Safety & Analysis Commands](#safety--analysis-commands)
    - [cx safe](#cx-safe)
@@ -324,46 +323,10 @@ cx map --filter T --lang go   # Go types only
 
 ---
 
-### cx rank
-
-Compute and display importance metrics.
-
-**Usage:** `cx rank [flags]`
-
-**Flags:**
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--keystones` | bool | false | Top N by PageRank (most important) |
-| `--bottlenecks` | bool | false | Top N by betweenness (most central) |
-| `--leaves` | bool | false | Top N leaf nodes (no dependents) |
-| `--top` | int | 20 | Number of results |
-| `--recompute` | bool | false | Force recompute all metrics |
-
-**Examples:**
-```bash
-cx rank                       # Top 20 by PageRank
-cx rank --top 50              # Top 50
-cx rank --keystones           # Most important entities
-cx rank --bottlenecks         # Most central entities
-cx rank --leaves              # Leaf nodes
-cx rank --recompute           # Force recompute
-```
-
-**Output Structure:**
-```yaml
-results:
-  EntityName:
-    type: function
-    location: file:line
-    metrics:
-      pagerank: float
-      in_degree: int
-      out_degree: int
-      importance: keystone|bottleneck|normal|leaf
-      betweenness: float  # dense only
-count: int
-```
+> **Note:** The `cx rank` command has been deprecated. Use `cx find` with ranking flags instead:
+> - `cx find --keystones` - Find most important entities
+> - `cx find --bottlenecks` - Find most central entities
+> - `cx find --important --top 20` - Top entities by PageRank
 
 ---
 
@@ -1135,7 +1098,7 @@ cx test --diff --run                  # Run affected tests
 | Understand entity | `cx show <entity>` |
 | Find code | `cx find <name>` or `cx find "concept"` |
 | Project overview | `cx map` |
-| Critical code | `cx rank --keystones` |
+| Critical code | `cx find --keystones` |
 | Call paths | `cx trace <from> <to>` |
 | Dead code | `cx dead` |
 | Run tests | `cx test --diff --run` |

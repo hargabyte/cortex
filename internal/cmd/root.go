@@ -48,7 +48,7 @@ Main capabilities:
   - Find symbols and their relationships
   - Show detailed information about code entities
   - Visualize dependency graphs in YAML format
-  - Rank symbols by importance using PageRank
+  - Find important symbols using PageRank
   - Analyze impact of changes
   - Verify graph consistency
   - Export context for AI consumption
@@ -60,10 +60,9 @@ Global Flags:
 Examples:
   cx find LoginUser                  # Find entities by name
   cx show sa-fn-a7f9b2-LoginUser     # Show entity details
-  cx graph LoginUser                 # Visualize dependencies
-  cx rank --keystones                # Find critical entities
-  cx impact src/auth/               # Analyze change impact
-  cx context bd-task-123             # Gather task context
+  cx find --keystones                # Find critical entities
+  cx safe src/auth/                  # Pre-flight safety check
+  cx context --smart "add auth"      # Gather task context
 
 See 'cx <command> --help' for command-specific options.`,
 	Version: Version,

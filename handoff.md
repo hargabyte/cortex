@@ -73,13 +73,12 @@ cx test impact <file>                 # Not implemented
 
 ### 5. Other Working Commands
 ```bash
-cx status                             # Daemon/graph status
 cx map                                # Project skeleton
 cx context --smart "task"             # Smart context assembly
-cx rank --keystones                   # Critical entities
+cx find --keystones                   # Critical entities
 cx find <pattern>                     # Entity search
 cx show <entity>                      # Entity details with tags
-cx graph <entity>                     # Dependency visualization
+cx show <entity> --graph              # Dependency visualization
 ```
 
 ---

@@ -41,6 +41,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(daemonStatusCmd)
+	daemonStatusCmd.Hidden = true // Daemon is currently broken, hide status command
 
 	daemonStatusCmd.Flags().BoolVar(&statusJSON, "json", false, "Output in JSON format")
 	daemonStatusCmd.Flags().BoolVar(&statusWatch, "watch", false, "Continuously update status")

@@ -155,6 +155,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(daemonControlCmd)
+	daemonControlCmd.Hidden = true // Daemon is currently broken and should not be invoked
 	daemonControlCmd.AddCommand(daemonControlStatusCmd)
 	daemonControlCmd.AddCommand(daemonControlStopCmd)
 	daemonControlCmd.AddCommand(daemonControlStartCmd)
