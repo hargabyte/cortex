@@ -9,6 +9,11 @@ import (
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 
+	// Verify storage defaults
+	if cfg.Storage.Backend != "dolt" {
+		t.Errorf("expected storage.backend dolt, got %s", cfg.Storage.Backend)
+	}
+
 	// Verify scan defaults
 	if len(cfg.Scan.Languages) != 1 || cfg.Scan.Languages[0] != "go" {
 		t.Errorf("expected default language [go], got %v", cfg.Scan.Languages)
@@ -85,6 +90,27 @@ func TestIsValidDensity(t *testing.T) {
 	}
 }
 
+func TestIsValidStorageBackend(t *testing.T) {
+	tests := []struct {
+		backend string
+		valid   bool
+	}{
+		{"dolt", true},
+		{"sqlite", false},
+		{"", false},
+		{"DOLT", false}, // case sensitive
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.backend, func(t *testing.T) {
+			result := IsValidStorageBackend(tt.backend)
+			if result != tt.valid {
+				t.Errorf("IsValidStorageBackend(%q) = %v, want %v", tt.backend, result, tt.valid)
+			}
+		})
+	}
+}
+
 func TestValidate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -95,6 +121,13 @@ func TestValidate(t *testing.T) {
 			name:    "valid default config",
 			modify:  func(c *Config) {},
 			wantErr: false,
+		},
+		{
+			name: "invalid storage backend",
+			modify: func(c *Config) {
+				c.Storage.Backend = "sqlite"
+			},
+			wantErr: true,
 		},
 		{
 			name: "invalid density",

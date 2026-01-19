@@ -58,10 +58,12 @@ func runReset(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cx not initialized: run 'cx scan' first")
 	}
 
-	dbPath := filepath.Join(cxDir, "cortex.db")
+	// Dolt repo lives in .cx/cortex/ directory
+	dbPath := filepath.Join(cxDir, "cortex")
 
-	// Check if database exists
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+	// Check if database exists (Dolt uses a directory, not a single file)
+	info, err := os.Stat(dbPath)
+	if os.IsNotExist(err) || !info.IsDir() {
 		return fmt.Errorf("database not found at %s", dbPath)
 	}
 
@@ -78,12 +80,8 @@ func runReset(cmd *cobra.Command, args []string) error {
 	fileCount, _ := st.CountFileIndex()
 	metricsCount, _ := st.CountMetrics()
 
-	// Get database size
-	fileInfo, _ := os.Stat(dbPath)
-	dbSize := int64(0)
-	if fileInfo != nil {
-		dbSize = fileInfo.Size()
-	}
+	// Get database size (calculate total size of Dolt directory)
+	dbSize := getDirSize(dbPath)
 
 	// Display what will be reset
 	fmt.Println("# cx reset")
@@ -166,16 +164,14 @@ func runReset(cmd *cobra.Command, args []string) error {
 
 	// Execute reset based on mode
 	if resetHard {
-		// Close store before deleting file
+		// Close store before deleting directory
 		st.Close()
 
-		fmt.Println("Deleting database file...")
-		if err := os.Remove(dbPath); err != nil {
+		fmt.Println("Deleting database directory...")
+		if err := os.RemoveAll(dbPath); err != nil {
 			return fmt.Errorf("failed to delete database: %w", err)
 		}
 
-		// Also remove any other .cx files that might cause issues
-		// (but keep config.yaml)
 		fmt.Println("Database deleted successfully")
 		fmt.Println()
 		fmt.Println("Run 'cx scan' to rebuild the code graph")
@@ -231,11 +227,7 @@ func runReset(cmd *cobra.Command, args []string) error {
 	st.Close()
 
 	// Get new database size
-	newFileInfo, _ := os.Stat(dbPath)
-	newSize := int64(0)
-	if newFileInfo != nil {
-		newSize = newFileInfo.Size()
-	}
+	newSize := getDirSize(dbPath)
 
 	fmt.Println()
 	fmt.Println("Database reset successfully")
@@ -244,4 +236,19 @@ func runReset(cmd *cobra.Command, args []string) error {
 	fmt.Println("Run 'cx scan' to rebuild the code graph")
 
 	return nil
+}
+
+// getDirSize calculates the total size of a directory and its contents.
+func getDirSize(path string) int64 {
+	var size int64
+	filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // Skip errors
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size
 }

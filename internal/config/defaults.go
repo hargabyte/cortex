@@ -5,6 +5,9 @@ package config
 // config file is missing specific fields.
 func DefaultConfig() *Config {
 	return &Config{
+		Storage: StorageConfig{
+			Backend: "dolt",
+		},
 		Scan: ScanConfig{
 			Languages: []string{"go"},
 			Exclude: []string{
@@ -42,6 +45,9 @@ func DefaultConfig() *Config {
 func Merge(loaded, defaults *Config) *Config {
 	result := &Config{}
 
+	// Merge Storage config
+	result.Storage = mergeStorageConfig(loaded.Storage, defaults.Storage)
+
 	// Merge Scan config
 	result.Scan = mergeScanConfig(loaded.Scan, defaults.Scan)
 
@@ -53,6 +59,19 @@ func Merge(loaded, defaults *Config) *Config {
 
 	// Merge Guard config
 	result.Guard = mergeGuardConfig(loaded.Guard, defaults.Guard)
+
+	return result
+}
+
+func mergeStorageConfig(loaded, defaults StorageConfig) StorageConfig {
+	result := StorageConfig{}
+
+	// Backend: use loaded if non-empty
+	if loaded.Backend != "" {
+		result.Backend = loaded.Backend
+	} else {
+		result.Backend = defaults.Backend
+	}
 
 	return result
 }

@@ -17,10 +17,16 @@ const ConfigDirName = ".cx"
 
 // Config holds all cx configuration
 type Config struct {
+	Storage StorageConfig `yaml:"storage"`
 	Scan    ScanConfig    `yaml:"scan"`
 	Metrics MetricsConfig `yaml:"metrics"`
 	Output  OutputConfig  `yaml:"output"`
 	Guard   GuardConfig   `yaml:"guard"`
+}
+
+// StorageConfig holds configuration for the storage backend
+type StorageConfig struct {
+	Backend string `yaml:"backend"` // "dolt" (default) - the storage backend to use
 }
 
 // GuardConfig holds configuration for the pre-commit guard
@@ -153,9 +159,28 @@ func EnsureConfigDir(workDir string) (string, error) {
 	return configDir, nil
 }
 
+// ValidStorageBackends lists the valid storage backend options
+var ValidStorageBackends = []string{"dolt"}
+
+// IsValidStorageBackend checks if the given backend value is valid
+func IsValidStorageBackend(backend string) bool {
+	for _, valid := range ValidStorageBackends {
+		if backend == valid {
+			return true
+		}
+	}
+	return false
+}
+
 // Validate checks that config values are valid.
 // Returns an error if validation fails.
 func Validate(cfg *Config) error {
+	// Validate storage backend
+	if !IsValidStorageBackend(cfg.Storage.Backend) {
+		return fmt.Errorf("%w: storage.backend must be one of %v, got %q",
+			ErrInvalidConfig, ValidStorageBackends, cfg.Storage.Backend)
+	}
+
 	// Validate density
 	if !IsValidDensity(cfg.Output.DefaultDensity) {
 		return fmt.Errorf("%w: default_density must be one of %v, got %q",
