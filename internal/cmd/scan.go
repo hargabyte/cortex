@@ -66,6 +66,7 @@ var (
 	scanForce         bool
 	scanOverview      bool
 	scanNoAutoExclude bool
+	scanDiff          bool
 )
 
 func init() {
@@ -78,6 +79,7 @@ func init() {
 	scanCmd.Flags().BoolVar(&scanForce, "force", false, "Rescan even if file unchanged")
 	scanCmd.Flags().BoolVar(&scanOverview, "overview", false, "Show project overview after scan (replaces quickstart)")
 	scanCmd.Flags().BoolVar(&scanNoAutoExclude, "no-auto-exclude", false, "Disable automatic exclusion of dependency directories")
+	scanCmd.Flags().BoolVar(&scanDiff, "diff", false, "Show what changed since previous scan")
 }
 
 // scanStats tracks scan statistics for summary output
@@ -616,6 +618,18 @@ func runScan(cmd *cobra.Command, args []string) error {
 			}
 		} else if verbose {
 			w.WriteComment(fmt.Sprintf("Dolt commit: %s", commitMsg))
+		}
+
+		// Show diff summary if --diff flag is set
+		if scanDiff && !quiet {
+			// Query diff between previous commit (HEAD~1) and current (HEAD)
+			added, modified, removed, err := storeDB.DoltDiffSummary("HEAD~1", "HEAD")
+			if err == nil && (added > 0 || modified > 0 || removed > 0) {
+				w.WriteBlankLine()
+				w.WriteComment(fmt.Sprintf("Changes: %d added, %d modified, %d removed", added, modified, removed))
+			} else if err != nil && verbose {
+				w.WriteComment(fmt.Sprintf("Note: unable to compute diff (may be first scan): %v", err))
+			}
 		}
 	}
 
