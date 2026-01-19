@@ -40,7 +40,7 @@ func (s *Store) CreateEntitiesBulk(entities []*Entity) error {
 	}
 
 	stmt, err := tx.Prepare(`
-		INSERT OR IGNORE INTO entities (id, name, entity_type, kind, file_path, line_start, line_end,
+		INSERT IGNORE INTO entities (id, name, entity_type, kind, file_path, line_start, line_end,
 			signature, sig_hash, body_hash, receiver, visibility, fields, language, status,
 			body_text, doc_comment, skeleton, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)

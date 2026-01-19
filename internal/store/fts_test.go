@@ -320,27 +320,30 @@ func TestFTSEmptyQuery(t *testing.T) {
 }
 
 // TestBuildFTSQuery tests the FTS query builder.
+// Note: MySQL FULLTEXT in NATURAL LANGUAGE MODE doesn't use:
+// - Prefix matching with '*'
+// - OR operators between words
+// Instead, it passes clean keywords and lets MySQL handle relevance ranking.
 func TestBuildFTSQuery(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
 		expected string
 	}{
-		{"simple word", "auth", "auth*"},
-		{"multiple words uses OR", "auth validation", "auth* OR validation*"},
-		{"trim spaces", "  auth  ", "auth*"},
-		{"empty", "", "*"},
-		// escapeFTSQuery replaces : with space within the word (after split)
-		// So "foo:bar" becomes "foo bar*" as a single term (not split into two words)
-		{"special chars colon", "foo:bar", "foo bar*"},
+		{"simple word", "auth", "auth"},
+		{"multiple words", "auth validation", "auth validation"},
+		{"trim spaces", "  auth  ", "auth"},
+		{"empty", "", ""},
+		// cleanFTSWord removes : character
+		{"special chars colon", "foo:bar", "foobar"},
 		// Code stopwords are filtered out
-		{"filters code stopwords", "parsing source code", "parsing*"},
-		{"filters multiple stopwords", "implement new feature handler", "handler*"},
-		{"keeps domain terms", "rate limit api", "rate* OR limit* OR api*"},
+		{"filters code stopwords", "parsing source code", "parsing"},
+		{"filters multiple stopwords", "implement new feature handler", "handler"},
+		{"keeps domain terms", "rate limit api", "rate limit api"},
 		// Edge cases
-		{"all stopwords falls back", "code source file", "code*"}, // falls back to first word
+		{"all stopwords falls back", "code source file", "code"}, // falls back to first word
 		// Note: "add" is NOT a code stopword (action words handled in smart.go)
-		{"action words not filtered here", "add validation", "add* OR validation*"},
+		{"action words not filtered here", "add validation", "add validation"},
 	}
 
 	for _, tt := range tests {
@@ -354,42 +357,37 @@ func TestBuildFTSQuery(t *testing.T) {
 }
 
 // TestBuildFTSQueryMultiWord specifically tests multi-word query handling.
+// MySQL FULLTEXT uses natural language mode, so we just pass clean keywords.
 func TestBuildFTSQueryMultiWord(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       string
 		shouldMatch []string // substrings that should appear in the query
-		shouldUseOR bool     // whether OR should be used
 	}{
 		{
 			name:        "two meaningful words",
 			input:       "auth handler",
-			shouldMatch: []string{"auth*", "handler*"},
-			shouldUseOR: true,
+			shouldMatch: []string{"auth", "handler"},
 		},
 		{
 			name:        "three meaningful words",
 			input:       "rate limit middleware",
-			shouldMatch: []string{"rate*", "limit*", "middleware*"},
-			shouldUseOR: true,
+			shouldMatch: []string{"rate", "limit", "middleware"},
 		},
 		{
 			name:        "natural language query preserves case",
 			input:       "add rate limiting to API",
-			shouldMatch: []string{"rate*", "limiting*", "API*"}, // preserves original case
-			shouldUseOR: true,
+			shouldMatch: []string{"add", "rate", "limiting", "to", "API"}, // preserves original case
 		},
 		{
 			name:        "stopwords partially removed",
 			input:       "parsing source code files",
-			shouldMatch: []string{"parsing*", "files*"}, // source, code removed; files kept
-			shouldUseOR: true,
+			shouldMatch: []string{"parsing", "files"}, // source, code removed; files kept
 		},
 		{
 			name:        "single word after stopword removal",
 			input:       "implement new feature handler",
-			shouldMatch: []string{"handler*"},
-			shouldUseOR: false, // only one term left
+			shouldMatch: []string{"handler"},
 		},
 	}
 
@@ -402,15 +400,6 @@ func TestBuildFTSQueryMultiWord(t *testing.T) {
 				if !containsSubstring(result, expected) {
 					t.Errorf("buildFTSQuery(%q) = %q, expected to contain %q", tt.input, result, expected)
 				}
-			}
-
-			// Check OR usage
-			hasOR := containsSubstring(result, " OR ")
-			if tt.shouldUseOR && !hasOR {
-				t.Errorf("buildFTSQuery(%q) = %q, expected OR operator", tt.input, result)
-			}
-			if !tt.shouldUseOR && hasOR {
-				t.Errorf("buildFTSQuery(%q) = %q, did not expect OR operator", tt.input, result)
 			}
 		})
 	}

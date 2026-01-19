@@ -11,7 +11,7 @@ func (s *Store) CreateLink(link *EntityLink) error {
 		link.LinkType = "related"
 	}
 	_, err := s.db.Exec(`
-		INSERT OR REPLACE INTO entity_links
+		REPLACE INTO entity_links
 		(entity_id, external_system, external_id, link_type, created_at)
 		VALUES (?, ?, ?, ?, ?)`,
 		link.EntityID, link.ExternalSystem, link.ExternalID, link.LinkType, now)

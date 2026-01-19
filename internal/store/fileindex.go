@@ -10,7 +10,7 @@ import (
 func (s *Store) SetFileScanned(path, hash string) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := s.db.Exec(`
-        INSERT OR REPLACE INTO file_index (file_path, scan_hash, scanned_at)
+        REPLACE INTO file_index (file_path, scan_hash, scanned_at)
         VALUES (?, ?, ?)`, path, hash, now)
 	if err != nil {
 		return fmt.Errorf("set file scanned %s: %w", path, err)
@@ -31,7 +31,7 @@ func (s *Store) SetFilesScannedBulk(entries []*FileIndex) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-        INSERT OR REPLACE INTO file_index (file_path, scan_hash, scanned_at)
+        REPLACE INTO file_index (file_path, scan_hash, scanned_at)
         VALUES (?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("prepare statement: %w", err)

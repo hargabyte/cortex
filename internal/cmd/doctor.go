@@ -125,27 +125,29 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// checkIntegrity runs SQLite's PRAGMA integrity_check
+// checkIntegrity verifies database tables are accessible
 func checkIntegrity(db *sql.DB) doctorResult {
-	var integrityResult string
-	err := db.QueryRow("PRAGMA integrity_check").Scan(&integrityResult)
-	if err != nil {
-		return doctorResult{
-			passed:       false,
-			issueCount:   1,
-			issueDetails: []string{fmt.Sprintf("integrity check error: %v", err)},
+	// Verify core tables are accessible by running simple count queries
+	tables := []string{"entities", "dependencies", "metrics", "file_index"}
+	var issues []string
+
+	for _, table := range tables {
+		var count int
+		err := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&count)
+		if err != nil {
+			issues = append(issues, fmt.Sprintf("table %s: %v", table, err))
 		}
 	}
 
-	if integrityResult == "ok" {
-		return doctorResult{passed: true}
+	if len(issues) > 0 {
+		return doctorResult{
+			passed:       false,
+			issueCount:   len(issues),
+			issueDetails: issues,
+		}
 	}
 
-	return doctorResult{
-		passed:       false,
-		issueCount:   1,
-		issueDetails: []string{integrityResult},
-	}
+	return doctorResult{passed: true}
 }
 
 // checkOrphanDependencies finds dependencies referencing non-existent entities

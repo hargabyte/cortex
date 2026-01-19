@@ -1,5 +1,5 @@
-// Package store provides SQLite-backed persistence for cortex state and metadata.
-// This file implements full-text search using FTS5.
+// Package store provides Dolt-backed persistence for cortex state and metadata.
+// This file implements full-text search using MySQL FULLTEXT indexes.
 package store
 
 import (
@@ -11,11 +11,11 @@ import (
 
 // SearchResult represents a single FTS search result with relevance scoring.
 type SearchResult struct {
-	Entity      *Entity `json:"entity"`
-	FTSScore    float64 `json:"fts_score"`     // Raw FTS5 match score (higher = better match)
-	PageRank    float64 `json:"pagerank"`      // PageRank from metrics
-	CombinedScore float64 `json:"combined_score"` // Weighted combination of FTS and PageRank
-	MatchColumn string  `json:"match_column,omitempty"` // Which column matched: name, body_text, doc_comment, file_path
+	Entity        *Entity `json:"entity"`
+	FTSScore      float64 `json:"fts_score"`              // Raw FULLTEXT match score (higher = better match)
+	PageRank      float64 `json:"pagerank"`               // PageRank from metrics
+	CombinedScore float64 `json:"combined_score"`         // Weighted combination of FTS and PageRank
+	MatchColumn   string  `json:"match_column,omitempty"` // Which column matched: name, body_text, doc_comment, file_path
 }
 
 // SearchOptions configures the search behavior.
@@ -41,8 +41,9 @@ func DefaultSearchOptions() SearchOptions {
 	}
 }
 
-// SearchEntities performs full-text search on entities using FTS5.
+// SearchEntities performs full-text search on entities using MySQL FULLTEXT.
 // Returns entities sorted by combined relevance score (FTS + PageRank).
+// Note: Dolt only supports NATURAL LANGUAGE MODE (no boolean operators).
 func (s *Store) SearchEntities(opts SearchOptions) ([]*SearchResult, error) {
 	if opts.Query == "" {
 		return nil, fmt.Errorf("search query is required")
@@ -62,28 +63,25 @@ func (s *Store) SearchEntities(opts SearchOptions) ([]*SearchResult, error) {
 		opts.BoostExactName = 2.0
 	}
 
-	// Normalize query for FTS5 matching
-	// Handle exact name matches and keyword searches
+	// Normalize query for FULLTEXT matching
 	ftsQuery := buildFTSQuery(opts.Query)
 
-	// Build the SQL query
-	// Join entity_fts with entities and optionally metrics
-	// Use bm25() for relevance ranking
+	// Build the SQL query using MySQL FULLTEXT syntax
+	// MATCH() AGAINST() returns relevance score when used in SELECT
 	query := `
 		SELECT
 			e.id, e.name, e.entity_type, e.kind, e.file_path, e.line_start, e.line_end,
 			e.signature, e.sig_hash, e.body_hash, e.receiver, e.visibility, e.fields,
 			e.language, e.status, e.body_text, e.doc_comment, e.skeleton,
 			e.created_at, e.updated_at,
-			-bm25(entity_fts, 10.0, 1.0, 5.0, 0.5) as fts_score,
+			MATCH(e.name, e.body_text, e.doc_comment) AGAINST(? IN NATURAL LANGUAGE MODE) as fts_score,
 			COALESCE(m.pagerank, 0.0) as pagerank
-		FROM entity_fts
-		JOIN entities e ON e.rowid = entity_fts.rowid
+		FROM entities e
 		LEFT JOIN metrics m ON m.entity_id = e.id
-		WHERE entity_fts MATCH ?
+		WHERE MATCH(e.name, e.body_text, e.doc_comment) AGAINST(? IN NATURAL LANGUAGE MODE)
 		AND e.status = 'active'`
 
-	args := []interface{}{ftsQuery}
+	args := []interface{}{ftsQuery, ftsQuery}
 
 	// Add optional filters
 	if opts.Language != "" {
@@ -140,36 +138,23 @@ func (s *Store) SearchEntities(opts SearchOptions) ([]*SearchResult, error) {
 	return results, nil
 }
 
-// RebuildFTSIndex rebuilds the FTS5 index from scratch.
-// Useful after bulk imports or if the index gets out of sync.
+// RebuildFTSIndex is a no-op for MySQL FULLTEXT indexes.
+// FULLTEXT indexes are automatically maintained by the database engine.
+// This function is kept for API compatibility.
 func (s *Store) RebuildFTSIndex() error {
-	// Delete all from FTS
-	_, err := s.db.Exec("DELETE FROM entity_fts")
-	if err != nil {
-		return fmt.Errorf("clearing FTS index: %w", err)
-	}
-
-	// Repopulate from entities table
-	_, err = s.db.Exec(`
-		INSERT INTO entity_fts(rowid, name, body_text, doc_comment, file_path)
-		SELECT rowid, name, body_text, doc_comment, file_path FROM entities WHERE status = 'active'`)
-	if err != nil {
-		return fmt.Errorf("rebuilding FTS index: %w", err)
-	}
-
-	// Optimize the index
-	_, err = s.db.Exec("INSERT INTO entity_fts(entity_fts) VALUES('optimize')")
-	if err != nil {
-		return fmt.Errorf("optimizing FTS index: %w", err)
-	}
-
+	// MySQL FULLTEXT indexes are automatically maintained
+	// No manual rebuild needed like with SQLite FTS5
 	return nil
 }
 
-// CountFTSEntries returns the number of entries in the FTS index.
+// CountFTSEntries returns the number of entities with searchable content.
+// For MySQL FULLTEXT, this counts entities that have indexable text.
 func (s *Store) CountFTSEntries() (int, error) {
 	var count int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM entity_fts").Scan(&count)
+	err := s.db.QueryRow(`
+		SELECT COUNT(*) FROM entities
+		WHERE status = 'active'
+		AND (name IS NOT NULL OR body_text IS NOT NULL OR doc_comment IS NOT NULL)`).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("counting FTS entries: %w", err)
 	}
@@ -198,32 +183,31 @@ var codeStopWords = map[string]bool{
 	"component": true,
 }
 
-// buildFTSQuery converts a user query into FTS5 query syntax.
-// Uses OR semantics for multi-word queries to be more forgiving with natural language.
+// buildFTSQuery converts a user query into FULLTEXT query syntax.
+// For MySQL NATURAL LANGUAGE MODE, we simply pass clean keywords.
 // Filters out code-generic stopwords that add noise.
 //
 // Examples:
-// - "auth" -> "auth*"
-// - "rate limit" -> "rate* OR limit*"
-// - "parsing source code" -> "parsing*" (source, code filtered as stopwords)
-// - Single specific term -> "term*"
+// - "auth" -> "auth"
+// - "rate limit" -> "rate limit"
+// - "parsing source code" -> "parsing" (source, code filtered as stopwords)
 func buildFTSQuery(query string) string {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return "*"
+		return ""
 	}
 
 	// Split into words
 	words := strings.Fields(query)
 	if len(words) == 0 {
-		return "*"
+		return ""
 	}
 
 	// Filter out code stopwords and build query parts
 	var parts []string
 	for _, word := range words {
-		// Escape special FTS5 characters
-		word = escapeFTSQuery(word)
+		// Clean the word for FULLTEXT
+		word = cleanFTSWord(word)
 		word = strings.TrimSpace(word)
 
 		// Skip empty words and code stopwords
@@ -235,45 +219,40 @@ func buildFTSQuery(query string) string {
 			continue
 		}
 
-		// Use prefix matching for flexibility
-		parts = append(parts, word+"*")
+		parts = append(parts, word)
 	}
 
-	// If all words were filtered, return wildcard or try original first word
+	// If all words were filtered, return original first word
 	if len(parts) == 0 {
-		// Fall back to first non-empty word without filtering
 		for _, word := range words {
-			word = escapeFTSQuery(word)
+			word = cleanFTSWord(word)
 			word = strings.TrimSpace(word)
 			if word != "" {
-				return word + "*"
+				return word
 			}
 		}
-		return "*"
+		return query // Fall back to original
 	}
 
-	// Single word: just use prefix match
-	if len(parts) == 1 {
-		return parts[0]
-	}
-
-	// Multiple words: use OR for more forgiving search
-	// FTS5 will still rank results with more matches higher via BM25
-	return strings.Join(parts, " OR ")
+	// Join words with spaces for natural language search
+	return strings.Join(parts, " ")
 }
 
-// escapeFTSQuery escapes special characters for FTS5 queries.
-func escapeFTSQuery(s string) string {
-	// FTS5 special characters: " ( ) * + - : ^
+// cleanFTSWord removes special characters that might interfere with FULLTEXT search.
+func cleanFTSWord(s string) string {
+	// Remove characters that might cause issues in FULLTEXT queries
 	replacer := strings.NewReplacer(
-		`"`, `""`,
-		`(`, ` `,
-		`)`, ` `,
-		`*`, ` `,
-		`+`, ` `,
-		`-`, ` `,
-		`:`, ` `,
-		`^`, ` `,
+		`"`, ``,
+		`'`, ``,
+		`(`, ``,
+		`)`, ``,
+		`*`, ``,
+		`+`, ``,
+		`-`, ``,
+		`@`, ``,
+		`<`, ``,
+		`>`, ``,
+		`~`, ``,
 	)
 	return replacer.Replace(s)
 }

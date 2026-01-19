@@ -3,11 +3,11 @@ package store
 import "time"
 
 // CreateDependency inserts a single dependency.
-// Uses INSERT OR REPLACE to handle duplicates gracefully.
+// Uses REPLACE INTO to handle duplicates gracefully.
 func (s *Store) CreateDependency(d *Dependency) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := s.db.Exec(`
-		INSERT OR REPLACE INTO dependencies (from_id, to_id, dep_type, created_at)
+		REPLACE INTO dependencies (from_id, to_id, dep_type, created_at)
 		VALUES (?, ?, ?, ?)`,
 		d.FromID, d.ToID, d.DepType, now)
 	return err
@@ -27,7 +27,7 @@ func (s *Store) CreateDependenciesBulk(deps []*Dependency) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT OR REPLACE INTO dependencies (from_id, to_id, dep_type, created_at)
+		REPLACE INTO dependencies (from_id, to_id, dep_type, created_at)
 		VALUES (?, ?, ?, ?)`)
 	if err != nil {
 		return err

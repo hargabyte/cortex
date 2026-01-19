@@ -249,7 +249,7 @@ func StoreCoverage(s *store.Store, coverages []EntityCoverage) error {
 
 		// Insert or replace coverage data
 		_, err = s.DB().Exec(`
-			INSERT OR REPLACE INTO entity_coverage (
+			REPLACE INTO entity_coverage (
 				entity_id, coverage_percent, covered_lines, uncovered_lines, last_run
 			) VALUES (?, ?, ?, ?, ?)
 		`, cov.EntityID, cov.CoveragePercent, string(coveredJSON), string(uncoveredJSON), cov.LastRun.Format(time.RFC3339))
@@ -424,7 +424,7 @@ func StoreTestEntityMappings(s *store.Store, gocoverData *GOCOVERDIRData, basePa
 
 			// Insert the mapping
 			_, err := s.DB().Exec(`
-				INSERT OR IGNORE INTO test_entity_map (test_file, test_name, entity_id)
+				INSERT IGNORE INTO test_entity_map (test_file, test_name, entity_id)
 				VALUES (?, ?, ?)
 			`, testFile, testName, cov.EntityID)
 			if err != nil {
@@ -539,7 +539,7 @@ func StoreTestEntityMappingsWithDiscovery(s *store.Store, gocoverData *GOCOVERDI
 
 			// Insert the mapping
 			_, err := s.DB().Exec(`
-				INSERT OR IGNORE INTO test_entity_map (test_file, test_name, entity_id)
+				INSERT IGNORE INTO test_entity_map (test_file, test_name, entity_id)
 				VALUES (?, ?, ?)
 			`, testFile, testName, cov.EntityID)
 			if err != nil {

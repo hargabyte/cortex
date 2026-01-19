@@ -10,7 +10,7 @@ import (
 // If metrics for this entity already exist, they are replaced.
 func (s *Store) SaveMetrics(m *Metrics) error {
 	_, err := s.db.Exec(`
-		INSERT OR REPLACE INTO metrics
+		REPLACE INTO metrics
 		(entity_id, pagerank, in_degree, out_degree, betweenness, computed_at)
 		VALUES (?, ?, ?, ?, ?, ?)`,
 		m.EntityID, m.PageRank, m.InDegree, m.OutDegree, m.Betweenness,
@@ -158,7 +158,7 @@ func (s *Store) SaveBulkMetrics(metrics []*Metrics) error {
 	}
 
 	stmt, err := tx.Prepare(`
-		INSERT OR REPLACE INTO metrics
+		REPLACE INTO metrics
 		(entity_id, pagerank, in_degree, out_degree, betweenness, computed_at)
 		VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {

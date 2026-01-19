@@ -51,10 +51,13 @@ func TestOpen(t *testing.T) {
 		t.Error("expected .cx directory to be created")
 	}
 
-	// Verify database file exists
-	dbPath := filepath.Join(cxDir, "cortex.db")
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		t.Error("expected cortex.db to be created")
+	// Verify Dolt database directory exists (now .cx/cortex/ instead of .cx/cortex.db)
+	dbPath := filepath.Join(cxDir, "cortex")
+	info, err := os.Stat(dbPath)
+	if os.IsNotExist(err) {
+		t.Error("expected cortex directory to be created")
+	} else if !info.IsDir() {
+		t.Error("expected cortex to be a directory (Dolt repo)")
 	}
 
 	// Verify Path() returns correct path

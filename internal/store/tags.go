@@ -19,9 +19,9 @@ func (s *Store) AddTagWithNote(entityID, tag, createdBy, note string) error {
 	_, err := s.db.Exec(`
 		INSERT INTO entity_tags (entity_id, tag, created_at, created_by, note)
 		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(entity_id, tag) DO UPDATE SET
-			created_by = excluded.created_by,
-			note = excluded.note`,
+		ON DUPLICATE KEY UPDATE
+			created_by = VALUES(created_by),
+			note = VALUES(note)`,
 		entityID, tag, now, createdBy, note)
 	return err
 }
