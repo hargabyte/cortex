@@ -1585,3 +1585,114 @@ func TestDoltCommit(t *testing.T) {
 		t.Error("expected non-empty commit hash")
 	}
 }
+
+// Tests for AS OF query methods (time travel)
+
+func TestGetEntityAt_InvalidRef(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+
+	// Test with invalid ref (SQL injection attempt)
+	_, err := store.GetEntityAt("test-id", "'; DROP TABLE --")
+	if err == nil {
+		t.Error("expected error for invalid ref")
+	}
+}
+
+func TestQueryEntitiesAt_InvalidRef(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+
+	// Test with invalid ref
+	_, err := store.QueryEntitiesAt(EntityFilter{Status: "active"}, "foo bar")
+	if err == nil {
+		t.Error("expected error for invalid ref with space")
+	}
+}
+
+func TestGetDependenciesAt_InvalidRef(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+
+	// Test with invalid ref
+	_, err := store.GetDependenciesAt(DependencyFilter{FromID: "test"}, "\"injection")
+	if err == nil {
+		t.Error("expected error for invalid ref with quote")
+	}
+}
+
+func TestQueryEntitiesAt_ValidRef(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+
+	// Create an entity
+	entity := &Entity{
+		ID:         "test-fn-at-1",
+		Name:       "TestFuncAt",
+		EntityType: "function",
+		FilePath:   "test.go",
+		LineStart:  10,
+		Language:   "go",
+		Visibility: "pub",
+	}
+	if err := store.CreateEntity(entity); err != nil {
+		t.Fatalf("create entity: %v", err)
+	}
+
+	// Commit the entity
+	hash, err := store.DoltCommit("add test entity for AS OF test")
+	if err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+	if hash == "" {
+		t.Skip("Dolt commit did not return hash, skipping AS OF test")
+	}
+
+	// Query with AS OF using the commit hash
+	entities, err := store.QueryEntitiesAt(EntityFilter{Status: "active"}, hash)
+	if err != nil {
+		t.Fatalf("QueryEntitiesAt: %v", err)
+	}
+
+	if len(entities) != 1 {
+		t.Errorf("expected 1 entity at commit %s, got %d", hash, len(entities))
+	}
+}
+
+func TestGetEntityAt_ValidRef(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+
+	// Create an entity
+	entity := &Entity{
+		ID:         "test-fn-getat-1",
+		Name:       "TestFuncGetAt",
+		EntityType: "function",
+		FilePath:   "test.go",
+		LineStart:  20,
+		Language:   "go",
+		Visibility: "pub",
+	}
+	if err := store.CreateEntity(entity); err != nil {
+		t.Fatalf("create entity: %v", err)
+	}
+
+	// Commit the entity
+	hash, err := store.DoltCommit("add test entity for GetEntityAt test")
+	if err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+	if hash == "" {
+		t.Skip("Dolt commit did not return hash, skipping AS OF test")
+	}
+
+	// Get entity at commit
+	got, err := store.GetEntityAt("test-fn-getat-1", hash)
+	if err != nil {
+		t.Fatalf("GetEntityAt: %v", err)
+	}
+
+	if got.Name != "TestFuncGetAt" {
+		t.Errorf("expected name TestFuncGetAt, got %s", got.Name)
+	}
+}

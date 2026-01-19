@@ -41,6 +41,9 @@ Tag Filtering:
   --tag <tag>    Filter to entities with this tag (repeatable, default: match ALL)
   --tag-any      Match ANY tag instead of ALL when multiple --tag flags used
 
+Time Travel:
+  --at <ref>     Query at specific commit/ref (commit hash, branch, tag, HEAD~N)
+
 Density Levels:
   sparse:  Type and location only (~50-100 tokens per entity)
   medium:  Add signature and basic dependencies (~200-300 tokens)
@@ -70,7 +73,9 @@ Examples:
   cx find --tag important                  # Find all entities with 'important' tag
   cx find --tag auth --tag security        # Entities with BOTH auth AND security tags
   cx find --tag auth --tag security --tag-any  # Entities with EITHER tag
-  cx find Login --tag core                 # Name search filtered by tag`,
+  cx find Login --tag core                 # Name search filtered by tag
+  cx find LoginUser --at HEAD~5            # Find entity 5 commits ago
+  cx find --keystones --at abc123          # Keystones at specific commit`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runFind,
 }
@@ -89,6 +94,7 @@ var (
 	findRecompute   bool
 	findTags        []string
 	findTagAny      bool
+	findAt          string // Time travel: query at specific commit/ref
 )
 
 func init() {
@@ -112,6 +118,9 @@ func init() {
 	// Tag filtering flags
 	findCmd.Flags().StringArrayVar(&findTags, "tag", nil, "Filter by tag (can be repeated, default: match ALL tags)")
 	findCmd.Flags().BoolVar(&findTagAny, "tag-any", false, "Match ANY tag instead of ALL (use with --tag)")
+
+	// Time travel flag
+	findCmd.Flags().StringVar(&findAt, "at", "", "Query at specific commit/ref (e.g., HEAD~5, commit hash, branch)")
 }
 
 func runFind(cmd *cobra.Command, args []string) error {
@@ -119,6 +128,11 @@ func runFind(cmd *cobra.Command, args []string) error {
 	query := ""
 	if len(args) > 0 {
 		query = args[0]
+	}
+
+	// Validate --at flag if provided
+	if findAt != "" && !store.IsValidRef(findAt) {
+		return fmt.Errorf("invalid --at ref %q: must be commit hash, branch, tag, or HEAD~N", findAt)
 	}
 
 	// If no query and no ranking flags and no tag filters, show error
@@ -209,8 +223,14 @@ func runFindByName(cmd *cobra.Command, storeDB *store.Store, query string, forma
 		filter.Language = normalizeLanguage(findLang)
 	}
 
-	// Query entities from store
-	entities, err := storeDB.QueryEntities(filter)
+	// Query entities from store (use AS OF if --at specified)
+	var entities []*store.Entity
+	var err error
+	if findAt != "" {
+		entities, err = storeDB.QueryEntitiesAt(filter, findAt)
+	} else {
+		entities, err = storeDB.QueryEntities(filter)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to query entities: %w", err)
 	}
@@ -374,8 +394,15 @@ func runFindWithFTS(cmd *cobra.Command, storeDB *store.Store, query string, form
 
 // runFindWithRanking performs ranked search (migrated from rank command)
 func runFindWithRanking(cmd *cobra.Command, storeDB *store.Store, cfg *config.Config, query string, isConceptSearch bool, format output.Format, density output.Density) error {
-	// Get all active entities
-	entities, err := storeDB.QueryEntities(store.EntityFilter{Status: "active"})
+	// Get all active entities (use AS OF if --at specified)
+	filter := store.EntityFilter{Status: "active"}
+	var entities []*store.Entity
+	var err error
+	if findAt != "" {
+		entities, err = storeDB.QueryEntitiesAt(filter, findAt)
+	} else {
+		entities, err = storeDB.QueryEntities(filter)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to query entities: %w", err)
 	}
@@ -466,18 +493,23 @@ func runFindWithRanking(cmd *cobra.Command, storeDB *store.Store, cfg *config.Co
 		}
 	} else if query != "" {
 		// Use name filter
-		filter := store.EntityFilter{
+		nameFilter := store.EntityFilter{
 			Status: "active",
 			Limit:  10000,
 		}
 		if findType != "" {
-			filter.EntityType = mapCGFTypeToStore(findType)
+			nameFilter.EntityType = mapCGFTypeToStore(findType)
 		}
 		if findLang != "" {
-			filter.Language = normalizeLanguage(findLang)
+			nameFilter.Language = normalizeLanguage(findLang)
 		}
 
-		allEntities, err := storeDB.QueryEntities(filter)
+		var allEntities []*store.Entity
+		if findAt != "" {
+			allEntities, err = storeDB.QueryEntitiesAt(nameFilter, findAt)
+		} else {
+			allEntities, err = storeDB.QueryEntities(nameFilter)
+		}
 		if err != nil {
 			return fmt.Errorf("failed to query entities: %w", err)
 		}

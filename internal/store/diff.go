@@ -296,3 +296,38 @@ func (s *Store) DoltLog(limit int) ([]DoltLogEntry, error) {
 
 	return entries, rows.Err()
 }
+
+// DoltLogStatsResult contains entity/dependency counts at a commit.
+type DoltLogStatsResult struct {
+	Entities     int
+	Dependencies int
+}
+
+// DoltLogStats returns entity and dependency counts at a specific commit.
+// Uses AS OF to query the tables at the given commit point.
+func (s *Store) DoltLogStats(commitHash string) (*DoltLogStatsResult, error) {
+	if !isValidRef(commitHash) {
+		return nil, fmt.Errorf("invalid commit hash")
+	}
+
+	result := &DoltLogStatsResult{}
+
+	// Count entities at this commit using AS OF
+	// Note: AS OF requires the ref in the table reference, not as a function argument
+	entityQuery := fmt.Sprintf(`SELECT COUNT(*) FROM entities AS OF '%s'`, commitHash)
+	err := s.db.QueryRow(entityQuery).Scan(&result.Entities)
+	if err != nil {
+		// Table might not exist at this commit
+		result.Entities = 0
+	}
+
+	// Count dependencies at this commit
+	depQuery := fmt.Sprintf(`SELECT COUNT(*) FROM dependencies AS OF '%s'`, commitHash)
+	err = s.db.QueryRow(depQuery).Scan(&result.Dependencies)
+	if err != nil {
+		// Table might not exist at this commit
+		result.Dependencies = 0
+	}
+
+	return result, nil
+}

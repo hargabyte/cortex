@@ -459,3 +459,206 @@ func (s *Store) DeleteEntitiesByFile(filePath string) error {
 
 	return nil
 }
+
+// IsValidRef checks if a ref string is safe to use in a query.
+// Refs can contain alphanumeric, _, -, ., /, ~, and ^ characters.
+// Exported for use by other packages.
+func IsValidRef(ref string) bool {
+	if ref == "" {
+		return false
+	}
+	for _, c := range ref {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') || c == '_' || c == '-' ||
+			c == '.' || c == '/' || c == '~' || c == '^') {
+			return false
+		}
+	}
+	return true
+}
+
+// GetEntityAt retrieves an entity by ID at a specific Dolt commit/ref.
+// Uses AS OF to query the table at a historical point.
+// Supported refs: commit hash, branch name, tag, HEAD~N.
+func (s *Store) GetEntityAt(id string, ref string) (*Entity, error) {
+	if !IsValidRef(ref) {
+		return nil, fmt.Errorf("invalid ref format: %s", ref)
+	}
+
+	var e Entity
+	var lineEnd sql.NullInt64
+	var language, bodyText, docComment, skeleton sql.NullString
+	var createdAt, updatedAt string
+
+	// Use AS OF in the FROM clause for time travel
+	query := fmt.Sprintf(`
+		SELECT id, name, entity_type, kind, file_path, line_start, line_end,
+			signature, sig_hash, body_hash, receiver, visibility, fields, language, status,
+			body_text, doc_comment, skeleton, created_at, updated_at
+		FROM entities AS OF '%s' WHERE id = ?`, ref)
+
+	err := s.db.QueryRow(query, id).Scan(
+		&e.ID, &e.Name, &e.EntityType, &e.Kind, &e.FilePath, &e.LineStart, &lineEnd,
+		&e.Signature, &e.SigHash, &e.BodyHash, &e.Receiver, &e.Visibility, &e.Fields, &language, &e.Status,
+		&bodyText, &docComment, &skeleton, &createdAt, &updatedAt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse timestamps
+	createdAtTime, err := time.Parse(time.RFC3339, createdAt)
+	if err != nil {
+		createdAtTime = time.Now().UTC()
+	}
+	e.CreatedAt = createdAtTime
+
+	updatedAtTime, err := time.Parse(time.RFC3339, updatedAt)
+	if err != nil {
+		updatedAtTime = time.Now().UTC()
+	}
+	e.UpdatedAt = updatedAtTime
+
+	// Handle nullable LineEnd
+	if lineEnd.Valid {
+		v := int(lineEnd.Int64)
+		e.LineEnd = &v
+	}
+
+	// Handle nullable Language (default to "go" for backwards compatibility)
+	if language.Valid {
+		e.Language = language.String
+	} else {
+		e.Language = "go"
+	}
+
+	// Handle nullable FTS fields
+	if bodyText.Valid {
+		e.BodyText = bodyText.String
+	}
+	if docComment.Valid {
+		e.DocComment = docComment.String
+	}
+	if skeleton.Valid {
+		e.Skeleton = skeleton.String
+	}
+
+	return &e, nil
+}
+
+// QueryEntitiesAt returns entities matching the filter at a specific Dolt commit/ref.
+// Uses AS OF to query the table at a historical point.
+func (s *Store) QueryEntitiesAt(filter EntityFilter, ref string) ([]*Entity, error) {
+	if !IsValidRef(ref) {
+		return nil, fmt.Errorf("invalid ref format: %s", ref)
+	}
+
+	// Use AS OF in the FROM clause
+	query := fmt.Sprintf(`
+		SELECT id, name, entity_type, kind, file_path, line_start, line_end,
+			signature, sig_hash, body_hash, receiver, visibility, fields, language, status,
+			body_text, doc_comment, skeleton, created_at, updated_at
+		FROM entities AS OF '%s' WHERE 1=1`, ref)
+	args := []interface{}{}
+
+	if filter.EntityType != "" {
+		query += " AND entity_type = ?"
+		args = append(args, filter.EntityType)
+	}
+	if filter.Status != "" {
+		query += " AND status = ?"
+		args = append(args, filter.Status)
+	}
+	if filter.FilePath != "" {
+		query += " AND file_path LIKE ?"
+		args = append(args, filter.FilePath+"%")
+	}
+	if filter.FilePathSuffix != "" {
+		query += " AND file_path LIKE ?"
+		args = append(args, "%"+filter.FilePathSuffix)
+	}
+	if filter.Name != "" {
+		query += " AND name LIKE ?"
+		args = append(args, "%"+filter.Name+"%")
+	}
+	if filter.Language != "" {
+		query += " AND language = ?"
+		args = append(args, filter.Language)
+	}
+
+	query += " ORDER BY file_path, line_start"
+
+	if filter.Limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", filter.Limit)
+		if filter.Offset > 0 {
+			query += fmt.Sprintf(" OFFSET %d", filter.Offset)
+		}
+	}
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entities []*Entity
+	for rows.Next() {
+		var e Entity
+		var lineEnd sql.NullInt64
+		var language, bodyText, docComment, skeleton sql.NullString
+		var createdAt, updatedAt string
+
+		err := rows.Scan(
+			&e.ID, &e.Name, &e.EntityType, &e.Kind, &e.FilePath, &e.LineStart, &lineEnd,
+			&e.Signature, &e.SigHash, &e.BodyHash, &e.Receiver, &e.Visibility, &e.Fields, &language, &e.Status,
+			&bodyText, &docComment, &skeleton, &createdAt, &updatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse timestamps
+		createdAtTime, err := time.Parse(time.RFC3339, createdAt)
+		if err != nil {
+			createdAtTime = time.Now().UTC()
+		}
+		e.CreatedAt = createdAtTime
+
+		updatedAtTime, err := time.Parse(time.RFC3339, updatedAt)
+		if err != nil {
+			updatedAtTime = time.Now().UTC()
+		}
+		e.UpdatedAt = updatedAtTime
+
+		// Handle nullable LineEnd
+		if lineEnd.Valid {
+			v := int(lineEnd.Int64)
+			e.LineEnd = &v
+		}
+
+		// Handle nullable Language (default to "go" for backwards compatibility)
+		if language.Valid {
+			e.Language = language.String
+		} else {
+			e.Language = "go"
+		}
+
+		// Handle nullable FTS fields
+		if bodyText.Valid {
+			e.BodyText = bodyText.String
+		}
+		if docComment.Valid {
+			e.DocComment = docComment.String
+		}
+		if skeleton.Valid {
+			e.Skeleton = skeleton.String
+		}
+
+		entities = append(entities, &e)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return entities, nil
+}

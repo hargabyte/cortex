@@ -63,8 +63,13 @@ func entityTypePriority(entityType string) int {
 // 3. Higher PageRank (more important) entities first
 //
 // If multiple entities match, it returns an error listing the options.
-// If typeFilter is non-empty, only entities of that type are considered.
-func resolveEntityByName(query string, storeDB *store.Store, typeFilter string) (*store.Entity, error) {
+// If ref is non-empty, queries at that historical point using AS OF.
+func resolveEntityByName(query string, storeDB *store.Store, ref string) (*store.Entity, error) {
+	return resolveEntityByNameWithFilter(query, storeDB, "", ref)
+}
+
+// resolveEntityByNameWithFilter is like resolveEntityByName but allows type filtering.
+func resolveEntityByNameWithFilter(query string, storeDB *store.Store, typeFilter string, ref string) (*store.Entity, error) {
 	// Check for file-path hint syntax: name@path
 	var fileHint string
 	if atIdx := strings.LastIndex(query, "@"); atIdx > 0 && atIdx < len(query)-1 {
@@ -74,7 +79,13 @@ func resolveEntityByName(query string, storeDB *store.Store, typeFilter string) 
 
 	// If query looks like a direct ID, try direct lookup first
 	if isDirectIDQuery(query) {
-		entity, err := storeDB.GetEntity(query)
+		var entity *store.Entity
+		var err error
+		if ref != "" {
+			entity, err = storeDB.GetEntityAt(query, ref)
+		} else {
+			entity, err = storeDB.GetEntity(query)
+		}
 		if err == nil {
 			return entity, nil
 		}
@@ -90,7 +101,13 @@ func resolveEntityByName(query string, storeDB *store.Store, typeFilter string) 
 		filter.EntityType = typeFilter
 	}
 
-	entities, err := storeDB.QueryEntities(filter)
+	var entities []*store.Entity
+	var err error
+	if ref != "" {
+		entities, err = storeDB.QueryEntitiesAt(filter, ref)
+	} else {
+		entities, err = storeDB.QueryEntities(filter)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to query entities: %w", err)
 	}

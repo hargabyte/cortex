@@ -37,6 +37,10 @@ Information displayed varies by density:
 The --include-metrics flag adds metrics to any density level.
 The --coverage flag adds test coverage information (also included in dense mode).
 
+Time Travel Mode (--at):
+  Query the code graph at a historical point using Dolt's AS OF feature.
+  Supported refs: commit hash, branch, tag, HEAD~N.
+
 Neighborhood Mode (--related):
   Shows the entity's neighborhood - what it calls, what calls it, same-file
   entities, and type relationships. Replaces the old 'cx near' command.
@@ -71,7 +75,9 @@ Examples:
   cx show LoginUser --related --depth 2                    # Two hops neighborhood
   cx show LoginUser --graph                                # Show dependency graph
   cx show LoginUser --graph --hops 3                       # 3-level graph traversal
-  cx show LoginUser --graph --direction in                 # Only incoming edges`,
+  cx show LoginUser --graph --direction in                 # Only incoming edges
+  cx show LoginUser --at HEAD~5                            # Show entity 5 commits ago
+  cx show LoginUser --at abc123                            # Show entity at commit abc123`,
 	Args: cobra.ExactArgs(1),
 	RunE: runShow,
 }
@@ -85,6 +91,7 @@ var (
 	showHops           int
 	showDirection      string
 	showEdgeType       string
+	showAt             string // Time travel: query at specific commit/ref
 	// Graph output format flags
 	graphFormat   string // "yaml", "d2", "mermaid"
 	graphOutput   string // output file path (optional)
@@ -116,10 +123,18 @@ func init() {
 	showCmd.Flags().IntVar(&graphMaxNodes, "max-nodes", 30, "Maximum nodes before auto-collapsing to modules (used with --graph)")
 	showCmd.Flags().BoolVar(&graphRender, "render", false, "Render D2 diagram to SVG (requires d2 CLI, used with --graph-format=d2)")
 	showCmd.Flags().BoolVar(&graphAscii, "ascii", false, "Render D2 diagram to ASCII art in terminal (requires d2 CLI, used with --graph-format=d2)")
+
+	// Time travel flag
+	showCmd.Flags().StringVar(&showAt, "at", "", "Query at specific commit/ref (e.g., HEAD~5, commit hash, branch)")
 }
 
 func runShow(cmd *cobra.Command, args []string) error {
 	query := args[0]
+
+	// Validate --at flag if provided
+	if showAt != "" && !store.IsValidRef(showAt) {
+		return fmt.Errorf("invalid --at ref %q: must be commit hash, branch, tag, or HEAD~N", showAt)
+	}
 
 	// Validate direction flag
 	if showDirection != "in" && showDirection != "out" && showDirection != "both" {
@@ -192,7 +207,7 @@ func runShow(cmd *cobra.Command, args []string) error {
 	defer storeDB.Close()
 
 	// Resolve the entity - support name, ID, or file:line
-	entity, err := resolveShowQuery(query, storeDB)
+	entity, err := resolveShowQuery(query, storeDB, showAt)
 	if err != nil {
 		return err
 	}
@@ -212,7 +227,8 @@ func runShow(cmd *cobra.Command, args []string) error {
 
 // resolveShowQuery resolves the query to an entity.
 // Supports: name, ID, or file:line.
-func resolveShowQuery(query string, storeDB *store.Store) (*store.Entity, error) {
+// If ref is non-empty, queries at that historical point using AS OF.
+func resolveShowQuery(query string, storeDB *store.Store, ref string) (*store.Entity, error) {
 	// Check if it's a file:line pattern (e.g., internal/auth/login.go:45)
 	if strings.Contains(query, ":") && !isDirectIDQuery(query) {
 		parts := strings.Split(query, ":")
@@ -222,22 +238,31 @@ func resolveShowQuery(query string, storeDB *store.Store) (*store.Entity, error)
 
 			// Check if second part is a number (file:line) or text (qualified name)
 			if lineNum, err := strconv.Atoi(lineStr); err == nil {
-				return resolveShowEntityAtLine(filePath, lineNum, storeDB)
+				return resolveShowEntityAtLine(filePath, lineNum, storeDB, ref)
 			}
 		}
 	}
 
 	// Fall back to standard name/ID resolution
-	return resolveEntityByName(query, storeDB, "")
+	return resolveEntityByName(query, storeDB, ref)
 }
 
 // resolveShowEntityAtLine finds the entity at a specific line in a file
-func resolveShowEntityAtLine(filePath string, lineNum int, storeDB *store.Store) (*store.Entity, error) {
+// If ref is non-empty, queries at that historical point using AS OF.
+func resolveShowEntityAtLine(filePath string, lineNum int, storeDB *store.Store, ref string) (*store.Entity, error) {
 	// Query entities in the file
-	entities, err := storeDB.QueryEntities(store.EntityFilter{
+	filter := store.EntityFilter{
 		FilePath: filePath,
 		Status:   "active",
-	})
+	}
+
+	var entities []*store.Entity
+	var err error
+	if ref != "" {
+		entities, err = storeDB.QueryEntitiesAt(filter, ref)
+	} else {
+		entities, err = storeDB.QueryEntities(filter)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to query entities: %w", err)
 	}
@@ -309,8 +334,13 @@ func runShowDefault(cmd *cobra.Command, entity *store.Entity, storeDB *store.Sto
 	if density.IncludesEdges() {
 		deps := &output.Dependencies{}
 
-		// Get outgoing calls
-		depsOut, _ := storeDB.GetDependenciesFrom(entityID)
+		// Get outgoing calls (use AS OF if --at specified)
+		var depsOut []*store.Dependency
+		if showAt != "" {
+			depsOut, _ = storeDB.GetDependenciesFromAt(entityID, showAt)
+		} else {
+			depsOut, _ = storeDB.GetDependenciesFrom(entityID)
+		}
 		for _, dep := range depsOut {
 			if dep.DepType == "calls" {
 				deps.Calls = append(deps.Calls, dep.ToID)
@@ -319,8 +349,13 @@ func runShowDefault(cmd *cobra.Command, entity *store.Entity, storeDB *store.Sto
 			}
 		}
 
-		// Get incoming calls
-		depsIn, _ := storeDB.GetDependenciesTo(entityID)
+		// Get incoming calls (use AS OF if --at specified)
+		var depsIn []*store.Dependency
+		if showAt != "" {
+			depsIn, _ = storeDB.GetDependenciesToAt(entityID, showAt)
+		} else {
+			depsIn, _ = storeDB.GetDependenciesTo(entityID)
+		}
 		for _, dep := range depsIn {
 			if dep.DepType == "calls" {
 				entry := output.CalledByEntry{
@@ -328,7 +363,13 @@ func runShowDefault(cmd *cobra.Command, entity *store.Entity, storeDB *store.Sto
 				}
 				// Add extended context for dense mode
 				if density.IncludesExtendedContext() {
-					callerEntity, err := storeDB.GetEntity(dep.FromID)
+					var callerEntity *store.Entity
+					var err error
+					if showAt != "" {
+						callerEntity, err = storeDB.GetEntityAt(dep.FromID, showAt)
+					} else {
+						callerEntity, err = storeDB.GetEntity(dep.FromID)
+					}
 					if err == nil {
 						entry.Location = fmt.Sprintf("%s @ %s", mapStoreEntityTypeToString(callerEntity.EntityType), formatStoreLocation(callerEntity))
 					}

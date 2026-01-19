@@ -1,6 +1,9 @@
 package store
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // CreateDependency inserts a single dependency.
 // Uses REPLACE INTO to handle duplicates gracefully.
@@ -136,4 +139,57 @@ func (s *Store) CountDependencies() (int, error) {
 	var count int
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM dependencies`).Scan(&count)
 	return count, err
+}
+
+// GetDependenciesAt returns dependencies matching the filter at a specific Dolt commit/ref.
+// Uses AS OF to query the table at a historical point.
+func (s *Store) GetDependenciesAt(filter DependencyFilter, ref string) ([]*Dependency, error) {
+	if !IsValidRef(ref) {
+		return nil, fmt.Errorf("invalid ref format: %s", ref)
+	}
+
+	query := fmt.Sprintf(`SELECT from_id, to_id, dep_type, created_at FROM dependencies AS OF '%s' WHERE 1=1`, ref)
+	args := []interface{}{}
+
+	if filter.FromID != "" {
+		query += " AND from_id = ?"
+		args = append(args, filter.FromID)
+	}
+	if filter.ToID != "" {
+		query += " AND to_id = ?"
+		args = append(args, filter.ToID)
+	}
+	if filter.DepType != "" {
+		query += " AND dep_type = ?"
+		args = append(args, filter.DepType)
+	}
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var deps []*Dependency
+	for rows.Next() {
+		var d Dependency
+		var createdAt string
+		if err := rows.Scan(&d.FromID, &d.ToID, &d.DepType, &createdAt); err != nil {
+			return nil, err
+		}
+		d.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+		deps = append(deps, &d)
+	}
+
+	return deps, rows.Err()
+}
+
+// GetDependenciesFromAt returns all dependencies from a specific entity at a commit/ref.
+func (s *Store) GetDependenciesFromAt(entityID, ref string) ([]*Dependency, error) {
+	return s.GetDependenciesAt(DependencyFilter{FromID: entityID}, ref)
+}
+
+// GetDependenciesToAt returns all dependencies to a specific entity at a commit/ref.
+func (s *Store) GetDependenciesToAt(entityID, ref string) ([]*Dependency, error) {
+	return s.GetDependenciesAt(DependencyFilter{ToID: entityID}, ref)
 }
