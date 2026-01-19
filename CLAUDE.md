@@ -94,6 +94,30 @@ cx tag find auth api --any              # Entities with ANY tag
 | `cx reset` | Reset database | `--scan-only`, `--hard`, `--force` |
 | `cx link` | Link to beads/issues | `--list`, `--remove` |
 
+### Dolt Database Commands
+
+| Command | Purpose | Key Flags |
+|---------|---------|-----------|
+| `cx sql <query>` | Execute SQL directly | `--format table\|yaml\|json` |
+| `cx branch [name]` | List/create/delete branches | `-c` checkout, `-d` delete, `--from` |
+| `cx rollback [ref]` | Reset to previous state | `--hard`, `--yes` |
+| `cx history` | Show commit history | `--limit N`, `--stats` |
+| `cx diff` | Show changes between refs | `--from`, `--to` |
+
+```bash
+# Examples
+cx sql "SELECT COUNT(*) FROM entities"      # Direct SQL query
+cx sql "SELECT * FROM dolt_log LIMIT 5"     # Query commit history
+cx branch                                    # List branches (* = current)
+cx branch feature/new                        # Create new branch
+cx branch -c main                            # Checkout main branch
+cx branch -d old-branch                      # Delete branch
+cx rollback                                  # Soft reset to HEAD~1
+cx rollback HEAD~3 --hard --yes              # Hard reset to 3 commits ago
+cx history --stats                           # Show history with entity counts
+cx diff --from HEAD~1                        # Show changes since last commit
+```
+
 ## Name Resolution
 
 All commands accept multiple entity identifier formats:
@@ -186,7 +210,7 @@ Go, TypeScript, JavaScript, Java, Rust, Python
 ## Database Location
 
 CX stores its database in `.cx/` in the project root:
-- `.cx/cortex.db` - SQLite database with entities and dependencies
+- `.cx/cortex/` - Dolt database with entities, dependencies, and version history
 - `.cx/config.yaml` - Configuration file
 
 Run `cx doctor` to check database health.
