@@ -4,6 +4,7 @@ package store
 // Each statement is separate for compatibility with Dolt driver.
 var schemaTables = []string{
 	// entities table (replaces beads for code entities)
+	// FULLTEXT index must be inline for Dolt compatibility
 	`CREATE TABLE IF NOT EXISTS entities (
     id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -24,7 +25,8 @@ var schemaTables = []string{
     doc_comment TEXT,
     skeleton TEXT,
     created_at VARCHAR(30) NOT NULL,
-    updated_at VARCHAR(30) NOT NULL
+    updated_at VARCHAR(30) NOT NULL,
+    FULLTEXT ft_search (name, body_text, doc_comment)
 )`,
 
 	// dependencies (call graph, type usage, etc.)
@@ -121,7 +123,7 @@ var schemaIndexes = []string{
 	"CREATE INDEX idx_tags_entity ON entity_tags(entity_id)",
 	"CREATE INDEX idx_coverage_percent ON entity_coverage(coverage_percent)",
 	"CREATE INDEX idx_test_entity ON test_entity_map(entity_id)",
-	"CREATE FULLTEXT INDEX ft_search ON entities(name, body_text, doc_comment)",
+	// Note: FULLTEXT index is created inline in entities table for Dolt compatibility
 }
 
 // initSchema creates the database tables and indexes if they don't exist.

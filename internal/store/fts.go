@@ -68,28 +68,31 @@ func (s *Store) SearchEntities(opts SearchOptions) ([]*SearchResult, error) {
 
 	// Build the SQL query using MySQL FULLTEXT syntax
 	// MATCH() AGAINST() returns relevance score when used in SELECT
+	// Note: Dolt has a bug where FULLTEXT queries fail when table has an alias,
+	// so we use a subquery approach to work around this limitation
 	query := `
 		SELECT
-			e.id, e.name, e.entity_type, e.kind, e.file_path, e.line_start, e.line_end,
-			e.signature, e.sig_hash, e.body_hash, e.receiver, e.visibility, e.fields,
-			e.language, e.status, e.body_text, e.doc_comment, e.skeleton,
-			e.created_at, e.updated_at,
-			MATCH(e.name, e.body_text, e.doc_comment) AGAINST(? IN NATURAL LANGUAGE MODE) as fts_score,
-			COALESCE(m.pagerank, 0.0) as pagerank
-		FROM entities e
-		LEFT JOIN metrics m ON m.entity_id = e.id
-		WHERE MATCH(e.name, e.body_text, e.doc_comment) AGAINST(? IN NATURAL LANGUAGE MODE)
-		AND e.status = 'active'`
+			entities.id, entities.name, entities.entity_type, entities.kind, entities.file_path,
+			entities.line_start, entities.line_end, entities.signature, entities.sig_hash,
+			entities.body_hash, entities.receiver, entities.visibility, entities.fields,
+			entities.language, entities.status, entities.body_text, entities.doc_comment, entities.skeleton,
+			entities.created_at, entities.updated_at,
+			MATCH(name, body_text, doc_comment) AGAINST(? IN NATURAL LANGUAGE MODE) as fts_score,
+			COALESCE(metrics.pagerank, 0.0) as pagerank
+		FROM entities
+		LEFT JOIN metrics ON metrics.entity_id = entities.id
+		WHERE MATCH(name, body_text, doc_comment) AGAINST(? IN NATURAL LANGUAGE MODE)
+		AND entities.status = 'active'`
 
 	args := []interface{}{ftsQuery, ftsQuery}
 
 	// Add optional filters
 	if opts.Language != "" {
-		query += " AND e.language = ?"
+		query += " AND entities.language = ?"
 		args = append(args, opts.Language)
 	}
 	if opts.EntityType != "" {
-		query += " AND e.entity_type = ?"
+		query += " AND entities.entity_type = ?"
 		args = append(args, opts.EntityType)
 	}
 
@@ -253,6 +256,7 @@ func cleanFTSWord(s string) string {
 		`<`, ``,
 		`>`, ``,
 		`~`, ``,
+		`:`, ``,
 	)
 	return replacer.Replace(s)
 }
