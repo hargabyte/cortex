@@ -97,3 +97,44 @@ func (s *Store) DB() *sql.DB {
 func (s *Store) Path() string {
 	return s.dbPath
 }
+
+// DoltCommit creates a Dolt commit with the given message.
+// Returns the commit hash on success.
+func (s *Store) DoltCommit(message string) (string, error) {
+	// Stage all changes and commit
+	_, err := s.db.Exec("CALL dolt_commit('-Am', ?)", message)
+	if err != nil {
+		return "", fmt.Errorf("dolt commit: %w", err)
+	}
+
+	// Get the commit hash
+	var commitHash string
+	err = s.db.QueryRow("SELECT COMMIT_HASH FROM dolt_log LIMIT 1").Scan(&commitHash)
+	if err != nil {
+		// Commit succeeded but couldn't get hash - not fatal
+		return "", nil
+	}
+
+	return commitHash, nil
+}
+
+// ScanMetadata represents metadata about a scan operation.
+type ScanMetadata struct {
+	GitCommit         string
+	GitBranch         string
+	FilesScanned      int
+	EntitiesFound     int
+	DependenciesFound int
+	DurationMs        int
+}
+
+// SaveScanMetadata records scan metadata in the scan_metadata table.
+func (s *Store) SaveScanMetadata(meta *ScanMetadata) error {
+	_, err := s.db.Exec(`
+		INSERT INTO scan_metadata
+			(git_commit, git_branch, files_scanned, entities_found, dependencies_found, scan_duration_ms)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		meta.GitCommit, meta.GitBranch, meta.FilesScanned, meta.EntitiesFound,
+		meta.DependenciesFound, meta.DurationMs)
+	return err
+}

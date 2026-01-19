@@ -157,7 +157,10 @@ func isDuplicateIndexError(err error) bool {
 	}
 	errStr := err.Error()
 	// MySQL error 1061: Duplicate key name
-	return schemaContains(errStr, "Duplicate key name") || schemaContains(errStr, "1061")
+	// Dolt error 1105: "already exists as an index"
+	return schemaContains(errStr, "Duplicate key name") ||
+		schemaContains(errStr, "1061") ||
+		schemaContains(errStr, "already exists")
 }
 
 // schemaContains checks if s contains substr (simple helper to avoid strings import).

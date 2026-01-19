@@ -1486,3 +1486,102 @@ func TestCountMetrics(t *testing.T) {
 		t.Errorf("expected 1, got %d", count)
 	}
 }
+
+func TestSaveScanMetadata(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+
+	meta := &ScanMetadata{
+		GitCommit:         "abc1234",
+		GitBranch:         "main",
+		FilesScanned:      10,
+		EntitiesFound:     50,
+		DependenciesFound: 100,
+		DurationMs:        1500,
+	}
+
+	if err := store.SaveScanMetadata(meta); err != nil {
+		t.Fatalf("save scan metadata: %v", err)
+	}
+
+	// Verify the metadata was saved by querying directly
+	var count int
+	err := store.db.QueryRow("SELECT COUNT(*) FROM scan_metadata").Scan(&count)
+	if err != nil {
+		t.Fatalf("query count: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 row, got %d", count)
+	}
+
+	// Verify the values
+	var gitCommit, gitBranch string
+	var files, entities, deps, duration int
+	err = store.db.QueryRow(`
+		SELECT git_commit, git_branch, files_scanned, entities_found, dependencies_found, scan_duration_ms
+		FROM scan_metadata ORDER BY id DESC LIMIT 1
+	`).Scan(&gitCommit, &gitBranch, &files, &entities, &deps, &duration)
+	if err != nil {
+		t.Fatalf("query values: %v", err)
+	}
+
+	if gitCommit != "abc1234" {
+		t.Errorf("expected git_commit 'abc1234', got %q", gitCommit)
+	}
+	if gitBranch != "main" {
+		t.Errorf("expected git_branch 'main', got %q", gitBranch)
+	}
+	if files != 10 {
+		t.Errorf("expected files_scanned 10, got %d", files)
+	}
+	if entities != 50 {
+		t.Errorf("expected entities_found 50, got %d", entities)
+	}
+	if deps != 100 {
+		t.Errorf("expected dependencies_found 100, got %d", deps)
+	}
+	if duration != 1500 {
+		t.Errorf("expected scan_duration_ms 1500, got %d", duration)
+	}
+}
+
+func TestDoltCommit(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+
+	// Create some data to commit
+	entity := &Entity{
+		ID:         "fn-dolt-commit-test",
+		Name:       "TestFunc",
+		EntityType: "function",
+		FilePath:   "test.go",
+		LineStart:  1,
+		Language:   "go",
+	}
+	if err := store.CreateEntity(entity); err != nil {
+		t.Fatalf("create entity: %v", err)
+	}
+
+	// Test Dolt commit
+	hash, err := store.DoltCommit("test commit message")
+	if err != nil {
+		t.Fatalf("dolt commit: %v", err)
+	}
+
+	// Hash may be empty if dolt_log query fails, but commit should succeed
+	t.Logf("Dolt commit hash: %q", hash)
+
+	// Verify the commit was created by checking dolt_log
+	var commitHash, commitMessage string
+	err = store.db.QueryRow("SELECT commit_hash, message FROM dolt_log LIMIT 1").Scan(&commitHash, &commitMessage)
+	if err != nil {
+		t.Fatalf("query dolt_log: %v", err)
+	}
+
+	if commitMessage != "test commit message" {
+		t.Errorf("expected message 'test commit message', got %q", commitMessage)
+	}
+	if commitHash == "" {
+		t.Error("expected non-empty commit hash")
+	}
+}

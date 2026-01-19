@@ -4,6 +4,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -108,6 +109,9 @@ type fileScanResult struct {
 
 // runScan implements the scan command logic
 func runScan(cmd *cobra.Command, args []string) error {
+	// Track scan start time for duration calculation
+	scanStartTime := time.Now()
+
 	// Determine scan path
 	scanPath := "."
 	if len(args) > 0 {
@@ -572,6 +576,46 @@ func runScan(cmd *cobra.Command, args []string) error {
 			if !quiet {
 				fmt.Fprintf(os.Stderr, "Warning: overview failed: %v\n", err)
 			}
+		}
+	}
+
+	// Create Dolt commit after successful scan (skip for dry-run)
+	if !scanDryRun && stats.errors == 0 {
+		// Calculate scan duration
+		scanDuration := time.Since(scanStartTime)
+
+		// Get git context from the project being scanned
+		gitCommit := getGitCommit(projectRoot)
+		gitBranch := getGitBranch(projectRoot)
+
+		// Save scan metadata
+		meta := &store.ScanMetadata{
+			GitCommit:         gitCommit,
+			GitBranch:         gitBranch,
+			FilesScanned:      stats.filesScanned,
+			EntitiesFound:     stats.entitiesTotal,
+			DependenciesFound: stats.depsPersisted,
+			DurationMs:        int(scanDuration.Milliseconds()),
+		}
+		if err := storeDB.SaveScanMetadata(meta); err != nil {
+			if verbose {
+				w.WriteComment(fmt.Sprintf("Warning: failed to save scan metadata: %v", err))
+			}
+		}
+
+		// Format commit message: cx scan: {entities} entities, {deps} deps [{branch}@{commit}]
+		commitMsg := fmt.Sprintf("cx scan: %d entities, %d deps", stats.entitiesTotal, stats.depsPersisted)
+		if gitBranch != "" || gitCommit != "" {
+			commitMsg += fmt.Sprintf(" [%s@%s]", gitBranch, gitCommit)
+		}
+
+		// Create Dolt commit
+		if _, err := storeDB.DoltCommit(commitMsg); err != nil {
+			if verbose {
+				w.WriteComment(fmt.Sprintf("Warning: failed to create Dolt commit: %v", err))
+			}
+		} else if verbose {
+			w.WriteComment(fmt.Sprintf("Dolt commit: %s", commitMsg))
 		}
 	}
 
@@ -1127,6 +1171,28 @@ func parseLanguageFlag(langStr string) (parser.Language, error) {
 	default:
 		return "", fmt.Errorf("unsupported language: %s", langStr)
 	}
+}
+
+// getGitCommit returns the current git HEAD commit hash (short form).
+func getGitCommit(projectRoot string) string {
+	cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
+	cmd.Dir = projectRoot
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// getGitBranch returns the current git branch name.
+func getGitBranch(projectRoot string) string {
+	cmd := exec.Command("git", "branch", "--show-current")
+	cmd.Dir = projectRoot
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // detectLanguages walks the directory and returns detected languages based on file extensions.
