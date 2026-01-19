@@ -41,6 +41,10 @@ Time Travel Mode (--at):
   Query the code graph at a historical point using Dolt's AS OF feature.
   Supported refs: commit hash, branch, tag, HEAD~N.
 
+Change Tracking Mode (--since):
+  Shows if the entity was added, modified, or unchanged since the specified ref.
+  Includes change_status field in output: added, modified, or unchanged.
+
 Neighborhood Mode (--related):
   Shows the entity's neighborhood - what it calls, what calls it, same-file
   entities, and type relationships. Replaces the old 'cx near' command.
@@ -77,7 +81,8 @@ Examples:
   cx show LoginUser --graph --hops 3                       # 3-level graph traversal
   cx show LoginUser --graph --direction in                 # Only incoming edges
   cx show LoginUser --at HEAD~5                            # Show entity 5 commits ago
-  cx show LoginUser --at abc123                            # Show entity at commit abc123`,
+  cx show LoginUser --at abc123                            # Show entity at commit abc123
+  cx show LoginUser --since HEAD~10                        # Show with change status since 10 commits ago`,
 	Args: cobra.ExactArgs(1),
 	RunE: runShow,
 }
@@ -92,6 +97,7 @@ var (
 	showDirection      string
 	showEdgeType       string
 	showAt             string // Time travel: query at specific commit/ref
+	showSince          string // Change tracking: show changes since ref
 	// Graph output format flags
 	graphFormat   string // "yaml", "d2", "mermaid"
 	graphOutput   string // output file path (optional)
@@ -126,6 +132,9 @@ func init() {
 
 	// Time travel flag
 	showCmd.Flags().StringVar(&showAt, "at", "", "Query at specific commit/ref (e.g., HEAD~5, commit hash, branch)")
+
+	// Change tracking flag
+	showCmd.Flags().StringVar(&showSince, "since", "", "Show changes since ref (e.g., HEAD~5, commit hash)")
 }
 
 func runShow(cmd *cobra.Command, args []string) error {
@@ -134,6 +143,11 @@ func runShow(cmd *cobra.Command, args []string) error {
 	// Validate --at flag if provided
 	if showAt != "" && !store.IsValidRef(showAt) {
 		return fmt.Errorf("invalid --at ref %q: must be commit hash, branch, tag, or HEAD~N", showAt)
+	}
+
+	// Validate --since flag if provided
+	if showSince != "" && !store.IsValidRef(showSince) {
+		return fmt.Errorf("invalid --since ref %q: must be commit hash, branch, tag, or HEAD~N", showSince)
 	}
 
 	// Validate direction flag
@@ -425,6 +439,14 @@ func runShowDefault(cmd *cobra.Command, entity *store.Entity, storeDB *store.Sto
 			tagNames[i] = t.Tag
 		}
 		entityOut.Tags = tagNames
+	}
+
+	// Add change status if --since is specified
+	if showSince != "" {
+		changeStatus, err := getEntityChangeStatus(storeDB, entity, showSince)
+		if err == nil && changeStatus != "" {
+			entityOut.ChangeStatus = changeStatus
+		}
 	}
 
 	// Wrap in a map with entity name as key
@@ -985,6 +1007,42 @@ func groupLinesIntoRanges(lines []int) [][]int {
 	ranges = append(ranges, []int{start, end})
 
 	return ranges
+}
+
+// getEntityChangeStatus returns the change status of an entity since a ref.
+// Returns: "added", "modified", "unchanged", or "" on error.
+func getEntityChangeStatus(storeDB *store.Store, entity *store.Entity, sinceRef string) (string, error) {
+	// Query dolt_diff to find if this entity was changed since the ref
+	diffOpts := store.DiffOptions{
+		FromRef:  sinceRef,
+		ToRef:    "HEAD",
+		Table:    "entities",
+		EntityID: entity.ID,
+	}
+
+	diffResult, err := storeDB.DoltDiff(diffOpts)
+	if err != nil {
+		return "", err
+	}
+
+	// Check if entity is in any of the change categories
+	for _, c := range diffResult.Added {
+		if c.EntityID == entity.ID {
+			return "added", nil
+		}
+	}
+	for _, c := range diffResult.Modified {
+		if c.EntityID == entity.ID {
+			return "modified", nil
+		}
+	}
+	for _, c := range diffResult.Removed {
+		if c.EntityID == entity.ID {
+			return "removed", nil
+		}
+	}
+
+	return "unchanged", nil
 }
 
 // Utility functions moved to utils.go

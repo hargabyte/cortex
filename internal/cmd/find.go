@@ -44,6 +44,12 @@ Tag Filtering:
 Time Travel:
   --at <ref>     Query at specific commit/ref (commit hash, branch, tag, HEAD~N)
 
+Change Tracking:
+  --since <ref>  Show entities changed since ref (default: HEAD~1 when using --new/--changed/--removed)
+  --new          Show only newly added entities
+  --changed      Show only modified entities
+  --removed      Show only removed entities
+
 Density Levels:
   sparse:  Type and location only (~50-100 tokens per entity)
   medium:  Add signature and basic dependencies (~200-300 tokens)
@@ -75,7 +81,12 @@ Examples:
   cx find --tag auth --tag security --tag-any  # Entities with EITHER tag
   cx find Login --tag core                 # Name search filtered by tag
   cx find LoginUser --at HEAD~5            # Find entity 5 commits ago
-  cx find --keystones --at abc123          # Keystones at specific commit`,
+  cx find --keystones --at abc123          # Keystones at specific commit
+  cx find --new                            # Show all new entities since HEAD~1
+  cx find --changed                        # Show all modified entities since HEAD~1
+  cx find --removed                        # Show all removed entities since HEAD~1
+  cx find --since HEAD~5 --new             # New entities since 5 commits ago
+  cx find Auth --since HEAD~10             # Auth* entities changed in last 10 commits`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runFind,
 }
@@ -95,6 +106,10 @@ var (
 	findTags        []string
 	findTagAny      bool
 	findAt          string // Time travel: query at specific commit/ref
+	findSince       string // Change tracking: show entities changed since ref
+	findNew         bool   // Change tracking: show only new/added entities
+	findChanged     bool   // Change tracking: show only modified entities
+	findRemoved     bool   // Change tracking: show only removed entities
 )
 
 func init() {
@@ -121,6 +136,12 @@ func init() {
 
 	// Time travel flag
 	findCmd.Flags().StringVar(&findAt, "at", "", "Query at specific commit/ref (e.g., HEAD~5, commit hash, branch)")
+
+	// Change tracking flags
+	findCmd.Flags().StringVar(&findSince, "since", "", "Show entities changed since ref (e.g., HEAD~5, commit hash)")
+	findCmd.Flags().BoolVar(&findNew, "new", false, "Show only newly added entities (since HEAD~1 or --since ref)")
+	findCmd.Flags().BoolVar(&findChanged, "changed", false, "Show only modified entities (since HEAD~1 or --since ref)")
+	findCmd.Flags().BoolVar(&findRemoved, "removed", false, "Show only removed entities (since HEAD~1 or --since ref)")
 }
 
 func runFind(cmd *cobra.Command, args []string) error {
@@ -135,9 +156,17 @@ func runFind(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid --at ref %q: must be commit hash, branch, tag, or HEAD~N", findAt)
 	}
 
-	// If no query and no ranking flags and no tag filters, show error
-	if query == "" && !findImportant && !findKeystones && !findBottlenecks && len(findTags) == 0 {
-		return fmt.Errorf("query required (use --important, --keystones, --bottlenecks, or --tag for results without query)")
+	// Validate --since flag if provided
+	if findSince != "" && !store.IsValidRef(findSince) {
+		return fmt.Errorf("invalid --since ref %q: must be commit hash, branch, tag, or HEAD~N", findSince)
+	}
+
+	// Check if change tracking is enabled
+	isChangeTracking := findNew || findChanged || findRemoved || findSince != ""
+
+	// If no query and no ranking flags and no tag filters and no change tracking, show error
+	if query == "" && !findImportant && !findKeystones && !findBottlenecks && len(findTags) == 0 && !isChangeTracking {
+		return fmt.Errorf("query required (use --important, --keystones, --bottlenecks, --tag, --new, --changed, --removed, or --since for results without query)")
 	}
 
 	// Load config for thresholds
@@ -158,14 +187,7 @@ func runFind(cmd *cobra.Command, args []string) error {
 	}
 	defer storeDB.Close()
 
-	// Determine if this is a rank-only query (no text query, just --important/--keystones/--bottlenecks)
-	isRankOnlyQuery := (findImportant || findKeystones || findBottlenecks) && query == ""
-
-	// If we have ranking flags but also a query, we'll combine them
-	// Determine search mode: name search (single word) vs concept/FTS search (multi-word)
-	isConceptSearch := isMultiWordQuery(query) && !isRankOnlyQuery
-
-	// Parse format and density
+	// Parse format and density early (needed for change tracking)
 	format, err := output.ParseFormat(outputFormat)
 	if err != nil {
 		return fmt.Errorf("invalid format: %w", err)
@@ -175,6 +197,18 @@ func runFind(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("invalid density: %w", err)
 	}
+
+	// Handle change tracking mode (--since, --new, --changed, --removed)
+	if isChangeTracking {
+		return runFindWithChangeTracking(cmd, storeDB, query, format, density)
+	}
+
+	// Determine if this is a rank-only query (no text query, just --important/--keystones/--bottlenecks)
+	isRankOnlyQuery := (findImportant || findKeystones || findBottlenecks) && query == ""
+
+	// If we have ranking flags but also a query, we'll combine them
+	// Determine search mode: name search (single word) vs concept/FTS search (multi-word)
+	isConceptSearch := isMultiWordQuery(query) && !isRankOnlyQuery
 
 	// Route to appropriate search mode
 	if isRankOnlyQuery || findImportant || findKeystones || findBottlenecks {
@@ -204,6 +238,161 @@ func isMultiWordQuery(query string) bool {
 	// Trim and check for spaces
 	trimmed := strings.TrimSpace(query)
 	return strings.Contains(trimmed, " ")
+}
+
+// runFindWithChangeTracking handles --since, --new, --changed, --removed flags
+func runFindWithChangeTracking(cmd *cobra.Command, storeDB *store.Store, query string, format output.Format, density output.Density) error {
+	// Determine the "from" ref for the diff
+	fromRef := findSince
+	if fromRef == "" {
+		fromRef = "HEAD~1" // Default to comparing with previous commit
+	}
+
+	// Get diff results
+	diffOpts := store.DiffOptions{
+		FromRef: fromRef,
+		ToRef:   "HEAD",
+		Table:   "entities",
+	}
+
+	diffResult, err := storeDB.DoltDiff(diffOpts)
+	if err != nil {
+		return fmt.Errorf("failed to get diff: %w", err)
+	}
+
+	// Collect changes based on flags
+	// If no specific type flag is set, show all changes
+	showAll := !findNew && !findChanged && !findRemoved
+
+	type changeEntry struct {
+		change   store.DiffChange
+		diffType string
+	}
+	var changes []changeEntry
+
+	if showAll || findNew {
+		for _, c := range diffResult.Added {
+			changes = append(changes, changeEntry{c, "added"})
+		}
+	}
+	if showAll || findChanged {
+		for _, c := range diffResult.Modified {
+			changes = append(changes, changeEntry{c, "modified"})
+		}
+	}
+	if showAll || findRemoved {
+		for _, c := range diffResult.Removed {
+			changes = append(changes, changeEntry{c, "removed"})
+		}
+	}
+
+	// Filter by query if provided
+	if query != "" {
+		var filtered []changeEntry
+		for _, c := range changes {
+			// Check name matching
+			if findExact {
+				if c.change.EntityName == query {
+					filtered = append(filtered, c)
+				}
+			} else {
+				// Prefix match
+				if strings.HasPrefix(strings.ToLower(c.change.EntityName), strings.ToLower(query)) ||
+					strings.Contains(strings.ToLower(c.change.EntityName), strings.ToLower(query)) {
+					filtered = append(filtered, c)
+				}
+			}
+		}
+		changes = filtered
+	}
+
+	// Filter by type if specified
+	if findType != "" {
+		entityType := mapCGFTypeToStore(findType)
+		var filtered []changeEntry
+		for _, c := range changes {
+			if c.change.EntityType == entityType {
+				filtered = append(filtered, c)
+			}
+		}
+		changes = filtered
+	}
+
+	// Filter by file if specified
+	if findFile != "" {
+		var filtered []changeEntry
+		for _, c := range changes {
+			if strings.Contains(c.change.FilePath, findFile) {
+				filtered = append(filtered, c)
+			}
+		}
+		changes = filtered
+	}
+
+	// Apply limit
+	if findLimit > 0 && len(changes) > findLimit {
+		changes = changes[:findLimit]
+	}
+
+	if len(changes) == 0 {
+		fmt.Fprintf(cmd.OutOrStdout(), "No changes found since %s\n", fromRef)
+		return nil
+	}
+
+	// Build output
+	// Use a custom output structure that includes diff type
+	type DiffEntityOutput struct {
+		Type       string `yaml:"type" json:"type"`
+		Location   string `yaml:"location" json:"location"`
+		DiffType   string `yaml:"diff_type" json:"diff_type"`
+		EntityName string `yaml:"name,omitempty" json:"name,omitempty"`
+	}
+
+	type DiffListOutput struct {
+		FromRef string                       `yaml:"from_ref" json:"from_ref"`
+		ToRef   string                       `yaml:"to_ref" json:"to_ref"`
+		Results map[string]*DiffEntityOutput `yaml:"results" json:"results"`
+		Count   int                          `yaml:"count" json:"count"`
+	}
+
+	diffOutput := &DiffListOutput{
+		FromRef: fromRef,
+		ToRef:   "HEAD",
+		Results: make(map[string]*DiffEntityOutput),
+		Count:   0,
+	}
+
+	seen := make(map[string]bool)
+	for _, c := range changes {
+		// Use entity name as key, but handle duplicates
+		key := c.change.EntityName
+		if seen[key] {
+			// Append file path for disambiguation
+			key = fmt.Sprintf("%s (%s)", c.change.EntityName, c.change.FilePath)
+		}
+		seen[key] = true
+
+		location := c.change.FilePath
+		if c.change.LineStart > 0 {
+			location = fmt.Sprintf("%s:%d", c.change.FilePath, c.change.LineStart)
+		}
+
+		diffOutput.Results[key] = &DiffEntityOutput{
+			Type:       c.change.EntityType,
+			Location:   location,
+			DiffType:   c.diffType,
+			EntityName: c.change.EntityName,
+		}
+		diffOutput.Count++
+	}
+
+	// Get formatter and output
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), diffOutput, density)
 }
 
 // runFindByName performs traditional name-based search

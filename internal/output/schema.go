@@ -58,6 +58,10 @@ type EntityOutput struct {
 
 	// Tags contains entity tags/bookmarks
 	Tags []string `yaml:"tags,omitempty" json:"tags,omitempty"`
+
+	// ChangeStatus indicates how the entity changed relative to a ref (--since flag)
+	// Values: "added", "modified", "unchanged", or empty if --since not used
+	ChangeStatus string `yaml:"change_status,omitempty" json:"change_status,omitempty"`
 }
 
 // Dependencies represents entity relationships and edges.
