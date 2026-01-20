@@ -128,6 +128,10 @@ func (e *TypeScriptExtractor) ExtractAllWithNodes() ([]EntityWithNode, error) {
 		if entity != nil {
 			result = append(result, EntityWithNode{Entity: entity, Node: node})
 		}
+
+		// Extract methods from class as separate entities
+		methodsWithNodes := e.extractMethodsFromClass(node)
+		result = append(result, methodsWithNodes...)
 	}
 
 	// Extract interfaces
@@ -420,7 +424,7 @@ func (e *TypeScriptExtractor) extractFunctionExpression(node *sitter.Node) *Enti
 	return entity
 }
 
-// ExtractClasses extracts all class declarations.
+// ExtractClasses extracts all class declarations and their methods.
 func (e *TypeScriptExtractor) ExtractClasses() ([]Entity, error) {
 	var entities []Entity
 
@@ -430,6 +434,10 @@ func (e *TypeScriptExtractor) ExtractClasses() ([]Entity, error) {
 		if entity != nil {
 			entities = append(entities, *entity)
 		}
+
+		// Extract methods from class as separate entities
+		methods := e.extractMethodsFromClassEntities(node)
+		entities = append(entities, methods...)
 	}
 
 	return entities, nil
@@ -536,6 +544,168 @@ func (e *TypeScriptExtractor) extractMethodSignature(node *sitter.Node) *Field {
 		Name: name,
 		Type: sig,
 	}
+}
+
+// extractMethod extracts a method as a separate Entity from method_definition.
+func (e *TypeScriptExtractor) extractMethod(node *sitter.Node, className string) *Entity {
+	if node == nil {
+		return nil
+	}
+
+	nameNode := node.ChildByFieldName("name")
+	if nameNode == nil {
+		return nil
+	}
+	name := e.nodeText(nameNode)
+
+	// Get parameters
+	paramsNode := node.ChildByFieldName("parameters")
+	params := e.extractTSParameters(paramsNode)
+
+	// Get return type
+	returnType := e.extractReturnTypeAnnotation(node)
+	var returns []string
+	if returnType != "" {
+		returns = []string{returnType}
+	}
+
+	// Get method body for hash computation
+	bodyNode := e.findMethodBody(node)
+	rawBody := ""
+	if bodyNode != nil {
+		rawBody = e.nodeText(bodyNode)
+	}
+
+	// Determine visibility from modifiers
+	visibility := e.determineMethodVisibility(node, name)
+
+	// Check if static
+	isStatic := e.isStaticMethod(node)
+
+	startLine, endLine := getTSLineRange(node)
+
+	entity := &Entity{
+		Kind:       MethodEntity,
+		Name:       name,
+		File:       e.getFilePath(),
+		StartLine:  startLine,
+		EndLine:    endLine,
+		Params:     params,
+		Returns:    returns,
+		RawBody:    rawBody,
+		Visibility: visibility,
+		Language:   e.language,
+	}
+
+	// Set receiver to class name (with static marker if applicable)
+	if className != "" {
+		if isStatic {
+			entity.Receiver = className + " (static)"
+		} else {
+			entity.Receiver = className
+		}
+	}
+
+	entity.ComputeHashes()
+	return entity
+}
+
+// findMethodBody finds the body/block of a method_definition.
+func (e *TypeScriptExtractor) findMethodBody(node *sitter.Node) *sitter.Node {
+	if node == nil {
+		return nil
+	}
+	// Try "body" field first
+	bodyNode := node.ChildByFieldName("body")
+	if bodyNode != nil {
+		return bodyNode
+	}
+	// Look for statement_block child
+	return findTSChildByType(node, "statement_block")
+}
+
+// determineMethodVisibility determines visibility from method modifiers.
+func (e *TypeScriptExtractor) determineMethodVisibility(node *sitter.Node, name string) Visibility {
+	if node == nil {
+		return VisibilityPublic
+	}
+
+	// Check for accessibility modifiers
+	for i := uint32(0); i < node.ChildCount(); i++ {
+		child := node.Child(int(i))
+		text := e.nodeText(child)
+		switch text {
+		case "private":
+			return VisibilityPrivate
+		case "protected":
+			return VisibilityProtected
+		case "public":
+			return VisibilityPublic
+		}
+	}
+
+	// TypeScript: methods without explicit modifier are public by default
+	// Unless they start with underscore (convention for private)
+	if strings.HasPrefix(name, "_") {
+		return VisibilityPrivate
+	}
+
+	return VisibilityPublic
+}
+
+// isStaticMethod checks if a method has the static modifier.
+func (e *TypeScriptExtractor) isStaticMethod(node *sitter.Node) bool {
+	if node == nil {
+		return false
+	}
+	for i := uint32(0); i < node.ChildCount(); i++ {
+		child := node.Child(int(i))
+		if e.nodeText(child) == "static" {
+			return true
+		}
+	}
+	return false
+}
+
+// extractMethodsFromClass extracts all methods from a class as EntityWithNode.
+func (e *TypeScriptExtractor) extractMethodsFromClass(classNode *sitter.Node) []EntityWithNode {
+	var result []EntityWithNode
+
+	// Get class name
+	nameNode := classNode.ChildByFieldName("name")
+	className := ""
+	if nameNode != nil {
+		className = e.nodeText(nameNode)
+	}
+
+	// Find class body
+	bodyNode := classNode.ChildByFieldName("body")
+	if bodyNode == nil {
+		return result
+	}
+
+	// Extract methods
+	for i := uint32(0); i < bodyNode.ChildCount(); i++ {
+		child := bodyNode.Child(int(i))
+		if child.Type() == "method_definition" {
+			entity := e.extractMethod(child, className)
+			if entity != nil {
+				result = append(result, EntityWithNode{Entity: entity, Node: child})
+			}
+		}
+	}
+
+	return result
+}
+
+// extractMethodsFromClassEntities extracts all methods from a class as Entity slice.
+func (e *TypeScriptExtractor) extractMethodsFromClassEntities(classNode *sitter.Node) []Entity {
+	var entities []Entity
+	ewns := e.extractMethodsFromClass(classNode)
+	for _, ewn := range ewns {
+		entities = append(entities, *ewn.Entity)
+	}
+	return entities
 }
 
 // extractFieldDefinition extracts a class field.

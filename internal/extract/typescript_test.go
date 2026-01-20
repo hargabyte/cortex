@@ -149,29 +149,59 @@ class User {
 	defer result.Close()
 
 	ext := NewTypeScriptExtractor(result)
-	classes, err := ext.ExtractClasses()
+	entities, err := ext.ExtractClasses()
 	if err != nil {
 		t.Fatalf("ExtractClasses failed: %v", err)
 	}
 
-	if len(classes) != 1 {
-		t.Fatalf("expected 1 class, got %d", len(classes))
+	// ExtractClasses now returns class + methods (1 class + 3 methods = 4 entities)
+	if len(entities) != 4 {
+		t.Fatalf("expected 4 entities (1 class + 3 methods), got %d", len(entities))
 	}
 
-	cls := classes[0]
+	// Find the class entity
+	var cls *Entity
+	var methods []Entity
+	for i := range entities {
+		if entities[i].Kind == TypeEntity {
+			cls = &entities[i]
+		} else if entities[i].Kind == MethodEntity {
+			methods = append(methods, entities[i])
+		}
+	}
+
+	if cls == nil {
+		t.Fatal("expected to find class entity")
+	}
 	if cls.Name != "User" {
 		t.Errorf("expected name 'User', got %q", cls.Name)
-	}
-	if cls.Kind != TypeEntity {
-		t.Errorf("expected kind TypeEntity, got %v", cls.Kind)
 	}
 	if cls.TypeKind != StructKind {
 		t.Errorf("expected TypeKind StructKind, got %v", cls.TypeKind)
 	}
 
-	// Check that we have fields and methods
-	if len(cls.Fields) < 2 {
-		t.Errorf("expected at least 2 fields/methods, got %d", len(cls.Fields))
+	// Check that methods were extracted as separate entities
+	if len(methods) != 3 {
+		t.Errorf("expected 3 methods, got %d", len(methods))
+	}
+
+	// Check method names
+	methodNames := make(map[string]bool)
+	for _, m := range methods {
+		methodNames[m.Name] = true
+		// Check that methods have the class as receiver
+		if m.Receiver != "User" {
+			t.Errorf("expected method %s to have receiver 'User', got %q", m.Name, m.Receiver)
+		}
+	}
+	if !methodNames["constructor"] {
+		t.Error("expected constructor method")
+	}
+	if !methodNames["getName"] {
+		t.Error("expected getName method")
+	}
+	if !methodNames["setName"] {
+		t.Error("expected setName method")
 	}
 }
 
