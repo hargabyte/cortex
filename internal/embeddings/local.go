@@ -1,159 +1,173 @@
 package embeddings
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
-	"time"
+
+	"github.com/knights-analytics/hugot"
+	"github.com/knights-analytics/hugot/pipelines"
 )
 
 const (
-	// DefaultModel is the default embedding model to use.
-	DefaultModel = "all-minilm"
-	// DefaultOllamaURL is the default Ollama API endpoint.
-	DefaultOllamaURL = "http://localhost:11434"
-	// EmbeddingDimensions is the output dimension of all-minilm.
+	// DefaultModel is the HuggingFace model ID for embeddings.
+	DefaultModel = "sentence-transformers/all-MiniLM-L6-v2"
+	// ModelVersion is the identifier for cache invalidation.
+	ModelVersion = "all-MiniLM-L6-v2"
+	// EmbeddingDimensions is the output dimension of all-MiniLM-L6-v2.
 	EmbeddingDimensions = 384
 )
 
-// OllamaEmbedder implements Embedder using the Ollama API.
-type OllamaEmbedder struct {
-	client   *http.Client
-	baseURL  string
-	model    string
+// HugotEmbedder implements Embedder using the Hugot library with pure Go inference.
+type HugotEmbedder struct {
+	session  *hugot.Session
+	pipeline *pipelines.FeatureExtractionPipeline
 	mu       sync.Mutex
 }
 
-// ollamaEmbedRequest is the request body for Ollama embeddings API.
-type ollamaEmbedRequest struct {
-	Model string `json:"model"`
-	Input any    `json:"input"` // string or []string
+// NewLocalEmbedder creates an embedder using Hugot with the pure Go backend.
+// Models are downloaded to ~/.cx/models/ on first use.
+func NewLocalEmbedder() (Embedder, error) {
+	return NewHugotEmbedder()
 }
 
-// ollamaEmbedResponse is the response from Ollama embeddings API.
-type ollamaEmbedResponse struct {
-	Embeddings [][]float32 `json:"embeddings"`
+// NewHugotEmbedder creates a new HugotEmbedder with the all-MiniLM-L6-v2 model.
+func NewHugotEmbedder() (*HugotEmbedder, error) {
+	// Use pure Go session (no CGO, no external dependencies)
+	session, err := hugot.NewGoSession()
+	if err != nil {
+		return nil, fmt.Errorf("create hugot session: %w", err)
+	}
+
+	// Determine model cache directory
+	modelDir := getModelCacheDir()
+
+	// Download model if not cached
+	// Specify the standard ONNX file (model has multiple variants)
+	downloadOpts := hugot.NewDownloadOptions()
+	downloadOpts.OnnxFilePath = "onnx/model.onnx"
+	modelPath, err := hugot.DownloadModel(DefaultModel, modelDir, downloadOpts)
+	if err != nil {
+		session.Destroy()
+		return nil, fmt.Errorf("download model %s: %w", DefaultModel, err)
+	}
+
+	// Create feature extraction pipeline
+	config := hugot.FeatureExtractionConfig{
+		ModelPath: modelPath,
+		Name:      "cxEmbeddings",
+	}
+
+	pipeline, err := hugot.NewPipeline(session, config)
+	if err != nil {
+		session.Destroy()
+		return nil, fmt.Errorf("create embedding pipeline: %w", err)
+	}
+
+	return &HugotEmbedder{
+		session:  session,
+		pipeline: pipeline,
+	}, nil
 }
 
-// NewOllamaEmbedder creates a new OllamaEmbedder with default settings.
-func NewOllamaEmbedder() *OllamaEmbedder {
-	baseURL := os.Getenv("OLLAMA_HOST")
-	if baseURL == "" {
-		baseURL = DefaultOllamaURL
+// getModelCacheDir returns the directory for caching downloaded models.
+func getModelCacheDir() string {
+	// Check for custom model directory
+	if dir := os.Getenv("CX_MODEL_DIR"); dir != "" {
+		return dir
 	}
-	model := os.Getenv("CX_EMBEDDING_MODEL")
-	if model == "" {
-		model = DefaultModel
-	}
-	return &OllamaEmbedder{
-		client: &http.Client{
-			Timeout: 60 * time.Second,
-		},
-		baseURL: baseURL,
-		model:   model,
-	}
-}
 
-// NewOllamaEmbedderWithConfig creates an OllamaEmbedder with custom settings.
-func NewOllamaEmbedderWithConfig(baseURL, model string) *OllamaEmbedder {
-	return &OllamaEmbedder{
-		client: &http.Client{
-			Timeout: 60 * time.Second,
-		},
-		baseURL: baseURL,
-		model:   model,
+	// Default to ~/.cx/models/
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "./models"
 	}
+	return filepath.Join(home, ".cx", "models")
 }
 
 // Embed generates an embedding vector for the given text.
-func (e *OllamaEmbedder) Embed(ctx context.Context, text string) ([]float32, error) {
-	embeddings, err := e.doEmbed(ctx, text)
-	if err != nil {
-		return nil, err
-	}
-	if len(embeddings) == 0 {
-		return nil, fmt.Errorf("no embeddings returned")
-	}
-	return embeddings[0], nil
-}
-
-// EmbedBatch generates embeddings for multiple texts efficiently.
-func (e *OllamaEmbedder) EmbedBatch(ctx context.Context, texts []string) ([][]float32, error) {
-	if len(texts) == 0 {
-		return nil, nil
-	}
-	return e.doEmbed(ctx, texts)
-}
-
-// doEmbed calls the Ollama API with either a single string or slice of strings.
-func (e *OllamaEmbedder) doEmbed(ctx context.Context, input any) ([][]float32, error) {
+func (e *HugotEmbedder) Embed(ctx context.Context, text string) ([]float32, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	reqBody := ollamaEmbedRequest{
-		Model: e.model,
-		Input: input,
+	// Check context cancellation
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
 	}
-	body, err := json.Marshal(reqBody)
+
+	result, err := e.pipeline.RunPipeline([]string{text})
 	if err != nil {
-		return nil, fmt.Errorf("marshal request: %w", err)
+		return nil, fmt.Errorf("compute embedding: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", e.baseURL+"/api/embed", bytes.NewReader(body))
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := e.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("ollama request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("ollama returned status %d: %s", resp.StatusCode, string(respBody))
+	if len(result.Embeddings) == 0 {
+		return nil, fmt.Errorf("no embeddings returned")
 	}
 
-	var result ollamaEmbedResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+	return result.Embeddings[0], nil
+}
+
+// EmbedBatch generates embeddings for multiple texts efficiently.
+func (e *HugotEmbedder) EmbedBatch(ctx context.Context, texts []string) ([][]float32, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	// Check context cancellation
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
 	}
 
-	return result.Embeddings, nil
+	if len(texts) == 0 {
+		return nil, nil
+	}
+
+	// Process in batches of 32 (recommended for Go backend)
+	const batchSize = 32
+	var allEmbeddings [][]float32
+
+	for i := 0; i < len(texts); i += batchSize {
+		end := i + batchSize
+		if end > len(texts) {
+			end = len(texts)
+		}
+		batch := texts[i:end]
+
+		result, err := e.pipeline.RunPipeline(batch)
+		if err != nil {
+			return nil, fmt.Errorf("compute batch embeddings: %w", err)
+		}
+
+		allEmbeddings = append(allEmbeddings, result.Embeddings...)
+	}
+
+	return allEmbeddings, nil
 }
 
 // ModelVersion returns the model identifier for cache invalidation.
-func (e *OllamaEmbedder) ModelVersion() string {
-	return e.model
+func (e *HugotEmbedder) ModelVersion() string {
+	return ModelVersion
 }
 
 // Dimensions returns the embedding vector dimension.
-func (e *OllamaEmbedder) Dimensions() int {
+func (e *HugotEmbedder) Dimensions() int {
 	return EmbeddingDimensions
 }
 
-// IsAvailable checks if Ollama is running and has the embedding model.
-func (e *OllamaEmbedder) IsAvailable(ctx context.Context) bool {
-	// Try a simple embed to check availability
-	_, err := e.Embed(ctx, "test")
-	return err == nil
-}
-
-// Close is a no-op for the HTTP-based embedder.
-func (e *OllamaEmbedder) Close() error {
+// Close releases resources held by the embedder.
+func (e *HugotEmbedder) Close() error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.session != nil {
+		err := e.session.Destroy()
+		e.session = nil
+		e.pipeline = nil
+		return err
+	}
 	return nil
-}
-
-// NewLocalEmbedder creates an embedder (defaults to Ollama).
-// This is the primary constructor for getting an Embedder instance.
-func NewLocalEmbedder() (Embedder, error) {
-	embedder := NewOllamaEmbedder()
-	return embedder, nil
 }
