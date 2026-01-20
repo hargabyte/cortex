@@ -1,353 +1,356 @@
-# CX Report Specification Session Handoff
+# CX Report Implementation Handoff
 
 **Date**: 2026-01-20
-**Session Focus**: Write formal specification for CX Report feature
-**Status**: Requirements gathered, research complete, **ready for spec writing**
+**Session Focus**: Formal specification + task hierarchy creation
+**Status**: Spec complete, 42 beads created, **ready for implementation**
 
 ---
 
 ## Next Session Prompt
 
 ```
-Write the formal specification for CX Report (cortex-dkd).
+Implement CX Report starting with the schema foundation.
 
 ## Context
-Read handoff.md for complete context. This session gathered extensive requirements
-through /shape-spec and researched D2 capabilities for stunning visualizations.
+Read handoff.md for complete context. The formal specification is complete and
+42 beads have been created with proper dependencies. The architecture uses an
+"agent-writes-reports" model where you (the AI agent) generate narratives from
+structured YAML data - no API key required.
 
 ## Your Goal
-Run `/write-spec cortex-dkd.5` to create the formal technical specification for the
-Feature Report (R5). Then extend to the other report types.
-
-## Key Background
-
-### What is CX Report?
-A new command replacing `cx guide` that generates AI-powered, publication-quality
-reports about codebases with rich D2 visualizations.
-
-### Why This Matters
-- CX is a backend tool - reports are the main VISUAL output for demos/marketing
-- User explicitly wants "showcase-worthy" diagrams that look professional
-- Reports should be "living documents" that get updated, not regenerated
-
-### Core Report Types
-1. `cx report overview` - System summary + architecture diagram
-2. `cx report feature <query>` - Semantic search + deep dive (PRIMARY FOCUS)
-3. `cx report changes --since <ref>` - Dolt time-travel history
-4. `cx report health` - Risk analysis + recommendations
+Start implementing R0.1 (Core Schema Types) - the foundation for all reports.
 
 ## Quick Start
-1. Read handoff.md thoroughly - it has all requirements and research
-2. Read docs/specs/REPORT_SPEC.md for initial spec draft
-3. bd show cortex-dkd.5.1 for detailed Feature Report requirements
-4. /write-spec cortex-dkd.5 to begin formal specification
+1. Read handoff.md for full context
+2. Read docs/specs/CX_REPORT_SPEC.md for the formal specification
+3. bd show cortex-dkd.8.1 for the first task details
+4. /implement cortex-dkd.8.1 to begin
+
+## Architecture Summary
+
+The CLI outputs structured YAML data via `--data` flag:
+  cx report feature "auth" --data  →  YAML with entities, D2 code, coverage
+
+You (the AI agent) read this data and generate:
+  - Narrative prose explaining the feature
+  - Final HTML report with embedded diagrams
+
+No Anthropic API key needed - you ARE the AI that writes the reports.
+
+## Ready Tasks
+cortex-dkd.8.1: R0.1: Core Schema Types [P1, READY] ← START HERE
+
+After R0.1, these become ready:
+- cortex-dkd.8.2-5: Report-specific schemas (parallel)
+- Then R1, R2 foundation tasks unlock
 
 ## Key Files
 - handoff.md - This file (comprehensive context)
-- docs/specs/REPORT_SPEC.md - Initial spec draft
+- docs/specs/CX_REPORT_SPEC.md - Formal specification (1100+ lines)
 - internal/cmd/guide.go - Existing code to replace
 - internal/graph/d2.go - Existing D2 generation
 - internal/store/fts.go - Existing FTS search
+- internal/store/embeddings.go - Embedding search
 
-## Design Decisions Already Made
-- HTML primary output with full interactivity
-- D2 primary diagrams (Mermaid fallback)
-- AI narrative via Anthropic API (you write the reports)
-- Reports as living knowledge base (incremental updates)
-- Diagrams must be visually stunning (icons, themes, professional styling)
+## Implementation Notes
+- Create new package: internal/report/
+- Schema types go in: internal/report/schema.go
+- Follow existing patterns from internal/store/ and internal/output/
 ```
 
 ---
 
 ## Session Summary
 
-### What We Accomplished
+### What We Accomplished This Session
 
-1. **Evaluated Beads Integration** (cortex-u1n)
-   - Deep analysis of integration options
-   - Conclusion: Low ROI, deprioritized to P4
-   - Git already tracks code→issue relationships via commit messages
+1. **Wrote Formal Specification** (docs/specs/CX_REPORT_SPEC.md)
+   - 1100+ lines of detailed specification
+   - Agent-writes-reports architecture (no API key)
+   - YAML data contracts for all 4 report types
+   - D2 visual design system
+   - HTML template structure
+   - Molecule architecture for parallel implementation
 
-2. **Created CX Report Epic** (cortex-dkd)
-   - New P1 epic replacing cx guide
-   - 7 tasks created with proper dependencies
-   - Detailed spec draft in docs/specs/REPORT_SPEC.md
+2. **Created Task Hierarchy** (42 beads total)
+   - 31 new subtasks across 7 parent tasks
+   - Proper dependency graph for parallelization
+   - Ready queue starts with R0.1 (Core Schema Types)
 
-3. **Shaped Feature Report Requirements** (cortex-dkd.5)
-   - Ran /shape-spec interview process
-   - Documented all decisions in cortex-dkd.5.1
-   - Created visual design system task (cortex-dkd.2.1)
+3. **Architecture Decision: Agent-Writes-Reports**
+   - CLI outputs structured YAML via `--data` flag
+   - AI agent (you) generates narratives and assembles HTML
+   - No Anthropic API key required
+   - Works in any Claude Code session
 
-4. **Researched D2 Capabilities**
-   - Professional themes and styling
-   - Icon library at icons.terrastruct.com
-   - TALA layout engine for architecture diagrams
+4. **Closed Obsolete Tasks**
+   - cortex-dkd.3 (R3: AI Narrative) - architecture changed
+   - cortex-dkd.5.1 (R5.1: Requirements) - captured in spec
 
 ---
 
-## CX Report Epic Structure
+## Complete Epic Structure
 
 ```
-cortex-dkd (P1 epic) CX 3.0: Report Generation
-├── cortex-dkd.1 (P1) R1: Report Engine Core
-│   └── HTML/MD writers, templates, section abstractions
-├── cortex-dkd.2 (P1) R2: D2 Diagram Integration
-│   └── cortex-dkd.2.1 (P1) R2.1: D2 Visual Design System ← CRITICAL FOR QUALITY
-├── cortex-dkd.3 (P1) R3: AI Narrative Generation
-│   └── Anthropic API, prompts, caching
-├── cortex-dkd.4 (P2) R4: Overview Report [blocked by .1,.2,.3]
-├── cortex-dkd.5 (P2) R5: Feature Report [blocked by .1,.2,.3]
-│   └── cortex-dkd.5.1 (P2) R5.1: Feature Report Requirements ← DETAILED SPEC
-├── cortex-dkd.6 (P2) R6: Change Report [blocked by .1,.2,.3]
-└── cortex-dkd.7 (P2) R7: Health Report [blocked by .1,.2,.3]
+cortex-dkd (P1 epic) CX 3.0: Report Generation [spec-complete, tasks-created]
+│
+├── cortex-dkd.8 (P1) R0: Data Output Schema ← READY
+│   ├── cortex-dkd.8.1 R0.1: Core Schema Types ← START HERE
+│   ├── cortex-dkd.8.2 R0.2: Feature Report Schema [blocked by .8.1]
+│   ├── cortex-dkd.8.3 R0.3: Overview Report Schema [blocked by .8.1]
+│   ├── cortex-dkd.8.4 R0.4: Changes Report Schema [blocked by .8.1]
+│   └── cortex-dkd.8.5 R0.5: Health Report Schema [blocked by .8.1]
+│
+├── cortex-dkd.1 (P1) R1: Report Engine Core [blocked by R0]
+│   ├── cortex-dkd.1.1 R1.1: Command Scaffolding
+│   ├── cortex-dkd.1.2 R1.2: Data Gathering [blocked by .1.1]
+│   ├── cortex-dkd.1.3 R1.3: YAML/JSON Output [blocked by .1.1]
+│   └── cortex-dkd.1.4 R1.4: Output Handling [blocked by .1.1]
+│
+├── cortex-dkd.2 (P1) R2: D2 Diagram Integration [blocked by R0]
+│   ├── cortex-dkd.2.1 R2.1: D2 Visual Design System
+│   ├── cortex-dkd.2.2 R2.2: D2 Code Generator
+│   ├── cortex-dkd.2.3 R2.3: Architecture Preset [blocked by .2.2]
+│   ├── cortex-dkd.2.4 R2.4: Call Flow Preset [blocked by .2.2]
+│   └── cortex-dkd.2.5 R2.5: Render Command [blocked by .2.2]
+│
+├── cortex-dkd.3 (P1) R3: AI Narrative ← CLOSED (architecture changed)
+│
+├── cortex-dkd.4 (P2) R4: Overview Report [blocked by R1, R2.1]
+│   ├── cortex-dkd.4.1 R4.1: Statistics Gathering
+│   ├── cortex-dkd.4.2 R4.2: Keystone Extraction
+│   ├── cortex-dkd.4.3 R4.3: Module Structure
+│   └── cortex-dkd.4.4 R4.4: Architecture D2 [blocked by .4.3]
+│
+├── cortex-dkd.5 (P2) R5: Feature Report [blocked by R1, R2.1]
+│   ├── cortex-dkd.5.1 R5.1: Requirements ← CLOSED (in spec)
+│   ├── cortex-dkd.5.2 R5.1: Hybrid Search
+│   ├── cortex-dkd.5.3 R5.2: Entity Ranking [blocked by .5.2]
+│   ├── cortex-dkd.5.4 R5.3: Dependency Traversal [blocked by .5.2]
+│   ├── cortex-dkd.5.5 R5.4: Call Flow D2 [blocked by .5.4]
+│   └── cortex-dkd.5.6 R5.5: Test Association
+│
+├── cortex-dkd.6 (P2) R6: Change Report [blocked by R1, R2.1]
+│   ├── cortex-dkd.6.1 R6.1: Dolt Diff Queries
+│   ├── cortex-dkd.6.2 R6.2: Entity Comparison [blocked by .6.1]
+│   ├── cortex-dkd.6.3 R6.3: Impact Analysis [blocked by .6.2]
+│   └── cortex-dkd.6.4 R6.4: Before/After D2 [blocked by .6.2]
+│
+└── cortex-dkd.7 (P2) R7: Health Report [blocked by R1, R2.1]
+    ├── cortex-dkd.7.1 R7.1: Risk Score
+    ├── cortex-dkd.7.2 R7.2: Untested Keystones
+    ├── cortex-dkd.7.3 R7.3: Dead Code
+    ├── cortex-dkd.7.4 R7.4: Circular Dependencies
+    └── cortex-dkd.7.5 R7.5: Complexity Hotspots
 ```
 
 ---
 
-## Feature Report (R5) - Detailed Requirements
+## Agent-Writes-Reports Architecture
 
-### Use Case
-**Documentation generation** - Auto-generate and maintain feature docs that stay current with code
+### The Flow
 
-### User Decisions from Interview
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         USER IN CLAUDE CODE                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  User: "Generate a report on authentication"                         │
+│                                                                      │
+│  Claude Code:                                                        │
+│    1. Runs: cx report feature "auth" --data                          │
+│    2. Receives: Structured YAML with entities, D2 code, coverage     │
+│    3. Writes: Narrative prose explaining the feature                 │
+│    4. Assembles: Final HTML report with embedded diagrams            │
+│    5. Optionally: Runs cx render to convert D2 → SVG                 │
+│                                                                      │
+│  Result: auth-report.html                                            │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-| Category | Decision |
-|----------|----------|
-| **Query Input** | Natural language via semantic search |
-| **Output Format** | HTML primary with full interactivity |
-| **Narrative Depth** | Technical deep-dive with code references |
-| **Diagram Types** | Call flow + data flow + AI-selected relevant types |
-| **Scale Handling** | Interactive HTML (collapsible, searchable, clickable) |
-| **Test Coverage** | Show related tests with coverage % |
-| **Search Strategy** | FTS5 + embedding hybrid |
-| **AI Context** | Flexible - gather what's needed, NEVER guess |
-| **Narrative Structure** | Entry point → flow → output (guided flexibility) |
-| **Diagram Generation** | Entry point detection + BFS (with AI discretion) |
-| **Caching** | Cache AI narratives by content hash |
-| **Performance** | < 1 minute, background generation with progress |
-| **Integration** | Replaces cx guide |
-| **Multi-language** | Unified view |
-| **Gap Handling** | Acknowledge gaps explicitly, don't pretend |
-| **Update Model** | Living documents - incremental updates, not regeneration |
+### Why This Design?
 
-### Report Sections (Feature Report)
-1. Feature Overview - AI explains what this feature does
-2. Key Entities - Found via semantic search, ranked by relevance
-3. Call Flow Diagram - D2 sequence-style or flowchart
-4. Data Flow Diagram - Inputs → processing → outputs
-5. Related Tests - Test entities linked to feature
-6. Coverage Analysis - Percentage and gaps
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Embedded API Key** | Works standalone | Requires ANTHROPIC_API_KEY, limits adoption |
+| **Agent-Writes-Reports** | No API key, uses conversation context | Requires AI agent session |
 
-### HTML Interactivity Requirements
-- Collapsible sections (expand/collapse diagram nodes, entity details)
-- Filter/search within report (client-side search)
-- Clickable diagram nodes (jump to detail section)
-- Self-contained single HTML file (embedded CSS/JS/SVG)
+CX is designed for AI agents - the agent-writes-reports model is natural.
+
+### Component Responsibilities
+
+| Component | Responsibility |
+|-----------|----------------|
+| `cx report <type> --data` | Gather data, generate D2 code, output YAML |
+| AI Agent (Claude Code) | Interpret data, write narratives, assemble HTML |
+| `cx render <file>` | Convert D2 code blocks to embedded SVG (optional) |
 
 ---
 
-## Visual Design Requirements (CRITICAL)
+## Data Contract Summary
 
-### Goal
-**Diagrams must be showcase-worthy** - professional quality for:
-- Marketing materials and demos
-- Technical blog posts
-- Company documentation
-- Conference presentations
+All `--data` commands output YAML with this structure:
 
-### D2 Capabilities to Leverage
+```yaml
+report:
+  type: feature|overview|changes|health
+  generated_at: "2026-01-20T15:30:00Z"
+  query: "authentication"  # For feature reports
 
-**Professional Themes:**
-- Built-in: Grape Soda, Mixed Berry Blue, Vanilla Nitro Cola, Terminal
-- Dark mode variants
-- Custom theme overrides supported
+metadata:
+  entity_count: 1234
+  language_breakdown:
+    go: 800
+    typescript: 400
 
-**Styling Options:**
+entities:
+  - id: "sa-fn-abc123-45-LoginUser"
+    name: LoginUser
+    type: function
+    file: internal/auth/login.go
+    lines: [45, 89]
+    signature: "func LoginUser(...) (*User, error)"
+    importance: keystone
+    pagerank: 0.0234
+    coverage: 85.5
+
+dependencies:
+  - from: LoginUser
+    to: ValidateToken
+    type: calls
+
+diagrams:
+  call_flow:
+    title: "Authentication Call Flow"
+    d2: |
+      direction: down
+      # ... D2 code
+```
+
+See full schemas in docs/specs/CX_REPORT_SPEC.md
+
+---
+
+## Implementation Phases
+
+### Phase 1: Foundation (R0)
+**Goal**: Define all data schemas
+
+| Task | Description | Status |
+|------|-------------|--------|
+| R0.1 | Core schema types (ReportData, EntityData, etc.) | READY |
+| R0.2 | Feature report schema | Blocked by R0.1 |
+| R0.3 | Overview report schema | Blocked by R0.1 |
+| R0.4 | Changes report schema | Blocked by R0.1 |
+| R0.5 | Health report schema | Blocked by R0.1 |
+
+### Phase 2: Engine (R1, R2)
+**Goal**: CLI commands and D2 generation
+
+| Task | Description | Status |
+|------|-------------|--------|
+| R1.1 | Command scaffolding (`cx report`) | Blocked by R0 |
+| R1.2-4 | Data gathering, YAML output | Blocked by R1.1 |
+| R2.1 | D2 Visual Design System | Blocked by R0 |
+| R2.2 | D2 Code Generator | Blocked by R0 |
+| R2.3-5 | Diagram presets, render command | Blocked by R2.2 |
+
+### Phase 3: Reports (R4-R7)
+**Goal**: Individual report implementations
+
+| Task | Description | Status |
+|------|-------------|--------|
+| R4.* | Overview report (4 subtasks) | Blocked by R1, R2.1 |
+| R5.* | Feature report (5 subtasks) | Blocked by R1, R2.1 |
+| R6.* | Change report (4 subtasks) | Blocked by R1, R2.1 |
+| R7.* | Health report (5 subtasks) | Blocked by R1, R2.1 |
+
+### Parallelization Potential
+
+| Phase | Tasks | Max Parallel Agents |
+|-------|-------|---------------------|
+| 1 | R0.1 | 1 |
+| 2 | R0.2-R0.5 | 4 |
+| 3 | R1.1, R2.1, R2.2 | 3 |
+| 4 | R1.2-R1.4, R2.3-R2.5 | 6 |
+| 5 | R4.*, R5.*, R6.*, R7.* | 18 |
+
+---
+
+## D2 Visual Design System
+
+### Entity Type Styling
+
+| Entity Type | Shape | Color | Icon |
+|-------------|-------|-------|------|
+| Function | rectangle | `#e3f2fd` (light blue) | tech/go.svg |
+| Method | rectangle | `#e8f5e9` (light green) | essentials/gear.svg |
+| Type/Struct | rectangle | `#f3e5f5` (light purple) | essentials/package.svg |
+| Interface | rectangle | `#fff3e0` (light orange) | essentials/plug.svg |
+| Database | cylinder | `#eceff1` (light gray) | azure/Databases/*.svg |
+
+### Importance Styling
+
 ```d2
-shape: {
+# Keystone - prominent
+keystone: {
   style: {
-    fill: "#4A90D9"        # Background color
-    stroke: "#2E5A8B"      # Border color
-    stroke-width: 2        # Border thickness
-    shadow: true           # Drop shadow
-    3d: true               # 3D effect (rectangles only)
-    border-radius: 8       # Rounded corners
-    opacity: 0.9           # Transparency
-    fill-pattern: dots     # Pattern fills
+    stroke-width: 3
+    shadow: true
+    fill: "#fff3e0"
+    stroke: "#f57c00"
+  }
+}
+
+# Bottleneck - warning
+bottleneck: {
+  style: {
+    stroke-width: 2
+    fill: "#fff8e1"
+    stroke: "#ffa000"
   }
 }
 ```
 
-**Icon Library (icons.terrastruct.com):**
-- AWS: 500+ service icons
-- GCP: Full Google Cloud coverage
-- Azure: Microsoft Azure resources
-- Development: Docker, Git, React, Python, Go, Rust, etc.
-- Infrastructure: Servers, databases, networks, firewalls
-- Essentials: UI elements, shapes, symbols
+### Coverage Indicators
 
-**Entity Type Icon Mapping (Proposed):**
-
-| Entity Type | Icon | Color Scheme |
-|-------------|------|--------------|
-| Function | ⚡ function/lightning | Blue |
-| Type/Struct | 📦 box/package | Purple |
-| Method | 🔧 gear/tool | Teal |
-| Interface | 🔌 plug/connector | Orange |
-| Constant | 📌 pin | Gray |
-| Test | ✅ checkmark | Green |
-| Database | 🗄️ cylinder | Navy |
-| HTTP Handler | 🌐 globe | Cyan |
-| CLI Command | 💻 terminal | Dark |
-
-**Importance Styling:**
-- Keystone: Bold border, subtle glow/shadow, larger size
-- Bottleneck: Warning color accent, thicker border
-- Normal: Standard styling
-- Leaf: Lighter/smaller styling
-
-**Coverage Indicators:**
-- High (>80%): Green tint/badge
-- Medium (50-80%): Yellow tint/badge
-- Low (<50%): Red tint/badge
-- No tests: Gray with warning icon
-
-**TALA Layout Engine:**
-- Premium layout specifically for software architecture
-- Cleaner orthogonal lines
-- Better container handling
-- May require separate install
+| Coverage | Color | Style |
+|----------|-------|-------|
+| >80% | Green | `#c8e6c9` fill |
+| 50-80% | Yellow | `#fff9c4` fill |
+| <50% | Red | `#ffcdd2` fill |
 
 ---
 
-## Existing Codebase Assets
+## Existing Code to Leverage
 
-### Semantic Search (FTS5)
-**Location:** `internal/store/fts.go`
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| FTS Search | [internal/store/fts.go](internal/store/fts.go) | SearchEntities with FULLTEXT |
+| Embeddings | [internal/store/embeddings.go](internal/store/embeddings.go) | FindSimilar for semantic search |
+| D2 Generation | [internal/graph/d2.go](internal/graph/d2.go) | GenerateD2, sanitizeD2ID |
+| Guide Command | [internal/cmd/guide.go](internal/cmd/guide.go) | Stats, module analysis (replace) |
+| Graph | [internal/graph/graph.go](internal/graph/graph.go) | Dependency traversal |
+| Coverage | [internal/store/coverage.go](internal/store/coverage.go) | Coverage data |
+
+### Key Functions to Reuse
 
 ```go
-type SearchResult struct {
-    Entity        *Entity
-    FTSScore      float64  // Raw FULLTEXT match score
-    PageRank      float64  // From metrics
-    CombinedScore float64  // Weighted combination
-    MatchColumn   string   // name, body_text, doc_comment, file_path
-}
-
-type SearchOptions struct {
-    Query          string
-    Limit          int
-    Threshold      float64
-    Language       string
-    EntityType     string
-    BoostPageRank  float64  // Default: 0.3
-    BoostFTS       float64  // Default: 0.7
-    BoostExactName float64  // Default: 2.0
-}
-
+// From fts.go
 func (s *Store) SearchEntities(opts SearchOptions) ([]*SearchResult, error)
-```
 
-### D2 Generation
-**Location:** `internal/graph/d2.go`
+// From embeddings.go
+func (s *Store) FindSimilar(entityID string, limit int) ([]*SimilarEntity, error)
 
-```go
-type D2Options struct {
-    MaxNodes   int     // Default: 30
-    Direction  string  // "right" or "down"
-    ShowLabels bool
-    Collapse   bool    // Auto-collapse to modules
-    Title      string
-}
-
+// From d2.go
 func GenerateD2(nodes map[string]*output.GraphNode, edges [][]string, opts *D2Options) string
-func generateD2Node(id, name, entityType, importance string) string
-func generateD2Edge(from, to, edgeType string, showLabel bool) string
+
+// From guide.go
+func getEntityTypeCounts(storeDB *store.Store) (map[string]int, error)
+func extractModuleFromPath(filePath string) string
+func computeModuleEdges(entities []*store.Entity, g *graph.Graph, storeDB *store.Store) [][]string
 ```
-
-### Smart Context / Entry Points
-**Location:** `internal/context/smart.go`
-
-- `findEntryPoints()` - Detects high in-degree entities as entry points
-- Context assembly from entities + dependencies
-
-### Existing Guide Command
-**Location:** `internal/cmd/guide.go`
-
-Subcommands to replace:
-- `cx guide overview` → `cx report overview`
-- `cx guide hotspots` → `cx report health` (partially)
-- `cx guide modules` → `cx report overview` (architecture section)
-- `cx guide deps` → `cx report health` (cycle detection)
-
-### Embeddings
-**Locations:**
-- `internal/store/embeddings.go`
-- `internal/embeddings/embeddings.go`
-
-Vector embeddings for semantic search (FTS5 + embedding hybrid).
-
----
-
-## Research Findings
-
-### Beads Integration Analysis (Deprioritized)
-
-**Conclusion:** Low ROI - git commit messages already link code to issues.
-
-**Options Evaluated:**
-1. Separate DBs + linking table (original plan)
-2. Single shared Dolt database
-3. Dolt foreign database queries
-4. Cortex as super-database
-5. Event-driven integration
-6. MCP server integration
-
-**Why Separate DBs Won:**
-- Different rhythms (CX scans constantly, BD syncs occasionally)
-- Different branching semantics
-- Schema ownership conflicts in shared DB
-- Tools should work independently
-
-**If We Ever Revisit:**
-- Beads already has Dolt backend (experimental, 18 files)
-- `bd init --backend dolt` enables it
-- Could share Dolt remote in future
-
-### D2 vs Mermaid
-
-**D2 Advantages:**
-- TALA layout engine (architecture-specific)
-- Better styling options (shadows, 3D, gradients)
-- Icon library (500+ icons)
-- Container support
-- Professional themes
-
-**Mermaid Advantages:**
-- Works in GitHub/GitLab markdown
-- No CLI dependency
-- Wider tool support
-
-**Decision:** D2 primary, Mermaid fallback
-
-### AI Narrative Approach
-
-**Structure Baseline:**
-1. Entry point(s) - how is this feature triggered?
-2. Flow through key entities
-3. Data transformations
-4. Error handling/edge cases
-
-**Flexibility Principles:**
-- AI adapts structure based on feature complexity
-- Can request additional context when needed
-- Quality over speed - never guess when uncertain
-- Acknowledge gaps explicitly
-
-**Context Assembly:**
-- Start with: entity metadata + signatures + dependencies
-- Expand as needed: code snippets, docstrings, existing docs
-- Principle: More context is better than guessing
 
 ---
 
@@ -356,78 +359,95 @@ Vector embeddings for semantic search (FTS5 + embedding hybrid).
 ### Beads Commands
 ```bash
 bd show cortex-dkd           # View epic
-bd show cortex-dkd.5.1       # View Feature Report requirements
+bd show cortex-dkd.8.1       # View first task to implement
 bd dep tree cortex-dkd       # Dependency visualization
 bd ready | grep cortex-dkd   # What's unblocked
+bd list --parent cortex-dkd  # All tasks in epic
 ```
 
 ### Cortex Commands
 ```bash
 cx context                              # Session orientation
-cx context --smart "report generation"  # Task-focused context
-cx safe internal/cmd/guide.go           # Before modifying
-cx find SearchEntities                  # Find existing code
-cx show SearchEntities --related        # Understand dependencies
+cx context --smart "report schema"      # Task-focused context
+cx safe internal/report/schema.go       # Before creating new file
+cx find SearchResult                    # Find existing patterns
+cx show Store.SearchEntities --related  # Understand dependencies
 ```
 
-### Useful Queries
+### Implementation Commands
 ```bash
-# Find all report-related code
-cx find "report" --type F
+# Start implementation
+/implement cortex-dkd.8.1
 
-# Check FTS implementation
-cx show SearchEntities --graph --hops 2
-
-# See guide.go structure
-cx show runGuideOverview --related
+# Or manually
+bd update cortex-dkd.8.1 --status in_progress
+# ... do the work ...
+bd close cortex-dkd.8.1 --reason "Created core schema types"
 ```
 
 ---
 
-## Files to Read
+## Files Reference
 
 | File | Purpose |
 |------|---------|
-| `handoff.md` | This file - complete context |
-| `docs/specs/REPORT_SPEC.md` | Initial spec draft |
-| `internal/cmd/guide.go` | Code being replaced |
+| `handoff.md` | This file - comprehensive context |
+| `docs/specs/CX_REPORT_SPEC.md` | Formal specification (1100+ lines) |
+| `internal/cmd/guide.go` | Existing code being replaced |
 | `internal/graph/d2.go` | Existing D2 generation |
-| `internal/store/fts.go` | Existing FTS search |
+| `internal/store/fts.go` | FTS search implementation |
+| `internal/store/embeddings.go` | Embedding search |
 | `internal/context/smart.go` | Entry point detection |
+
+### New Files to Create
+
+| File | Purpose |
+|------|---------|
+| `internal/report/schema.go` | Core schema types |
+| `internal/report/feature.go` | Feature report data |
+| `internal/report/overview.go` | Overview report data |
+| `internal/report/changes.go` | Changes report data |
+| `internal/report/health.go` | Health report data |
+| `internal/cmd/report.go` | Report command |
+| `internal/cmd/render.go` | Render command |
 
 ---
 
 ## Session End Checklist
 
 ```
-[ ] 1. git status              (check what changed)
-[ ] 2. git add <files>         (stage changes)
-[ ] 3. bd sync                 (commit beads)
-[ ] 4. git commit -m "..."     (commit code)
-[ ] 5. bd sync                 (any new beads)
-[ ] 6. git push                (push to remote)
+[x] 1. git status              (checked)
+[x] 2. git add <files>         (staged)
+[x] 3. bd sync                 (synced)
+[x] 4. git commit              (committed)
+[x] 5. git push                (pushed)
 ```
+
+### Commits This Session
+
+| Hash | Message |
+|------|---------|
+| fc76f93 | Add CX Report formal specification |
+| b72e2f2 | Add CX Report task hierarchy (31 subtasks) |
 
 ---
 
-## Previous Work (Still Valid)
-
-### cx guide (cortex-1tp)
-- Basic implementation exists in guide.go
-- Being replaced by cx report
-- Some code may be reusable (table formatting, stats gathering)
+## Previous Context (Still Valid)
 
 ### Semantic Search
 - FTS5 implementation complete and working
-- Embeddings infrastructure in place
+- Embeddings infrastructure in place (Hugot + HuggingFace)
+- Hybrid search ready to implement
 
 ### Dolt Migration
 - Complete - CX now uses Dolt
 - Time-travel queries available for change reports
+- `AS OF` queries supported
 
-### File Path Matching (v0.1.6)
-- `cx safe` supports flexible path matching
-- Suffix, basename, and absolute path resolution
+### D2 CLI Integration
+- Existing implementation in internal/cmd/show.go:868-922
+- Discovery with fallback to ~/.local/bin/d2
+- ASCII and SVG rendering supported
 
 ### Still Broken/Hidden
 - `cx daemon` / `cx status` (cortex-b44)
