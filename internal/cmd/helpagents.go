@@ -262,6 +262,49 @@ cx serve --tools=context,safe     # Limit to specific tools
 
 ---
 
+### cx report
+Generate structured data for AI-powered codebase reports.
+
+` + "```bash" + `
+cx report overview --data                    # System stats, keystones, architecture diagram
+cx report feature "authentication" --data    # Feature deep-dive with call flow diagram
+cx report changes --since HEAD~50 --data     # What changed (Dolt time-travel)
+cx report changes --since v1.0 --until v2.0 --data
+cx report health --data                      # Risk score, complexity hotspots
+
+# Output options
+cx report overview --data -o overview.yaml   # Write to file
+cx report overview --data --format json      # JSON output
+` + "```" + `
+
+**Report types:**
+- ` + "`overview`" + ` - System statistics, keystones, modules, architecture diagram
+- ` + "`feature <query>`" + ` - Semantic search deep-dive with call flow diagram
+- ` + "`changes`" + ` - Added/modified/deleted entities with change diagram (requires ` + "`--since`" + `)
+- ` + "`health`" + ` - Risk score, untested keystones, dead code, complexity hotspots
+
+**Output includes D2 diagram code** for visualizations.
+
+---
+
+### cx render
+Render D2 diagrams to images.
+
+` + "```bash" + `
+cx render diagram.d2                    # → diagram.svg
+cx render diagram.d2 -f png -o out.png  # → PNG output
+echo "a -> b" | cx render -             # → stdout SVG (stdin input)
+cx render report.html --embed           # Inline SVGs in HTML (replaces D2 code blocks)
+` + "```" + `
+
+**Flags:**
+- ` + "`-o, --output`" + ` - Output file path
+- ` + "`-f, --format`" + ` - Output format: svg (default) or png
+- ` + "`--embed`" + ` - Embed inline SVGs in HTML file (processes D2 code blocks)
+- ` + "`--layout`" + ` - Layout engine: elk (default), dagre, tala
+
+---
+
 ## Global Flags
 
 ` + "```" + `
@@ -295,6 +338,8 @@ cx serve --tools=context,safe     # Limit to specific tools
 | Old code state | ` + "`cx show <entity> --at v1.0`" + ` |
 | What changed? | ` + "`cx catchup --since v1.0`" + ` |
 | MCP IDE integration | ` + "`cx serve`" + ` |
+| Generate report data | ` + "`cx report overview --data`" + ` |
+| Render D2 to image | ` + "`cx render diagram.d2`" + ` |
 
 ---
 
@@ -431,6 +476,31 @@ func generateAgentReferenceJSON() string {
       "ide_setup": {
         "cursor": "Settings → MCP → mcpServers.cortex = {command: cx, args: [serve]}",
         "windsurf": "~/.windsurf/mcp.json → servers.cortex = {command: cx, args: [serve]}"
+      }
+    },
+    "report": {
+      "purpose": "Generate structured data for AI-powered reports",
+      "usage": "cx report <type> --data",
+      "subcommands": ["overview", "feature", "changes", "health"],
+      "flags": ["--data", "-o/--output", "--format", "--since", "--until"],
+      "report_types": {
+        "overview": "System stats, keystones, modules, architecture diagram",
+        "feature": "Semantic search deep-dive with call flow diagram",
+        "changes": "Added/modified/deleted entities with change diagram (requires --since)",
+        "health": "Risk score, untested keystones, dead code, complexity hotspots"
+      }
+    },
+    "render": {
+      "purpose": "Render D2 diagrams to images",
+      "usage": "cx render <file.d2>",
+      "flags": ["-o/--output", "-f/--format", "--embed", "--layout"],
+      "formats": ["svg", "png"],
+      "layouts": ["elk", "dagre", "tala"],
+      "examples": {
+        "file_to_svg": "cx render diagram.d2",
+        "file_to_png": "cx render diagram.d2 -f png -o out.png",
+        "stdin_to_stdout": "echo \"a -> b\" | cx render -",
+        "embed_in_html": "cx render report.html --embed"
       }
     }
   },
