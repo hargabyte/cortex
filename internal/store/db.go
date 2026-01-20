@@ -119,6 +119,42 @@ func (s *Store) DoltCommit(message string) (string, error) {
 	return commitHash, nil
 }
 
+// DoltTag creates a Dolt tag at HEAD with the given name and optional message.
+// Tags can be used as refs for time-travel queries (--at, --since, --from).
+func (s *Store) DoltTag(name string, message string) error {
+	if message != "" {
+		_, err := s.db.Exec("CALL dolt_tag('-m', ?, ?)", message, name)
+		if err != nil {
+			return fmt.Errorf("dolt tag: %w", err)
+		}
+	} else {
+		_, err := s.db.Exec("CALL dolt_tag(?)", name)
+		if err != nil {
+			return fmt.Errorf("dolt tag: %w", err)
+		}
+	}
+	return nil
+}
+
+// DoltListTags returns all tags in the repository.
+func (s *Store) DoltListTags() ([]string, error) {
+	rows, err := s.db.Query("SELECT tag_name FROM dolt_tags ORDER BY tag_name")
+	if err != nil {
+		return nil, fmt.Errorf("list tags: %w", err)
+	}
+	defer rows.Close()
+
+	var tags []string
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, fmt.Errorf("scan tag: %w", err)
+		}
+		tags = append(tags, tag)
+	}
+	return tags, rows.Err()
+}
+
 // ScanMetadata represents metadata about a scan operation.
 type ScanMetadata struct {
 	ID                int

@@ -198,6 +198,28 @@ Build or update the code graph.
 cx scan                           # Scan (auto-init if needed)
 cx scan --force                   # Force full rescan
 cx scan --overview                # Show overview after
+cx scan --tag v1.0                # Create tag after scan (usable with --at)
+` + "```" + `
+
+---
+
+### Dolt Time Travel Commands
+Query the codebase at any point in history.
+
+` + "```bash" + `
+cx show Entity --at HEAD~5        # Entity state 5 commits ago
+cx show Entity --at v1.0          # Entity at tagged release
+cx show Entity --history          # Entity's full change history
+cx find Login --at HEAD~10        # Find entities at older state
+cx history --stats                # Commit history with entity counts
+cx diff --from HEAD~1             # What changed since last commit
+cx blame Entity                   # Who changed this and when?
+cx stale --scans 5                # Unchanged for 5+ scans
+cx catchup --since v1.0           # Changes since tag/ref
+cx safe <file> --trend            # Entity count trends over time
+cx branch                         # List/create/delete branches
+cx rollback HEAD~3 --hard         # Reset to previous state
+cx sql "SELECT * FROM entities"   # Direct SQL access
 ` + "```" + `
 
 ---
@@ -243,6 +265,10 @@ cx reset --hard --force           # Delete everything
 | Dead code | ` + "`cx dead`" + ` |
 | Run tests | ` + "`cx test --diff --run`" + ` |
 | Bookmark code | ` + "`cx tag <entity> <tags>`" + ` |
+| Entity history | ` + "`cx blame <entity>`" + ` or ` + "`cx show <entity> --history`" + ` |
+| Compare states | ` + "`cx diff --from HEAD~1`" + ` |
+| Old code state | ` + "`cx show <entity> --at v1.0`" + ` |
+| What changed? | ` + "`cx catchup --since v1.0`" + ` |
 
 ---
 
@@ -275,17 +301,17 @@ func generateAgentReferenceJSON() string {
     "safe": {
       "purpose": "Pre-flight safety check before modifying code",
       "usage": "cx safe <file>",
-      "flags": ["--quick", "--coverage", "--drift", "--changes", "--keystones-only", "--depth"]
+      "flags": ["--quick", "--coverage", "--drift", "--changes", "--keystones-only", "--depth", "--trend"]
     },
     "show": {
       "purpose": "Understand a specific entity",
       "usage": "cx show <entity>",
-      "flags": ["--related", "--graph", "--hops", "--direction", "--coverage", "--include-metrics"]
+      "flags": ["--related", "--graph", "--hops", "--direction", "--coverage", "--include-metrics", "--at", "--history"]
     },
     "find": {
       "purpose": "Discover code by name, concept, or importance",
       "usage": "cx find <query>",
-      "flags": ["--type", "--exact", "--keystones", "--important", "--tag", "--lang", "--limit"]
+      "flags": ["--type", "--exact", "--keystones", "--important", "--tag", "--lang", "--limit", "--at"]
     },
     "trace": {
       "purpose": "Trace call paths between entities",
@@ -317,7 +343,47 @@ func generateAgentReferenceJSON() string {
     "scan": {
       "purpose": "Build/update code graph",
       "usage": "cx scan",
-      "flags": ["--force", "--overview", "--lang", "--exclude"]
+      "flags": ["--force", "--overview", "--lang", "--exclude", "--tag", "--diff"]
+    },
+    "history": {
+      "purpose": "Show Dolt commit history",
+      "usage": "cx history",
+      "flags": ["--limit", "--stats"]
+    },
+    "diff": {
+      "purpose": "Show changes between commits/refs",
+      "usage": "cx diff --from HEAD~1",
+      "flags": ["--from", "--to", "--entities", "--summary"]
+    },
+    "blame": {
+      "purpose": "Show entity change history",
+      "usage": "cx blame <entity>",
+      "flags": ["--limit"]
+    },
+    "stale": {
+      "purpose": "Find entities unchanged for N scans",
+      "usage": "cx stale --scans 5",
+      "flags": ["--scans", "--since"]
+    },
+    "catchup": {
+      "purpose": "Show changes since a ref",
+      "usage": "cx catchup --since v1.0",
+      "flags": ["--since", "--summary"]
+    },
+    "branch": {
+      "purpose": "List/create/delete Dolt branches",
+      "usage": "cx branch [name]",
+      "flags": ["-c", "-d", "--from"]
+    },
+    "rollback": {
+      "purpose": "Reset to previous state",
+      "usage": "cx rollback [ref]",
+      "flags": ["--hard", "--yes"]
+    },
+    "sql": {
+      "purpose": "Execute SQL directly",
+      "usage": "cx sql \"<query>\"",
+      "flags": ["--format"]
     },
     "db": {
       "purpose": "Database management",

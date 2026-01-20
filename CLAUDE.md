@@ -103,6 +103,9 @@ cx tag find auth api --any              # Entities with ANY tag
 | `cx rollback [ref]` | Reset to previous state | `--hard`, `--yes` |
 | `cx history` | Show commit history | `--limit N`, `--stats` |
 | `cx diff` | Show changes between refs | `--from`, `--to` |
+| `cx blame <entity>` | Show entity change history | `--limit N` |
+| `cx stale` | Find entities unchanged for N scans | `--scans N`, `--since ref` |
+| `cx catchup` | Show changes since a ref | `--since ref`, `--summary` |
 
 ```bash
 # Examples
@@ -116,6 +119,22 @@ cx rollback                                  # Soft reset to HEAD~1
 cx rollback HEAD~3 --hard --yes              # Hard reset to 3 commits ago
 cx history --stats                           # Show history with entity counts
 cx diff --from HEAD~1                        # Show changes since last commit
+cx blame LoginUser                           # Who changed LoginUser and when?
+cx stale --scans 5                           # Entities unchanged for 5+ scans
+cx catchup --since v1.0                      # What changed since v1.0 tag?
+```
+
+### Time Travel Queries
+
+Use `--at` flag to query the codebase at a previous point in time:
+
+```bash
+cx show Entity --at HEAD~5                  # Entity state 5 commits ago
+cx show Entity --at v1.0                    # Entity at tagged release
+cx find Login --at HEAD~10                  # Find entities at older state
+cx show Entity --history                    # Entity's change history
+cx safe <file> --trend                      # Show entity count trends over time
+cx scan --tag v1.0                          # Tag current scan for future reference
 ```
 
 ## Name Resolution

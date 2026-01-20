@@ -1586,6 +1586,79 @@ func TestDoltCommit(t *testing.T) {
 	}
 }
 
+func TestDoltTag(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+
+	// Create some data and commit first
+	entity := &Entity{
+		ID:         "fn-dolt-tag-test",
+		Name:       "TestFuncTag",
+		EntityType: "function",
+		FilePath:   "test.go",
+		LineStart:  1,
+		Language:   "go",
+	}
+	if err := store.CreateEntity(entity); err != nil {
+		t.Fatalf("create entity: %v", err)
+	}
+
+	// Create a commit first
+	_, err := store.DoltCommit("commit before tag")
+	if err != nil {
+		t.Fatalf("dolt commit: %v", err)
+	}
+
+	// Test creating a tag with message
+	err = store.DoltTag("v1.0", "release version 1.0")
+	if err != nil {
+		t.Fatalf("dolt tag with message: %v", err)
+	}
+
+	// Test creating a tag without message
+	err = store.DoltTag("v1.1", "")
+	if err != nil {
+		t.Fatalf("dolt tag without message: %v", err)
+	}
+
+	// Verify tags exist by listing them
+	tags, err := store.DoltListTags()
+	if err != nil {
+		t.Fatalf("list tags: %v", err)
+	}
+
+	// Check that both tags are present
+	foundV10 := false
+	foundV11 := false
+	for _, tag := range tags {
+		if tag == "v1.0" {
+			foundV10 = true
+		}
+		if tag == "v1.1" {
+			foundV11 = true
+		}
+	}
+
+	if !foundV10 {
+		t.Error("expected tag v1.0 to exist")
+	}
+	if !foundV11 {
+		t.Error("expected tag v1.1 to exist")
+	}
+
+	// Test that we can use the tag as a ref for time travel
+	entityAt, err := store.GetEntityAt("fn-dolt-tag-test", "v1.0")
+	if err != nil {
+		t.Fatalf("get entity at tag: %v", err)
+	}
+	if entityAt == nil {
+		t.Error("expected to find entity at tag v1.0")
+	}
+	if entityAt != nil && entityAt.Name != "TestFuncTag" {
+		t.Errorf("expected name TestFuncTag, got %s", entityAt.Name)
+	}
+}
+
 // Tests for AS OF query methods (time travel)
 
 func TestGetEntityAt_InvalidRef(t *testing.T) {

@@ -53,6 +53,7 @@ Examples:
   cx scan --lang go          # Scan only Go files
   cx scan --dry-run          # Show what would be created
   cx scan --no-auto-exclude  # Don't auto-exclude dependency directories
+  cx scan --tag v1.0         # Create tag usable as: cx show Entity --at v1.0
   cx scan -v                 # Verbose: shows auto-excluded directories`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runScan,
@@ -67,6 +68,7 @@ var (
 	scanOverview      bool
 	scanNoAutoExclude bool
 	scanDiff          bool
+	scanTag           string
 )
 
 func init() {
@@ -80,6 +82,7 @@ func init() {
 	scanCmd.Flags().BoolVar(&scanOverview, "overview", false, "Show project overview after scan (replaces quickstart)")
 	scanCmd.Flags().BoolVar(&scanNoAutoExclude, "no-auto-exclude", false, "Disable automatic exclusion of dependency directories")
 	scanCmd.Flags().BoolVar(&scanDiff, "diff", false, "Show what changed since previous scan")
+	scanCmd.Flags().StringVar(&scanTag, "tag", "", "Create a Dolt tag after scan (usable as ref for --at, --since)")
 }
 
 // scanStats tracks scan statistics for summary output
@@ -616,8 +619,22 @@ func runScan(cmd *cobra.Command, args []string) error {
 			if verbose {
 				w.WriteComment(fmt.Sprintf("Warning: failed to create Dolt commit: %v", err))
 			}
-		} else if verbose {
-			w.WriteComment(fmt.Sprintf("Dolt commit: %s", commitMsg))
+		} else {
+			if verbose {
+				w.WriteComment(fmt.Sprintf("Dolt commit: %s", commitMsg))
+			}
+
+			// Create tag if --tag flag was provided
+			if scanTag != "" {
+				tagMsg := fmt.Sprintf("cx scan tag: %d entities [%s@%s]", stats.entitiesTotal, gitBranch, gitCommit)
+				if err := storeDB.DoltTag(scanTag, tagMsg); err != nil {
+					if verbose {
+						w.WriteComment(fmt.Sprintf("Warning: failed to create tag '%s': %v", scanTag, err))
+					}
+				} else if !quiet {
+					w.WriteComment(fmt.Sprintf("Tagged: %s", scanTag))
+				}
+			}
 		}
 
 		// Show diff summary if --diff flag is set
