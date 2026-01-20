@@ -1,15 +1,23 @@
 # Session Handoff: CX Report Generation - 93% Complete
 
 **Date:** 2026-01-20
-**Last Session:** Fixed R6 Change Report (Dolt time-travel + D2 diagrams)
+**Last Session:** Updated help-agents documentation for report/render commands
 **Branch:** master
-**Commit:** 5a06340
+**Commit:** f27a1ad
 
 ## Epic Status: 93% Complete (40/43 tasks closed)
 
 The CX Report Generation epic is nearly complete. All four report types are fully functional.
 
 ### Completed This Session
+
+1. **Documentation Update** - Added `report` and `render` commands to `cx help-agents`
+   - Updated markdown output with full command examples
+   - Updated JSON output with structured command metadata
+   - Added to "When to Use" quick reference table
+   - File modified: `internal/cmd/helpagents.go`
+
+### Previous Session (Session 7)
 
 1. **R6: Change Report** - Fixed Dolt time-travel queries + added D2 diagrams
    - **R6.1: Dolt Diff Queries** - Added `ResolveRef()` to resolve short commit hashes to full 32-char hashes. Dolt's `AS OF` clause requires full hashes, but `cx history` displays truncated 7-char hashes.
@@ -115,6 +123,11 @@ echo "a -> b -> c" | ./cx render -
 ```
 
 ## Previous Session Summaries
+
+### Session 8 (2026-01-20) - Help-Agents Documentation Update
+- Added `cx report` and `cx render` commands to `cx help-agents`
+- Updated both markdown and JSON output formats
+- Modified: `internal/cmd/helpagents.go`
 
 ### Session 7 (2026-01-20) - R6 Change Report Fix + D2 Diagrams
 - Added `ResolveRef()` for short commit hash resolution
