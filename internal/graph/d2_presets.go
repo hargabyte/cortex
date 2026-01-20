@@ -693,3 +693,138 @@ func BuildCallersFlowDiagram(s *store.Store, targetEntityID string, depth int, t
 	gen := NewD2Generator(config)
 	return gen.Generate(entities, edges), nil
 }
+
+// ChangesDiagramPreset returns a DiagramConfig for change diagrams.
+// Uses architecture layout with change state color coding.
+func ChangesDiagramPreset() *DiagramConfig {
+	return &DiagramConfig{
+		Type:       DiagramArchitecture,
+		Theme:      "default",
+		Layout:     "tala",
+		Direction:  "right",
+		MaxNodes:   40,
+		Collapse:   true,
+		ShowLabels: true,
+		ShowIcons:  true,
+		Title:      "",
+	}
+}
+
+// ChangedEntityInfo contains entity info with its change state.
+type ChangedEntityInfo struct {
+	ID          string
+	Name        string
+	Type        string
+	FilePath    string
+	ChangeState string // "added", "modified", "deleted"
+}
+
+// BuildChangesDiagram creates a D2 diagram showing changed entities with color coding.
+// Green = added, Yellow = modified, Red = deleted.
+// The diagram groups entities by module and highlights changes.
+func BuildChangesDiagram(
+	added []ChangedEntityInfo,
+	modified []ChangedEntityInfo,
+	deleted []ChangedEntityInfo,
+	title string,
+) string {
+	config := ChangesDiagramPreset()
+	config.Title = title
+
+	// Calculate proportional limits for each change type to ensure representation
+	totalChanges := len(added) + len(modified) + len(deleted)
+	maxNodes := config.MaxNodes
+
+	addedLimit := len(added)
+	modifiedLimit := len(modified)
+	deletedLimit := len(deleted)
+
+	// If total exceeds max, allocate proportionally with minimum of 1 for non-empty categories
+	if totalChanges > maxNodes && totalChanges > 0 {
+		addedLimit = 0
+		modifiedLimit = 0
+		deletedLimit = 0
+
+		if len(added) > 0 {
+			addedLimit = maxNodes * len(added) / totalChanges
+			if addedLimit == 0 {
+				addedLimit = 1
+			}
+		}
+		if len(modified) > 0 {
+			modifiedLimit = maxNodes * len(modified) / totalChanges
+			if modifiedLimit == 0 {
+				modifiedLimit = 1
+			}
+		}
+		if len(deleted) > 0 {
+			deletedLimit = maxNodes * len(deleted) / totalChanges
+			if deletedLimit == 0 {
+				deletedLimit = 1
+			}
+		}
+	}
+
+	// Combine all changed entities
+	entities := make([]DiagramEntity, 0)
+
+	// Add "added" entities (green)
+	for i, e := range added {
+		if i >= addedLimit {
+			break
+		}
+		entities = append(entities, DiagramEntity{
+			ID:          e.ID,
+			Name:        e.Name,
+			Type:        e.Type,
+			Importance:  "normal",
+			Coverage:    -1,
+			Language:    inferLanguage(e.FilePath),
+			Module:      extractModuleFromPath(e.FilePath),
+			Layer:       inferLayer(e.Type, extractModuleFromPath(e.FilePath)),
+			ChangeState: "added",
+		})
+	}
+
+	// Add "modified" entities (yellow)
+	for i, e := range modified {
+		if i >= modifiedLimit {
+			break
+		}
+		entities = append(entities, DiagramEntity{
+			ID:          e.ID,
+			Name:        e.Name,
+			Type:        e.Type,
+			Importance:  "normal",
+			Coverage:    -1,
+			Language:    inferLanguage(e.FilePath),
+			Module:      extractModuleFromPath(e.FilePath),
+			Layer:       inferLayer(e.Type, extractModuleFromPath(e.FilePath)),
+			ChangeState: "modified",
+		})
+	}
+
+	// Add "deleted" entities (red)
+	for i, e := range deleted {
+		if i >= deletedLimit {
+			break
+		}
+		entities = append(entities, DiagramEntity{
+			ID:          e.ID,
+			Name:        e.Name,
+			Type:        e.Type,
+			Importance:  "normal",
+			Coverage:    -1,
+			Language:    inferLanguage(e.FilePath),
+			Module:      extractModuleFromPath(e.FilePath),
+			Layer:       inferLayer(e.Type, extractModuleFromPath(e.FilePath)),
+			ChangeState: "deleted",
+		})
+	}
+
+	// No edges for changes diagram - focus on changed entities
+	edges := make([]DiagramEdge, 0)
+
+	gen := NewD2Generator(config)
+	return gen.Generate(entities, edges)
+}

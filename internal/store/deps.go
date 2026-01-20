@@ -143,12 +143,19 @@ func (s *Store) CountDependencies() (int, error) {
 
 // GetDependenciesAt returns dependencies matching the filter at a specific Dolt commit/ref.
 // Uses AS OF to query the table at a historical point.
+// Supports short commit hashes which are automatically resolved to full hashes.
 func (s *Store) GetDependenciesAt(filter DependencyFilter, ref string) ([]*Dependency, error) {
 	if !IsValidRef(ref) {
 		return nil, fmt.Errorf("invalid ref format: %s", ref)
 	}
 
-	query := fmt.Sprintf(`SELECT from_id, to_id, dep_type, created_at FROM dependencies AS OF '%s' WHERE 1=1`, ref)
+	// Resolve short commit hashes to full hashes
+	resolvedRef, err := s.ResolveRef(ref)
+	if err != nil {
+		return nil, fmt.Errorf("resolve ref %s: %w", ref, err)
+	}
+
+	query := fmt.Sprintf(`SELECT from_id, to_id, dep_type, created_at FROM dependencies AS OF '%s' WHERE 1=1`, resolvedRef)
 	args := []interface{}{}
 
 	if filter.FromID != "" {

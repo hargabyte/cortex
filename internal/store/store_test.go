@@ -1769,3 +1769,97 @@ func TestGetEntityAt_ValidRef(t *testing.T) {
 		t.Errorf("expected name TestFuncGetAt, got %s", got.Name)
 	}
 }
+
+func TestResolveRef(t *testing.T) {
+	store, cleanup := testStore(t)
+	defer cleanup()
+
+	// Test HEAD refs pass through unchanged
+	t.Run("HEAD passthrough", func(t *testing.T) {
+		ref, err := store.ResolveRef("HEAD")
+		if err != nil {
+			t.Fatalf("ResolveRef(HEAD): %v", err)
+		}
+		if ref != "HEAD" {
+			t.Errorf("expected HEAD, got %s", ref)
+		}
+	})
+
+	t.Run("HEAD~1 passthrough", func(t *testing.T) {
+		ref, err := store.ResolveRef("HEAD~1")
+		if err != nil {
+			t.Fatalf("ResolveRef(HEAD~1): %v", err)
+		}
+		if ref != "HEAD~1" {
+			t.Errorf("expected HEAD~1, got %s", ref)
+		}
+	})
+
+	// Test full hashes pass through unchanged
+	t.Run("full hash passthrough", func(t *testing.T) {
+		fullHash := "abcdefghijklmnopqrstuvwxyz123456" // 32 chars
+		ref, err := store.ResolveRef(fullHash)
+		if err != nil {
+			t.Fatalf("ResolveRef(full hash): %v", err)
+		}
+		if ref != fullHash {
+			t.Errorf("expected %s, got %s", fullHash, ref)
+		}
+	})
+
+	// Test branch-like refs (with /) pass through unchanged
+	t.Run("branch passthrough", func(t *testing.T) {
+		ref, err := store.ResolveRef("feature/test")
+		if err != nil {
+			t.Fatalf("ResolveRef(feature/test): %v", err)
+		}
+		if ref != "feature/test" {
+			t.Errorf("expected feature/test, got %s", ref)
+		}
+	})
+
+	// Test empty ref returns error
+	t.Run("empty ref error", func(t *testing.T) {
+		_, err := store.ResolveRef("")
+		if err == nil {
+			t.Error("expected error for empty ref")
+		}
+	})
+
+	// Test short hash resolution (requires actual commits)
+	t.Run("short hash resolution", func(t *testing.T) {
+		// Create and commit an entity to get a real hash
+		entity := &Entity{
+			ID:         "test-resolve-1",
+			Name:       "TestResolve",
+			EntityType: "function",
+			FilePath:   "test.go",
+			LineStart:  1,
+			Language:   "go",
+			Visibility: "pub",
+		}
+		if err := store.CreateEntity(entity); err != nil {
+			t.Fatalf("create entity: %v", err)
+		}
+
+		hash, err := store.DoltCommit("test commit for resolve")
+		if err != nil {
+			t.Fatalf("commit: %v", err)
+		}
+		if hash == "" || len(hash) < 10 {
+			t.Skip("Dolt commit did not return usable hash")
+		}
+
+		// Try resolving with a 7-char prefix
+		shortHash := hash[:7]
+		resolved, err := store.ResolveRef(shortHash)
+		if err != nil {
+			t.Fatalf("ResolveRef(%s): %v", shortHash, err)
+		}
+
+		// Should resolve to the full hash
+		if resolved != hash {
+			t.Errorf("expected %s, got %s", hash, resolved)
+		}
+	})
+}

@@ -221,6 +221,74 @@ func (g *DataGatherer) GatherChangesData(data *ChangesReportData, fromRef, toRef
 		data.Impact = nil
 	}
 
+	// Generate changes diagram showing added/modified/deleted entities
+	if err := g.gatherChangesDiagram(data); err != nil {
+		// Diagram generation is optional - don't fail the report
+		_ = err
+	}
+
+	return nil
+}
+
+// gatherChangesDiagram generates a D2 diagram showing changed entities.
+// Added entities are shown in green, modified in yellow, deleted in red.
+func (g *DataGatherer) gatherChangesDiagram(data *ChangesReportData) error {
+	// Skip if no changes
+	if data.Statistics.Added == 0 && data.Statistics.Modified == 0 && data.Statistics.Deleted == 0 {
+		return nil
+	}
+
+	if data.Diagrams == nil {
+		data.Diagrams = make(map[string]DiagramData)
+	}
+
+	// Convert ChangedEntity to ChangedEntityInfo for diagram generation
+	added := make([]graph.ChangedEntityInfo, 0, len(data.AddedEntities))
+	for _, e := range data.AddedEntities {
+		added = append(added, graph.ChangedEntityInfo{
+			ID:          e.ID,
+			Name:        e.Name,
+			Type:        e.Type,
+			FilePath:    e.File,
+			ChangeState: "added",
+		})
+	}
+
+	modified := make([]graph.ChangedEntityInfo, 0, len(data.ModifiedEntities))
+	for _, e := range data.ModifiedEntities {
+		modified = append(modified, graph.ChangedEntityInfo{
+			ID:          e.ID,
+			Name:        e.Name,
+			Type:        e.Type,
+			FilePath:    e.File,
+			ChangeState: "modified",
+		})
+	}
+
+	deleted := make([]graph.ChangedEntityInfo, 0, len(data.DeletedEntities))
+	for _, e := range data.DeletedEntities {
+		// For deleted entities, use WasFile if File is empty
+		filePath := e.File
+		if filePath == "" {
+			filePath = e.WasFile
+		}
+		deleted = append(deleted, graph.ChangedEntityInfo{
+			ID:          e.ID,
+			Name:        e.Name,
+			Type:        e.Type,
+			FilePath:    filePath,
+			ChangeState: "deleted",
+		})
+	}
+
+	title := fmt.Sprintf("Changes: %s → %s", data.Report.FromRef, data.Report.ToRef)
+	d2Code := graph.BuildChangesDiagram(added, modified, deleted, title)
+
+	data.Diagrams["changes_summary"] = DiagramData{
+		Title: title,
+		D2:    d2Code,
+	}
+
 	return nil
 }
 

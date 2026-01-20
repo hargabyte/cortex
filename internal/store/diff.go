@@ -305,24 +305,31 @@ type DoltLogStatsResult struct {
 
 // DoltLogStats returns entity and dependency counts at a specific commit.
 // Uses AS OF to query the tables at the given commit point.
+// Supports short commit hashes which are automatically resolved to full hashes.
 func (s *Store) DoltLogStats(commitHash string) (*DoltLogStatsResult, error) {
 	if !isValidRef(commitHash) {
 		return nil, fmt.Errorf("invalid commit hash")
+	}
+
+	// Resolve short commit hashes to full hashes
+	resolvedRef, err := s.ResolveRef(commitHash)
+	if err != nil {
+		return nil, fmt.Errorf("resolve ref %s: %w", commitHash, err)
 	}
 
 	result := &DoltLogStatsResult{}
 
 	// Count entities at this commit using AS OF
 	// Note: AS OF requires the ref in the table reference, not as a function argument
-	entityQuery := fmt.Sprintf(`SELECT COUNT(*) FROM entities AS OF '%s'`, commitHash)
-	err := s.db.QueryRow(entityQuery).Scan(&result.Entities)
+	entityQuery := fmt.Sprintf(`SELECT COUNT(*) FROM entities AS OF '%s'`, resolvedRef)
+	err = s.db.QueryRow(entityQuery).Scan(&result.Entities)
 	if err != nil {
 		// Table might not exist at this commit
 		result.Entities = 0
 	}
 
 	// Count dependencies at this commit
-	depQuery := fmt.Sprintf(`SELECT COUNT(*) FROM dependencies AS OF '%s'`, commitHash)
+	depQuery := fmt.Sprintf(`SELECT COUNT(*) FROM dependencies AS OF '%s'`, resolvedRef)
 	err = s.db.QueryRow(depQuery).Scan(&result.Dependencies)
 	if err != nil {
 		// Table might not exist at this commit

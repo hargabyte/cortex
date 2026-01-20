@@ -74,6 +74,14 @@ var D2RiskColors = map[string]D2Color{
 	"ok":       {Fill: "#e8f5e9", Stroke: "#388e3c"},
 }
 
+// D2ChangeColors maps change states to colors for before/after diagrams.
+var D2ChangeColors = map[string]D2Color{
+	"added":     {Fill: "#c8e6c9", Stroke: "#2e7d32"}, // Green - new entities
+	"modified":  {Fill: "#fff9c4", Stroke: "#f9a825"}, // Yellow - changed entities
+	"deleted":   {Fill: "#ffcdd2", Stroke: "#c62828"}, // Red - removed entities
+	"unchanged": {Fill: "#ffffff", Stroke: "#757575"}, // White/gray - no change
+}
+
 // D2LayerColors maps architectural layers to colors.
 var D2LayerColors = map[string]D2Color{
 	"api":     {Fill: "#e0f7fa", Stroke: "#00838f"}, // Cyan - API/HTTP layer
@@ -287,6 +295,31 @@ func GetD2NodeStyle(entityType, importance string, coverage float64, language st
 	}
 
 	return style
+}
+
+// ApplyChangeStateStyle modifies a node style to reflect the change state.
+// Change state colors override entity/importance colors for visual emphasis.
+func ApplyChangeStateStyle(style *D2NodeStyle, changeState string) {
+	if changeState == "" {
+		return
+	}
+
+	if colors, ok := D2ChangeColors[changeState]; ok {
+		style.Fill = colors.Fill
+		style.Stroke = colors.Stroke
+	}
+
+	// Visual emphasis for changes
+	switch changeState {
+	case "added":
+		style.StrokeWidth = 2
+	case "modified":
+		style.StrokeWidth = 2
+		style.StrokeDash = 3 // Dashed border for modified
+	case "deleted":
+		style.StrokeWidth = 2
+		style.Opacity = 0.7 // Slightly faded for deleted
+	}
 }
 
 // GetCoverageColor returns the color for a coverage percentage.

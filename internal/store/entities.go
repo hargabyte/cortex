@@ -477,12 +477,81 @@ func IsValidRef(ref string) bool {
 	return true
 }
 
+// DoltHashLength is the length of a full Dolt commit hash.
+const DoltHashLength = 32
+
+// ResolveRef resolves a potentially short commit hash to a full hash.
+// Dolt's AS OF clause requires full commit hashes (32 chars) but users often
+// provide shortened versions (7 chars as shown by cx history).
+// This function:
+//   - Passes through special refs (HEAD, HEAD~N, etc.)
+//   - Passes through full 32-char hashes unchanged
+//   - Resolves short hashes by querying dolt_log
+func (s *Store) ResolveRef(ref string) (string, error) {
+	if ref == "" {
+		return "", fmt.Errorf("empty ref")
+	}
+
+	// Special refs starting with HEAD pass through
+	if strings.HasPrefix(ref, "HEAD") {
+		return ref, nil
+	}
+
+	// Full hashes (32 chars) pass through
+	if len(ref) >= DoltHashLength {
+		return ref, nil
+	}
+
+	// Refs containing special characters (/, ~, ^) are not short hashes
+	if strings.ContainsAny(ref, "/~^") {
+		return ref, nil
+	}
+
+	// Try to resolve as a short commit hash
+	var fullHash string
+	query := "SELECT commit_hash FROM dolt_log WHERE commit_hash LIKE ? LIMIT 2"
+	rows, err := s.db.Query(query, ref+"%")
+	if err != nil {
+		// If dolt_log query fails, return original ref and let AS OF handle it
+		return ref, nil
+	}
+	defer rows.Close()
+
+	var matches []string
+	for rows.Next() {
+		var hash string
+		if err := rows.Scan(&hash); err != nil {
+			continue
+		}
+		matches = append(matches, hash)
+	}
+
+	switch len(matches) {
+	case 0:
+		// No match found - might be a branch name, return original
+		return ref, nil
+	case 1:
+		fullHash = matches[0]
+	default:
+		// Ambiguous - multiple commits match this prefix
+		return "", fmt.Errorf("ambiguous ref '%s': matches %d commits", ref, len(matches))
+	}
+
+	return fullHash, nil
+}
+
 // GetEntityAt retrieves an entity by ID at a specific Dolt commit/ref.
 // Uses AS OF to query the table at a historical point.
-// Supported refs: commit hash, branch name, tag, HEAD~N.
+// Supported refs: commit hash (full or short), branch name, tag, HEAD~N.
 func (s *Store) GetEntityAt(id string, ref string) (*Entity, error) {
 	if !IsValidRef(ref) {
 		return nil, fmt.Errorf("invalid ref format: %s", ref)
+	}
+
+	// Resolve short commit hashes to full hashes
+	resolvedRef, err := s.ResolveRef(ref)
+	if err != nil {
+		return nil, fmt.Errorf("resolve ref %s: %w", ref, err)
 	}
 
 	var e Entity
@@ -495,13 +564,12 @@ func (s *Store) GetEntityAt(id string, ref string) (*Entity, error) {
 		SELECT id, name, entity_type, kind, file_path, line_start, line_end,
 			signature, sig_hash, body_hash, receiver, visibility, fields, language, status,
 			body_text, doc_comment, skeleton, created_at, updated_at
-		FROM entities AS OF '%s' WHERE id = ?`, ref)
+		FROM entities AS OF '%s' WHERE id = ?`, resolvedRef)
 
-	err := s.db.QueryRow(query, id).Scan(
+	err = s.db.QueryRow(query, id).Scan(
 		&e.ID, &e.Name, &e.EntityType, &e.Kind, &e.FilePath, &e.LineStart, &lineEnd,
 		&e.Signature, &e.SigHash, &e.BodyHash, &e.Receiver, &e.Visibility, &e.Fields, &language, &e.Status,
 		&bodyText, &docComment, &skeleton, &createdAt, &updatedAt)
-
 	if err != nil {
 		return nil, err
 	}
@@ -548,9 +616,16 @@ func (s *Store) GetEntityAt(id string, ref string) (*Entity, error) {
 
 // QueryEntitiesAt returns entities matching the filter at a specific Dolt commit/ref.
 // Uses AS OF to query the table at a historical point.
+// Supports short commit hashes which are automatically resolved to full hashes.
 func (s *Store) QueryEntitiesAt(filter EntityFilter, ref string) ([]*Entity, error) {
 	if !IsValidRef(ref) {
 		return nil, fmt.Errorf("invalid ref format: %s", ref)
+	}
+
+	// Resolve short commit hashes to full hashes
+	resolvedRef, err := s.ResolveRef(ref)
+	if err != nil {
+		return nil, fmt.Errorf("resolve ref %s: %w", ref, err)
 	}
 
 	// Use AS OF in the FROM clause
@@ -558,7 +633,7 @@ func (s *Store) QueryEntitiesAt(filter EntityFilter, ref string) ([]*Entity, err
 		SELECT id, name, entity_type, kind, file_path, line_start, line_end,
 			signature, sig_hash, body_hash, receiver, visibility, fields, language, status,
 			body_text, doc_comment, skeleton, created_at, updated_at
-		FROM entities AS OF '%s' WHERE 1=1`, ref)
+		FROM entities AS OF '%s' WHERE 1=1`, resolvedRef)
 	args := []interface{}{}
 
 	if filter.EntityType != "" {

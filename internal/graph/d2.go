@@ -48,14 +48,15 @@ func DefaultDiagramConfig() *DiagramConfig {
 
 // DiagramEntity represents an entity to include in the diagram.
 type DiagramEntity struct {
-	ID         string  // Unique identifier
-	Name       string  // Display name
-	Type       string  // Entity type: function, method, type, struct, interface, etc.
-	Importance string  // Importance: keystone, bottleneck, high-fan-in, high-fan-out, normal, leaf
-	Coverage   float64 // Test coverage percentage (0-100), -1 if unknown
-	Language   string  // Programming language
-	Module     string  // Module/package for grouping
-	Layer      string  // Architectural layer: api, service, data, domain
+	ID          string  // Unique identifier
+	Name        string  // Display name
+	Type        string  // Entity type: function, method, type, struct, interface, etc.
+	Importance  string  // Importance: keystone, bottleneck, high-fan-in, high-fan-out, normal, leaf
+	Coverage    float64 // Test coverage percentage (0-100), -1 if unknown
+	Language    string  // Programming language
+	Module      string  // Module/package for grouping
+	Layer       string  // Architectural layer: api, service, data, domain
+	ChangeState string  // Change state: added, modified, deleted, unchanged (empty = not applicable)
 }
 
 // DiagramEdge represents a connection between entities.
@@ -328,6 +329,11 @@ func (g *D2Generator) writeNode(sb *strings.Builder, entity DiagramEntity) {
 	}
 	style := GetD2NodeStyle(entity.Type, entity.Importance, coverage, entity.Language)
 
+	// Apply change state styling if present (for before/after diagrams)
+	if entity.ChangeState != "" {
+		ApplyChangeStateStyle(&style, entity.ChangeState)
+	}
+
 	sb.WriteString(fmt.Sprintf("%s: {\n", safeID))
 	sb.WriteString(fmt.Sprintf("  label: %q\n", displayName))
 	sb.WriteString(fmt.Sprintf("  shape: %s\n", style.Shape))
@@ -362,6 +368,11 @@ func (g *D2Generator) writeNodeInContainer(sb *strings.Builder, entity DiagramEn
 		coverage = -1
 	}
 	style := GetD2NodeStyle(entity.Type, entity.Importance, coverage, entity.Language)
+
+	// Apply change state styling if present (for before/after diagrams)
+	if entity.ChangeState != "" {
+		ApplyChangeStateStyle(&style, entity.ChangeState)
+	}
 
 	sb.WriteString(fmt.Sprintf("%s%s: {\n", indent, safeID))
 	sb.WriteString(fmt.Sprintf("%s  label: %q\n", indent, displayName))

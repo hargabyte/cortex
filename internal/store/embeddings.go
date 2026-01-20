@@ -193,15 +193,22 @@ func (s *Store) EmbeddingCount() (int, error) {
 }
 
 // GetEmbeddingAt retrieves an embedding at a specific commit/ref using time travel queries.
+// Supports short commit hashes which are automatically resolved to full hashes.
 func (s *Store) GetEmbeddingAt(entityID, ref string) (*EntityEmbedding, error) {
+	// Resolve short commit hashes to full hashes
+	resolvedRef, err := s.ResolveRef(ref)
+	if err != nil {
+		return nil, fmt.Errorf("resolve ref %s: %w", ref, err)
+	}
+
 	var e EntityEmbedding
 	var embJSON string
 	query := fmt.Sprintf(`
 		SELECT entity_id, embedding, model_version, content_hash, created_at
 		FROM entity_embeddings AS OF '%s'
 		WHERE entity_id = ?
-	`, ref)
-	err := s.db.QueryRow(query, entityID).Scan(&e.EntityID, &embJSON, &e.ModelVersion, &e.ContentHash, &e.CreatedAt)
+	`, resolvedRef)
+	err = s.db.QueryRow(query, entityID).Scan(&e.EntityID, &embJSON, &e.ModelVersion, &e.ContentHash, &e.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
