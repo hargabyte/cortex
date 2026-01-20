@@ -1,95 +1,139 @@
-# Session Handoff: CX Auto-Exclude Nested Projects
+# Session Handoff: CX Report Generation - Diagram Presets
 
-**Date:** 2026-01-16
-**Last Session:** Created cortex-z49.8 for nested project detection
+**Date:** 2026-01-20
+**Last Session:** Completed R2.3 Architecture Diagram Preset
 **Branch:** master
 
-## Current Task: cortex-z49.8 - Auto-exclude nested project directories
+## Completed: R2.3 - Architecture Diagram Preset
 
-### Problem
+Created preset system for D2 diagram generation with full report integration.
 
-Auto-exclude only checks root directory for marker files. Nested subprojects aren't detected:
+### Files Created
 
+- `internal/graph/d2_presets.go` (350 lines)
+  - `DiagramPreset` type with Architecture, CallFlow, Coverage, Dependency presets
+  - `ArchitecturePreset()` - TALA layout, module containers, 50 max nodes
+  - `CallFlowPreset()` - ELK layout, vertical down direction
+  - `CoveragePreset()` - Coverage heatmap with status icons
+  - `DependencyPreset()` - Standard dependency graph
+  - `BuildArchitectureDiagram()` - Store integration via PageRank
+  - `BuildModuleArchitectureDiagram()` - Groups top 5 entities per module
+  - Helpers: `extractModuleFromPath`, `inferLanguage`, `inferLayer`, `classifyImportanceByRank`
+
+- `internal/graph/d2_presets_test.go` (313 lines) - Full test coverage
+
+### Files Modified
+
+- `internal/report/gather.go` - Added `gatherArchitectureDiagram()` for overview reports
+
+### API Reference
+
+```go
+// Get preset configuration
+cfg := graph.ArchitecturePreset()  // TALA layout, modules as containers
+cfg := graph.CallFlowPreset()      // ELK layout, vertical flow
+cfg := graph.CoveragePreset()      // Coverage heatmap
+cfg := graph.DependencyPreset()    // Standard dependency graph
+cfg := graph.GetPreset(graph.PresetArchitecture)  // By name
+
+// Generate diagram from store
+d2Code, err := graph.BuildArchitectureDiagram(store, "Title", 50)
+d2Code, err := graph.BuildModuleArchitectureDiagram(store, "Title")
+
+// Generate from entities/deps directly
+gen := graph.NewD2Generator(cfg)
+d2Code := gen.Generate(entities, deps)
 ```
-project/
-  Cargo.toml           ← detected (root)
-  target/              ← excluded (works)
-  tools/
-    svg-generator/
-      src-tauri/
-        Cargo.toml     ← NOT detected (nested)
-        target/        ← NOT excluded (bug)
-```
 
-### Solution
+## Now Unblocked
 
-Recursively detect marker files at any depth. When found, exclude their sibling dependency directory.
+The following tasks are ready to work on:
 
-**Detection rules (same as Phase 1, but recursive):**
+| Task | Description | Priority |
+|------|-------------|----------|
+| R2.4 | Call Flow Diagram Preset | P1 |
+| R2.5 | Render Command | P1 |
+| R1.3 | YAML/JSON Output | P1 |
+| R1.4 | Output Handling | P1 |
 
-| Marker File | Exclude Sibling |
-|-------------|-----------------|
-| `Cargo.toml` | `target/` |
-| `package.json` | `node_modules/` |
-| `go.mod` + `vendor/modules.txt` | `vendor/` |
-| `composer.json` + `vendor/autoload.php` | `vendor/` |
-| `pyvenv.cfg` | parent directory |
+## Recommended Next Task: R2.4 - Call Flow Diagram Preset
 
-### Implementation Approach
+The Call Flow preset already exists in `d2_presets.go`, but needs:
+1. Integration with report system for feature reports
+2. `BuildCallFlowDiagram()` function to query call chains from store
+3. Test coverage for call flow generation
 
-Modify `internal/exclude/autoexclude.go`:
-
-1. Walk the directory tree looking for marker files
-2. When a marker is found, check if sibling dependency dir exists
-3. Add to exclude list with path relative to project root
-4. Skip already-excluded directories during walk (optimization)
-
-### Files to Modify
-
-- `internal/exclude/autoexclude.go` - Add recursive `filepath.WalkDir`
-- `internal/exclude/autoexclude_test.go` - Add nested project test cases
-
-### Out of Scope
-
-User's other complaints are Phase 2+ (need `.cxignore`):
-- `tabby-analysis/` - no marker file
-- `backup/` - no marker file
-- `src-tauri/gen/` - generated code detection
-
-## Previous Work (cortex-z49.7) - COMPLETE
-
-Phase 1 auto-exclude implemented:
-- `internal/exclude/autoexclude.go` - root-level detection
-- `internal/exclude/autoexclude_test.go` - tests
-- `internal/cmd/scan.go` - integration with `--no-auto-exclude` flag
-
-## Quick Start
+### Quick Start for R2.4
 
 ```bash
 # Context recovery
 cx prime
-bd show cortex-z49.8
+bd show cortex-dkd.2.4
+bd update cortex-dkd.2.4 --status in_progress
 
-# Look at current implementation
-cat internal/exclude/autoexclude.go
-
-# Implement recursive detection
-# 1. Replace root-only checks with filepath.WalkDir
-# 2. Collect marker files at any depth
-# 3. Add sibling dependency dirs to exclude list
-# 4. Add tests for nested projects
+# Implementation
+# 1. Add BuildCallFlowDiagram() to d2_presets.go
+# 2. Add gatherCallFlowDiagram() to gather.go for feature reports
+# 3. Add tests
 
 # Test
-go test ./internal/exclude/...
+go test ./internal/graph/... ./internal/report/...
 
 # When done
-bd close cortex-z49.8 --reason "Added recursive detection for nested project directories"
+bd close cortex-dkd.2.4 --reason "Added call flow diagram generation with report integration"
 bd sync
 git add .
-git commit -m "fix(scan): auto-exclude nested project directories (cortex-z49.8)"
+git commit -m "Add Call Flow Diagram Preset with report integration (R2.4 complete)"
 git push
 ```
 
-## Research Reference
+## Alternative: R2.5 - Render Command
 
-Full language-specific research at `docs/cxignore-language-research.md`
+Create CLI command to render D2 diagrams to SVG/PNG.
+
+```bash
+# Target usage
+cx render diagram.d2 -o diagram.svg
+cx report overview --data | cx render --stdin -o arch.svg
+```
+
+## Epic Structure
+
+```
+cortex-dkd: CX 3.0: Report Generation
+├── R1: Report Engine Core
+│   ├── R1.1: Report Schema Types ✓
+│   ├── R1.2: Data Gathering ✓
+│   ├── R1.3: YAML/JSON Output (ready)
+│   └── R1.4: Output Handling (ready)
+├── R2: D2 Diagram Integration
+│   ├── R2.1: D2 Visual Design System ✓
+│   ├── R2.2: D2 Code Generator ✓
+│   ├── R2.3: Architecture Diagram Preset ✓ ← JUST COMPLETED
+│   ├── R2.4: Call Flow Diagram Preset (ready)
+│   └── R2.5: Render Command (ready)
+└── R3: Report Commands (blocked on R1, R2)
+```
+
+## Previous Session Summaries
+
+### Session 5 (2026-01-20) - R2.3 Architecture Preset
+- Created `d2_presets.go` with four diagram presets
+- Architecture preset uses TALA layout for superior container handling
+- Integrated with report system via `gatherArchitectureDiagram()`
+- Full test coverage in `d2_presets_test.go`
+
+### Session 4 (2026-01-20) - R2.2 D2 Code Generator
+- Implemented `DiagramGenerator` interface
+- Four diagram types: Architecture, CallFlow, Dependency, Coverage
+- Visual design system integration
+
+### Session 3 (2026-01-19) - R2.1 D2 Visual Design System
+- Created `d2_styles.go` with colors, icons, themes
+- Entity type → color mapping
+- Importance → visual emphasis mapping
+
+### Session 2 (2026-01-18) - R1.1/R1.2 Report Schema & Data Gathering
+- Created report schema types in `internal/report/schema.go`
+- Implemented `DataGatherer` in `internal/report/gather.go`
+- Overview, Feature, Changes, Health report structures
