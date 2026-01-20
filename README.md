@@ -33,6 +33,9 @@ This is wasteful. Most of my time is spent *finding* code, not *writing* it.
 | "What breaks if I change this?" | No idea | `cx safe <file>` |
 | "What calls this function?" | Grep for the name, miss dynamic calls | `cx show <entity> --related` |
 | "Where should I start?" | Ask you, or guess | `cx map` |
+| "What changed since I last looked?" | Re-read everything | `cx diff HEAD~1` or `cx catchup` |
+| "When did this break?" | Git blame individual files | `cx blame <entity>` |
+| "What did this look like before?" | Checkout old commit | `cx show <entity> --at HEAD~5` |
 
 Cortex gives me answers in milliseconds, using a few hundred tokens instead of tens of thousands.
 
@@ -222,12 +225,15 @@ Your Codebase                 Cortex                         Me (AI Agent)
 ───────────────────────────────────────────────────────────────────────────
 
   src/
-  ├── auth/          ────►   cx scan   ────►   .cx/cortex.db
-  │   ├── login.go          (tree-sitter      SQLite database with:
+  ├── auth/          ────►   cx scan   ────►   .cx/cortex/
+  │   ├── login.go          (tree-sitter      Dolt database with:
   │   └── token.go           parsing)         • entities
-  ├── api/                                    • dependencies
-  │   └── handler.go                          • importance scores
-  └── ...
+  ├── api/                        │           • dependencies
+  │   └── handler.go              │           • importance scores
+  └── ...                         │           • full version history
+                                  ▼
+                            dolt commit
+                            (auto-versioned)
 
                             cx context  ◄────  "add rate limiting"
                             --smart
@@ -241,9 +247,10 @@ Your Codebase                 Cortex                         Me (AI Agent)
 2. **Extract**: Pull out every function, class, type with signatures
 3. **Graph**: Track who-calls-whom across the codebase
 4. **Rank**: PageRank identifies which entities are critical
-5. **Query**: I ask for what I need and get exactly that
+5. **Version**: Every scan creates a Dolt commit with history
+6. **Query**: I ask for what I need—now or at any point in history
 
-The database lives in `.cx/cortex.db` in your project root. Run `cx scan` after major changes to keep it current.
+The database lives in `.cx/cortex/` (a Dolt repository). Run `cx scan` after major changes to keep it current. Every scan is versioned, so I can diff, blame, and time-travel.
 
 ---
 
@@ -306,9 +313,47 @@ The database lives in `.cx/cortex.db` in your project root. Run `cx scan` after 
 |---------|---------|
 | `cx scan` | Build/update the code graph |
 | `cx scan --force` | Full rescan |
+| `cx scan --tag <name>` | Tag this scan for future reference |
 | `cx doctor` | Health check |
 | `cx doctor --fix` | Auto-fix issues |
 | `cx reset` | Reset database |
+
+### Version Control (Dolt-Powered)
+
+| Command | Purpose |
+|---------|---------|
+| `cx history` | View scan commit history |
+| `cx history --limit N` | Last N scans |
+| `cx diff` | Show uncommitted changes |
+| `cx diff HEAD~1` | Changes since previous scan |
+| `cx diff HEAD~5 HEAD` | Changes over last 5 scans |
+| `cx diff --entity <name>` | Filter to specific entity |
+| `cx blame <entity>` | When/why entity changed |
+| `cx branch` | List Dolt branches |
+| `cx branch <name>` | Create branch |
+| `cx branch -c <name>` | Checkout branch |
+| `cx sql "<query>"` | Direct SQL passthrough |
+| `cx rollback` | Undo last scan |
+| `cx rollback HEAD~N` | Rollback to specific point |
+
+### Time Travel
+
+| Command | Purpose |
+|---------|---------|
+| `cx show <entity> --at HEAD~5` | Entity state 5 commits ago |
+| `cx show <entity> --at <tag>` | Entity at tagged release |
+| `cx show <entity> --history` | Entity evolution over time |
+| `cx find <name> --at <ref>` | Search at historical point |
+| `cx safe <file> --trend` | Blast radius trend over time |
+
+### Agent Optimization
+
+| Command | Purpose |
+|---------|---------|
+| `cx stale` | Check if graph needs refresh |
+| `cx stale --scans N` | Entities unchanged for N+ scans |
+| `cx catchup` | Rescan and show what changed |
+| `cx catchup --summary` | Brief change summary |
 
 ### Organization
 
@@ -346,9 +391,27 @@ The session start hook (set up in Quick Start) ensures I know cx is available ev
    BEFORE editing files:   cx safe <file>
    To find code:           cx find <name> | cx show <entity>
    Project overview:       cx map
+   What changed?           cx catchup | cx diff HEAD~1
 ```
 
 This is the difference between me spending 50 tool calls exploring your codebase vs. 3 targeted queries.
+
+### Multi-Session Awareness
+
+With Dolt versioning, I can now maintain awareness across sessions:
+
+```bash
+# Start of new session - what changed while I was away?
+cx catchup                        # Rescan and show changes
+cx stale                          # Is my context outdated?
+
+# During investigation
+cx blame LoginUser                # When did this entity change?
+cx show LoginUser --at HEAD~5     # What did it look like before?
+cx diff HEAD~10 --entity Auth     # How has auth evolved?
+```
+
+This means I don't start every session blind. I can ask "what's new?" and get a precise answer.
 
 ### CLAUDE.md Instructions (Alternative)
 
@@ -430,14 +493,30 @@ Requires Go 1.21+.
 Optional `.cx/config.yaml`:
 
 ```yaml
+# Exclude patterns
 exclude:
   - "vendor/*"
   - "node_modules/*"
   - "*_test.go"
 
+# Pre-commit guard settings
 guard:
   fail_on_coverage_regression: true
   min_coverage_for_keystones: 50
+
+# Storage backend (default: dolt)
+storage:
+  backend: dolt
+```
+
+### Database Location
+
+Cortex stores its database in `.cx/cortex/` - a Dolt repository with full version history. You can interact with it directly using Dolt CLI if needed:
+
+```bash
+cd .cx/cortex
+dolt log --oneline              # View commit history
+dolt diff HEAD~1                # See raw changes
 ```
 
 ---
@@ -458,7 +537,10 @@ MIT
 
 ## Acknowledgments
 
-Built by humans and AI working together. Thanks to the tree-sitter project for making multi-language parsing tractable and thanks to Steve Yegge for the inspiration we got from the Beads project.
+Built by humans and AI working together. Thanks to:
+- [tree-sitter](https://tree-sitter.github.io/) for making multi-language parsing tractable
+- [Dolt](https://github.com/dolthub/dolt) for bringing Git-like version control to SQL
+- Steve Yegge for the inspiration from the [Beads](https://github.com/steveyegge/beads) project
 
 ---
 
