@@ -17,11 +17,18 @@ import (
 // DataGatherer gathers data from the store for report generation.
 type DataGatherer struct {
 	store *store.Store
+	theme string // Optional theme for D2 diagrams
 }
 
 // NewDataGatherer creates a new DataGatherer with the given store.
 func NewDataGatherer(s *store.Store) *DataGatherer {
-	return &DataGatherer{store: s}
+	return &DataGatherer{store: s, theme: ""}
+}
+
+// SetTheme sets the diagram theme for report generation.
+// Use empty string for default theme.
+func (g *DataGatherer) SetTheme(theme string) {
+	g.theme = theme
 }
 
 // GatherOverviewData populates an OverviewReportData with data from the store.
@@ -282,7 +289,7 @@ func (g *DataGatherer) gatherChangesDiagram(data *ChangesReportData) error {
 	}
 
 	title := fmt.Sprintf("Changes: %s → %s", data.Report.FromRef, data.Report.ToRef)
-	d2Code := graph.BuildChangesDiagram(added, modified, deleted, title)
+	d2Code := graph.BuildChangesDiagram(added, modified, deleted, title, g.theme)
 
 	data.Diagrams["changes_summary"] = DiagramData{
 		Title: title,
@@ -484,8 +491,8 @@ func (g *DataGatherer) gatherArchitectureDiagram(data *OverviewReportData) error
 		data.Diagrams = make(map[string]DiagramData)
 	}
 
-	// Use the architecture preset to build the diagram
-	d2Code, err := graph.BuildArchitectureDiagram(g.store, "System Architecture", 50)
+	// Use the architecture preset to build the diagram with optional theme
+	d2Code, err := graph.BuildArchitectureDiagram(g.store, "System Architecture", 50, g.theme)
 	if err != nil {
 		return fmt.Errorf("build architecture diagram: %w", err)
 	}
@@ -513,8 +520,8 @@ func (g *DataGatherer) gatherCallFlowDiagram(data *FeatureReportData) error {
 	rootEntity := data.Entities[0]
 	title := fmt.Sprintf("Call Flow: %s", rootEntity.Name)
 
-	// Build call flow diagram with depth 3
-	d2Code, err := graph.BuildCallFlowDiagram(g.store, rootEntity.ID, 3, title)
+	// Build call flow diagram with depth 3 and optional theme
+	d2Code, err := graph.BuildCallFlowDiagram(g.store, rootEntity.ID, 3, title, g.theme)
 	if err != nil {
 		return fmt.Errorf("build call flow diagram: %w", err)
 	}

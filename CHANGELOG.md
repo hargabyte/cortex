@@ -5,6 +5,143 @@ All notable changes to Cortex (cx) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-01-20
+
+### Added - AI-Powered Reports, Semantic Search, and MCP Server
+
+This release adds three major features: structured report generation with D2 diagrams, semantic code search via embeddings, and an MCP server for AI IDE integration.
+
+#### Report Generation
+
+Generate publication-quality codebase reports with visual D2 diagrams. Reports combine structured data with AI-written narratives for stakeholder communication.
+
+**New Commands:**
+
+- **`cx report overview --data`** - System architecture with module structure
+  ```bash
+  cx report overview --data --theme earth-tones   # Architecture diagram
+  cx report overview --data -o overview.yaml       # Write to file
+  ```
+
+- **`cx report feature <query> --data`** - Feature deep-dive using semantic search
+  ```bash
+  cx report feature "authentication" --data        # Call flow diagram
+  cx report feature "payment" --data --theme dark  # Dark theme
+  ```
+
+- **`cx report changes --since <ref> --data`** - What changed (Dolt time-travel)
+  ```bash
+  cx report changes --since HEAD~50 --data         # Recent changes
+  cx report changes --since v1.0 --until v2.0      # Between releases
+  ```
+
+- **`cx report health --data`** - Risk analysis and recommendations
+  ```bash
+  cx report health --data                          # Coverage gaps, complexity
+  ```
+
+- **`cx report --init-skill`** - Generate Claude Code skill for interactive reports
+  ```bash
+  cx report --init-skill > ~/.claude/commands/report.md
+  ```
+
+**Diagram Themes:**
+
+12 professionally designed themes for D2 diagrams:
+- `default` - Colorblind Clear (accessibility-focused, recommended)
+- `earth-tones` - Natural browns and greens
+- `dark` - Dark Mauve for dark mode
+- `terminal` - Green-on-black retro aesthetic
+- `vanilla-nitro`, `mixed-berry`, `grape-soda`, `orange-creamsicle`, `shirley-temple`, `everglade-green`, `dark-flagship`, `neutral`
+
+**D2 Diagram Rendering:**
+
+- **`cx render <file.d2> -o <file.svg>`** - Render D2 diagrams to SVG
+  ```bash
+  cx render diagram.d2 -o output.svg               # File to file
+  echo '<d2 code>' | cx render - -o output.svg     # Pipe input
+  ```
+
+#### Semantic Search
+
+Find code by meaning, not just keywords. Cortex generates vector embeddings for every entity using pure Go (no external APIs).
+
+**New Flags:**
+
+- **`cx find --semantic "<query>"`** - Concept-based code discovery
+  ```bash
+  cx find --semantic "validate user credentials"   # Finds: LoginUser, AuthMiddleware
+  cx find --semantic "database connection pooling" # Finds: NewPool, GetConn
+  cx find --semantic "error handling for HTTP"     # Finds: HandleError, WriteErrorResponse
+  ```
+
+**How it works:**
+1. During `cx scan`, entity signatures and doc comments are embedded using all-MiniLM-L6-v2
+2. Embeddings are stored in Dolt with full version history
+3. Queries are embedded and compared using cosine similarity
+4. Hybrid search combines: 50% semantic + 30% keyword + 20% PageRank
+
+**Technical Details:**
+- Embeddings generated via [Hugot](https://github.com/knights-analytics/hugot) (pure Go inference)
+- No API keys or external services required—everything runs locally
+- Vectors stored in Dolt for time-travel queries
+
+#### MCP Server
+
+Run Cortex as a Model Context Protocol server for AI IDE integration. Exposes all Cortex tools without spawning separate CLI processes.
+
+**New Commands:**
+
+- **`cx serve`** - Start MCP server
+  ```bash
+  cx serve                          # Start server
+  cx serve --list-tools             # Show available tools
+  cx serve --tools=context,safe     # Limit to specific tools
+  ```
+
+**Available MCP Tools:**
+- `cx_context` - Smart context assembly for task-focused context
+- `cx_safe` - Pre-flight safety check before modifying code
+- `cx_find` - Search for entities by name pattern
+- `cx_show` - Show detailed information about an entity
+- `cx_map` - Project skeleton overview
+- `cx_diff` - Show changes since last scan
+- `cx_impact` - Analyze blast radius of changes
+- `cx_gaps` - Find coverage gaps in critical code
+
+**IDE Setup:**
+
+Cursor:
+```json
+{
+  "mcpServers": {
+    "cortex": {
+      "command": "cx",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+Windsurf (`~/.windsurf/mcp.json`):
+```json
+{
+  "servers": {
+    "cortex": {
+      "command": "cx",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+### Changed
+
+- Default D2 theme changed to "Colorblind Clear" for accessibility
+- Improved dead code detection with entity type whitelist (excludes imports, variables, constants that can't be tracked via call graph)
+
+---
+
 ## [0.2.0] - 2026-01-20
 
 ### Added - Dolt Database Backend

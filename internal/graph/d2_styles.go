@@ -15,16 +15,61 @@ type D2Theme struct {
 // D2Themes available for diagram generation.
 // See: d2 themes (CLI) or https://d2lang.com/tour/themes/
 var D2Themes = map[string]D2Theme{
-	"default":          {ID: 8, Name: "Colorblind Clear", LayoutEngine: "elk"},
-	"colorblind-clear": {ID: 8, Name: "Colorblind Clear", LayoutEngine: "elk"},
-	"vanilla-nitro":    {ID: 100, Name: "Vanilla Nitro Cola", LayoutEngine: "elk"},
-	"mixed-berry":      {ID: 5, Name: "Mixed Berry Blue", LayoutEngine: "elk"},
-	"grape-soda":       {ID: 6, Name: "Grape Soda", LayoutEngine: "elk"},
-	"earth-tones":      {ID: 103, Name: "Earth Tones", LayoutEngine: "elk"},
-	"terminal":         {ID: 300, Name: "Terminal", LayoutEngine: "elk"},
-	"dark":             {ID: 200, Name: "Dark Mauve", LayoutEngine: "elk"},
-	"dark-flagship":    {ID: 201, Name: "Dark Flagship Terrastruct", LayoutEngine: "elk"},
-	"neutral":          {ID: 0, Name: "Neutral Default", LayoutEngine: "elk"},
+	"default":           {ID: 8, Name: "Colorblind Clear", LayoutEngine: "elk"},
+	"colorblind-clear":  {ID: 8, Name: "Colorblind Clear", LayoutEngine: "elk"},
+	"vanilla-nitro":     {ID: 100, Name: "Vanilla Nitro Cola", LayoutEngine: "elk"},
+	"mixed-berry":       {ID: 5, Name: "Mixed Berry Blue", LayoutEngine: "elk"},
+	"grape-soda":        {ID: 6, Name: "Grape Soda", LayoutEngine: "elk"},
+	"earth-tones":       {ID: 103, Name: "Earth Tones", LayoutEngine: "elk"},
+	"orange-creamsicle": {ID: 101, Name: "Orange Creamsicle", LayoutEngine: "elk"},
+	"shirley-temple":    {ID: 102, Name: "Shirley Temple", LayoutEngine: "elk"},
+	"everglade-green":   {ID: 104, Name: "Everglade Green", LayoutEngine: "elk"},
+	"terminal":          {ID: 300, Name: "Terminal", LayoutEngine: "elk"},
+	"dark":              {ID: 200, Name: "Dark Mauve", LayoutEngine: "elk"},
+	"dark-flagship":     {ID: 201, Name: "Dark Flagship Terrastruct", LayoutEngine: "elk"},
+	"neutral":           {ID: 0, Name: "Neutral Default", LayoutEngine: "elk"},
+}
+
+// D2ThemeDescription provides user-friendly descriptions for each theme.
+var D2ThemeDescription = map[string]string{
+	"default":           "High-contrast, accessibility-focused (recommended)",
+	"colorblind-clear":  "Same as default - optimized for color vision deficiency",
+	"vanilla-nitro":     "Warm cream and brown tones, professional",
+	"mixed-berry":       "Cool blue-purple berry palette",
+	"grape-soda":        "Vibrant purple/violet shades",
+	"earth-tones":       "Natural browns and greens, organic feel",
+	"orange-creamsicle": "Warm orange and cream, energetic",
+	"shirley-temple":    "Playful pink and red tones",
+	"everglade-green":   "Forest greens, nature-inspired",
+	"terminal":          "Green-on-black retro terminal aesthetic",
+	"dark":              "Dark purple/mauve for dark mode",
+	"dark-flagship":     "Dark with branded accent colors",
+	"neutral":           "Minimal grayscale, no color distraction",
+}
+
+// GetAvailableThemes returns a list of theme keys for user selection.
+// Excludes alias themes (like colorblind-clear which is same as default).
+func GetAvailableThemes() []string {
+	return []string{
+		"default",
+		"vanilla-nitro",
+		"mixed-berry",
+		"grape-soda",
+		"earth-tones",
+		"orange-creamsicle",
+		"shirley-temple",
+		"everglade-green",
+		"terminal",
+		"dark",
+		"dark-flagship",
+		"neutral",
+	}
+}
+
+// ValidateTheme checks if a theme name is valid.
+func ValidateTheme(theme string) bool {
+	_, ok := D2Themes[theme]
+	return ok
 }
 
 // D2Color represents a color with fill and stroke values.

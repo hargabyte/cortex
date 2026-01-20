@@ -141,11 +141,15 @@ func DependencyToDiagramEdge(dep *store.Dependency) DiagramEdge {
 
 // BuildArchitectureDiagram creates a D2 architecture diagram from store data.
 // It queries the store for entities and dependencies, then generates D2 code.
-func BuildArchitectureDiagram(s *store.Store, title string, maxEntities int) (string, error) {
+// The theme parameter is optional - pass empty string for default theme.
+func BuildArchitectureDiagram(s *store.Store, title string, maxEntities int, theme ...string) (string, error) {
 	config := ArchitecturePreset()
 	config.Title = title
 	if maxEntities > 0 {
 		config.MaxNodes = maxEntities
+	}
+	if len(theme) > 0 && theme[0] != "" {
+		config.Theme = theme[0]
 	}
 
 	// Query top entities by PageRank
@@ -428,7 +432,8 @@ func classifyImportanceByRank(pageRank float64) string {
 // BuildCallFlowDiagram creates a D2 call flow diagram starting from a root entity.
 // It performs BFS traversal following outgoing calls to the specified depth.
 // The diagram shows the call chain with entities ordered top-to-bottom.
-func BuildCallFlowDiagram(s *store.Store, rootEntityID string, depth int, title string) (string, error) {
+// The theme parameter is optional - pass empty string for default theme.
+func BuildCallFlowDiagram(s *store.Store, rootEntityID string, depth int, title string, theme ...string) (string, error) {
 	if depth <= 0 {
 		depth = 3 // Default depth
 	}
@@ -438,6 +443,9 @@ func BuildCallFlowDiagram(s *store.Store, rootEntityID string, depth int, title 
 
 	config := CallFlowPreset()
 	config.Title = title
+	if len(theme) > 0 && theme[0] != "" {
+		config.Theme = theme[0]
+	}
 
 	// Get root entity
 	rootEntity, err := s.GetEntity(rootEntityID)
@@ -578,7 +586,8 @@ func BuildCallFlowDiagramFromName(s *store.Store, entityName string, depth int, 
 
 // BuildCallersFlowDiagram creates a diagram showing what calls a given entity.
 // It traverses incoming dependencies (callers) instead of outgoing calls.
-func BuildCallersFlowDiagram(s *store.Store, targetEntityID string, depth int, title string) (string, error) {
+// The theme parameter is optional - pass empty string for default theme.
+func BuildCallersFlowDiagram(s *store.Store, targetEntityID string, depth int, title string, theme ...string) (string, error) {
 	if depth <= 0 {
 		depth = 3
 	}
@@ -589,6 +598,9 @@ func BuildCallersFlowDiagram(s *store.Store, targetEntityID string, depth int, t
 	config := CallFlowPreset()
 	config.Title = title
 	config.Direction = "up" // Reverse direction for callers view
+	if len(theme) > 0 && theme[0] != "" {
+		config.Theme = theme[0]
+	}
 
 	// Get target entity
 	targetEntity, err := s.GetEntity(targetEntityID)
@@ -722,14 +734,19 @@ type ChangedEntityInfo struct {
 // BuildChangesDiagram creates a D2 diagram showing changed entities with color coding.
 // Green = added, Yellow = modified, Red = deleted.
 // The diagram groups entities by module and highlights changes.
+// The theme parameter is optional - pass empty string for default theme.
 func BuildChangesDiagram(
 	added []ChangedEntityInfo,
 	modified []ChangedEntityInfo,
 	deleted []ChangedEntityInfo,
 	title string,
+	theme ...string,
 ) string {
 	config := ChangesDiagramPreset()
 	config.Title = title
+	if len(theme) > 0 && theme[0] != "" {
+		config.Theme = theme[0]
+	}
 
 	// Calculate proportional limits for each change type to ensure representation
 	totalChanges := len(added) + len(modified) + len(deleted)

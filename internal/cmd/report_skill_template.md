@@ -99,23 +99,55 @@ AskUserQuestion:
       description: "Concise summary with ASCII diagram representation"
 ```
 
+```
+AskUserQuestion:
+  question: "What color theme would you like for the diagrams?"
+  header: "Theme"
+  options:
+    - label: "Default (Recommended)"
+      description: "Colorblind Clear - high contrast, accessibility-focused"
+    - label: "Earth Tones"
+      description: "Natural browns and greens, organic professional feel"
+    - label: "Dark"
+      description: "Dark Mauve - purple/mauve for dark mode environments"
+    - label: "Terminal"
+      description: "Green-on-black retro terminal aesthetic"
+```
+
+**More themes available** (user can type any of these in "Other"):
+- `vanilla-nitro` - Warm cream/brown, professional
+- `mixed-berry` - Cool blue-purple palette
+- `grape-soda` - Vibrant purple/violet
+- `orange-creamsicle` - Warm orange and cream
+- `shirley-temple` - Playful pink and red
+- `everglade-green` - Forest greens, nature-inspired
+- `dark-flagship` - Dark with branded accents
+- `neutral` - Minimal grayscale
+
 ### Step 4: Collect Data and Extract Diagrams
 
-Run the appropriate cx report command:
+Run the appropriate cx report command with the selected theme:
 
 ```bash
 # Overview report - includes architecture diagram
-cx report overview --data
+cx report overview --data --theme <selected_theme>
 
 # Feature report - includes call flow diagram
-cx report feature "<query>" --data
+cx report feature "<query>" --data --theme <selected_theme>
 
 # Changes report - includes changes diagram
-cx report changes --since <ref> --data
+cx report changes --since <ref> --data --theme <selected_theme>
 
 # Health report - includes risk distribution
-cx report health --data
+cx report health --data --theme <selected_theme>
 ```
+
+**Theme mapping from user selection:**
+- "Default (Recommended)" → `--theme default`
+- "Earth Tones" → `--theme earth-tones`
+- "Dark" → `--theme dark`
+- "Terminal" → `--theme terminal`
+- Custom input → use as-is (e.g., `--theme everglade-green`)
 
 **IMPORTANT: Parse the YAML output and extract the `diagrams` section:**
 
@@ -315,9 +347,12 @@ User selects: "Tech Leads"
 [AskUserQuestion: Format]
 User selects: "HTML with diagrams (Recommended)"
 
-Claude: Gathering authentication feature data...
+[AskUserQuestion: Theme]
+User selects: "Earth Tones"
 
-[Runs: cx report feature "authentication" --data]
+Claude: Gathering authentication feature data with earth-tones theme...
+
+[Runs: cx report feature "authentication" --data --theme earth-tones]
 
 Found 12 relevant entities. Extracting call flow diagram...
 

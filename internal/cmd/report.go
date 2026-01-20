@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/anthropics/cx/internal/graph"
 	"github.com/anthropics/cx/internal/output"
 	"github.com/anthropics/cx/internal/report"
 	"github.com/spf13/cobra"
@@ -32,6 +34,20 @@ The --data flag outputs structured YAML (default) or JSON that includes:
   - D2 diagram code for visualizations
   - Coverage and health metrics
 
+Diagram Themes (--theme):
+  default           High-contrast, accessibility-focused (recommended)
+  vanilla-nitro     Warm cream and brown tones, professional
+  mixed-berry       Cool blue-purple berry palette
+  grape-soda        Vibrant purple/violet shades
+  earth-tones       Natural browns and greens, organic feel
+  orange-creamsicle Warm orange and cream, energetic
+  shirley-temple    Playful pink and red tones
+  everglade-green   Forest greens, nature-inspired
+  terminal          Green-on-black retro terminal aesthetic
+  dark              Dark purple/mauve for dark mode
+  dark-flagship     Dark with branded accent colors
+  neutral           Minimal grayscale, no color distraction
+
 Skill Setup:
   Use --init-skill to generate a Claude Code skill for interactive reports:
   cx report --init-skill > ~/.claude/commands/report.md
@@ -42,11 +58,11 @@ Examples:
   cx report changes --since HEAD~50 --data     # What changed
   cx report health --data                      # Risk analysis
 
-  # Output to file
-  cx report overview --data -o overview.yaml
+  # Output to file with custom theme
+  cx report overview --data --theme earth-tones -o overview.yaml
 
-  # JSON format
-  cx report feature "auth" --data --format json`,
+  # JSON format with dark theme
+  cx report feature "auth" --data --format json --theme dark`,
 	RunE: runReportRoot,
 }
 
@@ -55,6 +71,7 @@ var (
 	reportData      bool   // --data flag to output structured data
 	reportOutput    string // -o/--output file path
 	reportInitSkill bool   // --init-skill flag to output skill template
+	reportTheme     string // --theme flag for diagram theme
 )
 
 // reportOverviewCmd generates overview report data
@@ -162,6 +179,7 @@ func init() {
 	// Report-level flags (inherited by subcommands)
 	reportCmd.PersistentFlags().BoolVar(&reportData, "data", false, "Output structured data for AI consumption")
 	reportCmd.PersistentFlags().StringVarP(&reportOutput, "output", "o", "", "Output file path (default: stdout)")
+	reportCmd.PersistentFlags().StringVar(&reportTheme, "theme", "", "Diagram color theme (use --themes to list)")
 
 	// Skill template flag (local to report command, not inherited)
 	reportCmd.Flags().BoolVar(&reportInitSkill, "init-skill", false, "Output skill template for interactive report generation")
@@ -187,6 +205,11 @@ func runReportOverview(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--data flag is required (reports are designed for AI consumption)")
 	}
 
+	// Validate theme if provided
+	if reportTheme != "" && !graph.ValidateTheme(reportTheme) {
+		return fmt.Errorf("invalid theme %q. Available themes:\n%s", reportTheme, formatAvailableThemes())
+	}
+
 	// Open store
 	store, err := openStore()
 	if err != nil {
@@ -199,6 +222,7 @@ func runReportOverview(cmd *cobra.Command, args []string) error {
 
 	// Gather data from store
 	gatherer := report.NewDataGatherer(store)
+	gatherer.SetTheme(reportTheme)
 	if err := gatherer.GatherOverviewData(data); err != nil {
 		return fmt.Errorf("gather overview data: %w", err)
 	}
@@ -210,6 +234,11 @@ func runReportOverview(cmd *cobra.Command, args []string) error {
 func runReportFeature(cmd *cobra.Command, args []string) error {
 	if !reportData {
 		return fmt.Errorf("--data flag is required (reports are designed for AI consumption)")
+	}
+
+	// Validate theme if provided
+	if reportTheme != "" && !graph.ValidateTheme(reportTheme) {
+		return fmt.Errorf("invalid theme %q. Available themes:\n%s", reportTheme, formatAvailableThemes())
 	}
 
 	query := args[0]
@@ -226,6 +255,7 @@ func runReportFeature(cmd *cobra.Command, args []string) error {
 
 	// Gather data from store using FTS search
 	gatherer := report.NewDataGatherer(store)
+	gatherer.SetTheme(reportTheme)
 	if err := gatherer.GatherFeatureData(data, query); err != nil {
 		return fmt.Errorf("gather feature data: %w", err)
 	}
@@ -237,6 +267,11 @@ func runReportFeature(cmd *cobra.Command, args []string) error {
 func runReportChanges(cmd *cobra.Command, args []string) error {
 	if !reportData {
 		return fmt.Errorf("--data flag is required (reports are designed for AI consumption)")
+	}
+
+	// Validate theme if provided
+	if reportTheme != "" && !graph.ValidateTheme(reportTheme) {
+		return fmt.Errorf("invalid theme %q. Available themes:\n%s", reportTheme, formatAvailableThemes())
 	}
 
 	// Open store
@@ -251,6 +286,7 @@ func runReportChanges(cmd *cobra.Command, args []string) error {
 
 	// Gather data from Dolt time-travel queries
 	gatherer := report.NewDataGatherer(store)
+	gatherer.SetTheme(reportTheme)
 	if err := gatherer.GatherChangesData(data, changesSince, changesUntil); err != nil {
 		return fmt.Errorf("gather changes data: %w", err)
 	}
@@ -262,6 +298,11 @@ func runReportChanges(cmd *cobra.Command, args []string) error {
 func runReportHealth(cmd *cobra.Command, args []string) error {
 	if !reportData {
 		return fmt.Errorf("--data flag is required (reports are designed for AI consumption)")
+	}
+
+	// Validate theme if provided (health reports may have diagrams in the future)
+	if reportTheme != "" && !graph.ValidateTheme(reportTheme) {
+		return fmt.Errorf("invalid theme %q. Available themes:\n%s", reportTheme, formatAvailableThemes())
 	}
 
 	// Open store
@@ -276,11 +317,23 @@ func runReportHealth(cmd *cobra.Command, args []string) error {
 
 	// Gather health data from store
 	gatherer := report.NewDataGatherer(store)
+	gatherer.SetTheme(reportTheme)
 	if err := gatherer.GatherHealthData(data); err != nil {
 		return fmt.Errorf("gather health data: %w", err)
 	}
 
 	return outputReportData(data)
+}
+
+// formatAvailableThemes returns a formatted string of available themes for error messages.
+func formatAvailableThemes() string {
+	themes := graph.GetAvailableThemes()
+	var sb strings.Builder
+	for _, theme := range themes {
+		desc := graph.D2ThemeDescription[theme]
+		sb.WriteString(fmt.Sprintf("  %-17s %s\n", theme, desc))
+	}
+	return sb.String()
 }
 
 // outputReportData outputs the report data in the requested format

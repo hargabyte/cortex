@@ -57,10 +57,10 @@ func TestD2Generator_Generate_ThemeConfig(t *testing.T) {
 		wantID   string
 		wantLang string
 	}{
-		{"default theme", "default", "theme-id: 200", "layout-engine: elk"},
-		{"dark theme", "dark", "theme-id: 201", "layout-engine: elk"},
-		{"neutral theme", "neutral", "theme-id: 0", "layout-engine: elk"},
-		{"invalid theme falls back to default", "invalid", "theme-id: 200", "layout-engine: elk"},
+		{"default theme", "default", "theme-id: 8", "layout-engine: elk"},        // Colorblind Clear
+		{"dark theme", "dark", "theme-id: 200", "layout-engine: elk"},            // Dark Mauve
+		{"neutral theme", "neutral", "theme-id: 0", "layout-engine: elk"},        // Neutral Default
+		{"invalid theme falls back to default", "invalid", "theme-id: 8", "layout-engine: elk"},
 	}
 
 	for _, tt := range tests {
