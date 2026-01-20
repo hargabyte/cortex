@@ -4,11 +4,13 @@
 package context
 
 import (
+	"context"
 	"regexp"
 	"sort"
 	"strings"
 	"unicode"
 
+	"github.com/anthropics/cx/internal/embeddings"
 	"github.com/anthropics/cx/internal/graph"
 	"github.com/anthropics/cx/internal/store"
 )
@@ -31,17 +33,30 @@ type Intent struct {
 	ActionVerb string `yaml:"action_verb,omitempty" json:"action_verb,omitempty"`
 }
 
+// EntryPointSource indicates how an entry point was discovered.
+type EntryPointSource string
+
+const (
+	SourceExplicitMention EntryPointSource = "explicit_mention"
+	SourceKeywordMatch    EntryPointSource = "keyword_match"
+	SourceSemanticMatch   EntryPointSource = "semantic_match"
+	SourceHybridMatch     EntryPointSource = "hybrid_match"
+)
+
 // EntryPoint represents a discovered entry point for the task.
 type EntryPoint struct {
-	Entity     *store.Entity `yaml:"-" json:"-"`
-	ID         string        `yaml:"id" json:"id"`
-	Name       string        `yaml:"name" json:"name"`
-	Type       string        `yaml:"type" json:"type"`
-	Location   string        `yaml:"location" json:"location"`
-	Relevance  float64       `yaml:"relevance" json:"relevance"`
-	Reason     string        `yaml:"reason" json:"reason"`
-	PageRank   float64       `yaml:"pagerank,omitempty" json:"pagerank,omitempty"`
-	IsKeystone bool          `yaml:"is_keystone,omitempty" json:"is_keystone,omitempty"`
+	Entity          *store.Entity    `yaml:"-" json:"-"`
+	ID              string           `yaml:"id" json:"id"`
+	Name            string           `yaml:"name" json:"name"`
+	Type            string           `yaml:"type" json:"type"`
+	Location        string           `yaml:"location" json:"location"`
+	Relevance       float64          `yaml:"relevance" json:"relevance"`
+	Reason          string           `yaml:"reason" json:"reason"`
+	PageRank        float64          `yaml:"pagerank,omitempty" json:"pagerank,omitempty"`
+	IsKeystone      bool             `yaml:"is_keystone,omitempty" json:"is_keystone,omitempty"`
+	Source          EntryPointSource `yaml:"source,omitempty" json:"source,omitempty"`
+	SemanticScore   float64          `yaml:"semantic_score,omitempty" json:"semantic_score,omitempty"`
+	KeywordScore    float64          `yaml:"keyword_score,omitempty" json:"keyword_score,omitempty"`
 }
 
 // RelevantEntity represents an entity relevant to the task context.
@@ -67,13 +82,14 @@ type ExcludedEntity struct {
 
 // SmartContextResult contains the assembled smart context.
 type SmartContextResult struct {
-	Intent       *Intent           `yaml:"intent" json:"intent"`
-	EntryPoints  []*EntryPoint     `yaml:"entry_points" json:"entry_points"`
-	Relevant     []*RelevantEntity `yaml:"relevant_entities" json:"relevant_entities"`
-	Excluded     []*ExcludedEntity `yaml:"excluded,omitempty" json:"excluded,omitempty"`
-	TokensUsed   int               `yaml:"tokens_used" json:"tokens_used"`
-	TokensBudget int               `yaml:"tokens_budget" json:"tokens_budget"`
-	Warnings     []string          `yaml:"warnings,omitempty" json:"warnings,omitempty"`
+	Intent           *Intent           `yaml:"intent" json:"intent"`
+	EntryPoints      []*EntryPoint     `yaml:"entry_points" json:"entry_points"`
+	Relevant         []*RelevantEntity `yaml:"relevant_entities" json:"relevant_entities"`
+	Excluded         []*ExcludedEntity `yaml:"excluded,omitempty" json:"excluded,omitempty"`
+	TokensUsed       int               `yaml:"tokens_used" json:"tokens_used"`
+	TokensBudget     int               `yaml:"tokens_budget" json:"tokens_budget"`
+	Warnings         []string          `yaml:"warnings,omitempty" json:"warnings,omitempty"`
+	HybridSearchUsed bool              `yaml:"hybrid_search_used,omitempty" json:"hybrid_search_used,omitempty"`
 }
 
 // SmartContextOptions configures the smart context assembly.
@@ -84,6 +100,23 @@ type SmartContextOptions struct {
 	SearchLimit     int     // Max search results for entry points (default: 20)
 	KeystoneBoost   float64 // Multiplier for keystone entities (default: 2.0)
 	TagBoost        float64 // Multiplier for tagged entities (default: 1.5)
+	DisableSemantic bool    // Disable semantic search even if embeddings exist
+}
+
+// HybridWeights configures the hybrid scoring algorithm.
+type HybridWeights struct {
+	Semantic float64 // Weight for semantic similarity (default: 0.5)
+	Keyword  float64 // Weight for keyword match score (default: 0.3)
+	PageRank float64 // Weight for PageRank importance (default: 0.2)
+}
+
+// DefaultHybridWeights returns the default hybrid scoring weights.
+func DefaultHybridWeights() HybridWeights {
+	return HybridWeights{
+		Semantic: 0.5,
+		Keyword:  0.3,
+		PageRank: 0.2,
+	}
 }
 
 // boostTags defines tags that increase relevance in smart context
@@ -110,9 +143,11 @@ func DefaultSmartContextOptions() SmartContextOptions {
 
 // SmartContext assembles intent-aware context for a task description.
 type SmartContext struct {
-	store   *store.Store
-	graph   *graph.Graph
-	options SmartContextOptions
+	store         *store.Store
+	graph         *graph.Graph
+	options       SmartContextOptions
+	embedder      embeddings.Embedder
+	hasEmbeddings bool
 }
 
 // NewSmartContext creates a new smart context assembler.
@@ -133,10 +168,47 @@ func NewSmartContext(s *store.Store, g *graph.Graph, opts SmartContextOptions) *
 		opts.TagBoost = 1.5
 	}
 
-	return &SmartContext{
+	sc := &SmartContext{
 		store:   s,
 		graph:   g,
 		options: opts,
+	}
+
+	// Check if embeddings are available (unless disabled)
+	if !opts.DisableSemantic {
+		sc.hasEmbeddings = sc.checkEmbeddingsAvailable()
+	}
+
+	return sc
+}
+
+// checkEmbeddingsAvailable returns true if embeddings exist in the store.
+func (sc *SmartContext) checkEmbeddingsAvailable() bool {
+	count, err := sc.store.EmbeddingCount()
+	if err != nil {
+		return false
+	}
+	return count > 0
+}
+
+// initEmbedder initializes the embedder lazily when needed.
+func (sc *SmartContext) initEmbedder() error {
+	if sc.embedder != nil {
+		return nil
+	}
+	emb, err := embeddings.NewLocalEmbedder()
+	if err != nil {
+		return err
+	}
+	sc.embedder = emb
+	return nil
+}
+
+// Close releases resources held by the SmartContext.
+func (sc *SmartContext) Close() {
+	if sc.embedder != nil {
+		sc.embedder.Close()
+		sc.embedder = nil
 	}
 }
 
@@ -150,11 +222,43 @@ func (sc *SmartContext) Assemble() (*SmartContextResult, error) {
 	intent := ExtractIntent(sc.options.TaskDescription)
 	result.Intent = intent
 
-	// Step 2: Find entry points using search
-	entryPoints, err := sc.findEntryPoints(intent)
-	if err != nil {
-		return nil, err
+	// Step 2: Find entry points using hybrid search (semantic + keyword)
+	var entryPoints []*EntryPoint
+	var err error
+
+	if sc.hasEmbeddings {
+		// Hybrid search: combine semantic and keyword results
+		keywordEPs, keywordErr := sc.findEntryPoints(intent)
+		if keywordErr != nil {
+			return nil, keywordErr
+		}
+
+		semanticEPs, semanticErr := sc.findSemanticEntryPoints(sc.options.TaskDescription)
+		if semanticErr != nil {
+			// Semantic search failed - fall back to keyword only
+			result.Warnings = append(result.Warnings,
+				"Semantic search failed, using keyword search only: "+semanticErr.Error())
+			entryPoints = keywordEPs
+		} else {
+			// Merge and apply hybrid scoring
+			entryPoints = mergeEntryPoints(keywordEPs, semanticEPs)
+			entryPoints = applyHybridScoring(entryPoints, DefaultHybridWeights())
+			result.HybridSearchUsed = true
+		}
+	} else {
+		// No embeddings - use keyword search only
+		entryPoints, err = sc.findEntryPoints(intent)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	// Limit entry points after merging
+	maxEntryPoints := 10
+	if len(entryPoints) > maxEntryPoints {
+		entryPoints = entryPoints[:maxEntryPoints]
+	}
+
 	result.EntryPoints = entryPoints
 
 	if len(entryPoints) == 0 {
@@ -481,6 +585,171 @@ func (sc *SmartContext) findEntryPoints(intent *Intent) ([]*EntryPoint, error) {
 	maxEntryPoints := 10
 	if len(entryPoints) > maxEntryPoints {
 		entryPoints = entryPoints[:maxEntryPoints]
+	}
+
+	return entryPoints, nil
+}
+
+// mergeEntryPoints combines keyword and semantic entry points, deduplicating by entity ID.
+// For entities found by both methods, it combines their scores.
+func mergeEntryPoints(keywordEPs, semanticEPs []*EntryPoint) []*EntryPoint {
+	merged := make(map[string]*EntryPoint)
+
+	// Add keyword entry points first
+	for _, ep := range keywordEPs {
+		epCopy := *ep
+		epCopy.Source = SourceKeywordMatch
+		epCopy.KeywordScore = ep.Relevance
+		merged[ep.ID] = &epCopy
+	}
+
+	// Merge semantic entry points
+	for _, ep := range semanticEPs {
+		if existing, ok := merged[ep.ID]; ok {
+			// Entity found by both - combine scores
+			existing.Source = SourceHybridMatch
+			existing.SemanticScore = ep.SemanticScore
+			existing.Reason = "Hybrid match: keyword + semantic"
+		} else {
+			// New semantic-only entry point
+			epCopy := *ep
+			merged[ep.ID] = &epCopy
+		}
+	}
+
+	// Convert map to slice
+	result := make([]*EntryPoint, 0, len(merged))
+	for _, ep := range merged {
+		result = append(result, ep)
+	}
+
+	return result
+}
+
+// hybridScore calculates the final relevance score using hybrid weighting.
+// Formula: semantic_weight * semantic_score + keyword_weight * keyword_score + pagerank_weight * normalized_pagerank
+func hybridScore(ep *EntryPoint, weights HybridWeights, maxPageRank float64) float64 {
+	// Normalize PageRank to 0-1 range
+	normalizedPR := 0.0
+	if maxPageRank > 0 {
+		normalizedPR = ep.PageRank / maxPageRank
+	}
+
+	// Calculate weighted score based on source
+	switch ep.Source {
+	case SourceHybridMatch:
+		// Both semantic and keyword scores available - use full formula
+		return weights.Semantic*ep.SemanticScore +
+			weights.Keyword*ep.KeywordScore +
+			weights.PageRank*normalizedPR
+
+	case SourceSemanticMatch:
+		// Only semantic score - weight it higher since keyword is missing
+		adjustedSemanticWeight := weights.Semantic + weights.Keyword*0.5
+		return adjustedSemanticWeight*ep.SemanticScore +
+			weights.PageRank*normalizedPR
+
+	case SourceKeywordMatch:
+		// Only keyword score - weight it higher since semantic is missing
+		adjustedKeywordWeight := weights.Keyword + weights.Semantic*0.5
+		return adjustedKeywordWeight*ep.KeywordScore +
+			weights.PageRank*normalizedPR
+
+	case SourceExplicitMention:
+		// Explicit mentions get boosted score
+		return ep.Relevance * 1.5
+
+	default:
+		return ep.Relevance
+	}
+}
+
+// applyHybridScoring applies hybrid scoring to entry points and sorts by final score.
+func applyHybridScoring(entryPoints []*EntryPoint, weights HybridWeights) []*EntryPoint {
+	if len(entryPoints) == 0 {
+		return entryPoints
+	}
+
+	// Find max PageRank for normalization
+	maxPageRank := 0.0
+	for _, ep := range entryPoints {
+		if ep.PageRank > maxPageRank {
+			maxPageRank = ep.PageRank
+		}
+	}
+
+	// Calculate hybrid scores
+	for _, ep := range entryPoints {
+		ep.Relevance = hybridScore(ep, weights, maxPageRank)
+	}
+
+	// Sort by final relevance score, with keystones having priority
+	sort.Slice(entryPoints, func(i, j int) bool {
+		if entryPoints[i].IsKeystone != entryPoints[j].IsKeystone {
+			return entryPoints[i].IsKeystone
+		}
+		return entryPoints[i].Relevance > entryPoints[j].Relevance
+	})
+
+	return entryPoints
+}
+
+// findSemanticEntryPoints discovers entry points using embedding-based semantic search.
+func (sc *SmartContext) findSemanticEntryPoints(taskDescription string) ([]*EntryPoint, error) {
+	// Initialize embedder if needed
+	if err := sc.initEmbedder(); err != nil {
+		return nil, err
+	}
+
+	// Embed the task description
+	ctx := context.Background()
+	queryVec, err := sc.embedder.Embed(ctx, taskDescription)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find similar entities (get more than we need for merging)
+	limit := sc.options.SearchLimit * 2
+	if limit < 40 {
+		limit = 40
+	}
+	results, err := sc.store.FindSimilar(queryVec, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var entryPoints []*EntryPoint
+	for _, r := range results {
+		// Get entity details
+		entity, err := sc.store.GetEntity(r.EntityID)
+		if err != nil || entity == nil {
+			continue
+		}
+
+		// Get metrics for PageRank
+		metrics, _ := sc.store.GetMetrics(r.EntityID)
+		pageRank := 0.0
+		isKeystone := false
+		if metrics != nil {
+			pageRank = metrics.PageRank
+			isKeystone = metrics.PageRank >= 0.15 || metrics.InDegree >= 10
+		}
+
+		ep := &EntryPoint{
+			Entity:        entity,
+			ID:            entity.ID,
+			Name:          entity.Name,
+			Type:          entity.EntityType,
+			Location:      formatLocation(entity),
+			Relevance:     r.Similarity, // Will be recalculated in hybrid scoring
+			Reason:        "Semantic similarity to task",
+			PageRank:      pageRank,
+			IsKeystone:    isKeystone,
+			Source:        SourceSemanticMatch,
+			SemanticScore: r.Similarity,
+		}
+
+		entryPoints = append(entryPoints, ep)
 	}
 
 	return entryPoints, nil
