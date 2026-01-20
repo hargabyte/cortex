@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/anthropics/cx/internal/config"
+	"github.com/anthropics/cx/internal/embeddings"
 	"github.com/anthropics/cx/internal/graph"
 	"github.com/anthropics/cx/internal/metrics"
 	"github.com/anthropics/cx/internal/output"
@@ -61,6 +63,9 @@ Output Formats:
   json:  Machine-parseable JSON
   cgf:   Deprecated token-minimal format
 
+Semantic Search:
+  --semantic       Use embedding-based semantic search (find code by concept)
+
 Examples:
   cx find LoginUser                        # Name search: prefix match
   cx find "auth validation"                # Concept search: FTS
@@ -86,7 +91,10 @@ Examples:
   cx find --changed                        # Show all modified entities since HEAD~1
   cx find --removed                        # Show all removed entities since HEAD~1
   cx find --since HEAD~5 --new             # New entities since 5 commits ago
-  cx find Auth --since HEAD~10             # Auth* entities changed in last 10 commits`,
+  cx find Auth --since HEAD~10             # Auth* entities changed in last 10 commits
+  cx find --semantic "user authentication" # Semantic: find by concept
+  cx find --semantic "error handling"      # Semantic: find error handlers
+  cx find --semantic "database queries" --type=F  # Semantic with type filter`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runFind,
 }
@@ -110,6 +118,7 @@ var (
 	findNew         bool   // Change tracking: show only new/added entities
 	findChanged     bool   // Change tracking: show only modified entities
 	findRemoved     bool   // Change tracking: show only removed entities
+	findSemantic    bool   // Semantic search using embeddings
 )
 
 func init() {
@@ -142,6 +151,9 @@ func init() {
 	findCmd.Flags().BoolVar(&findNew, "new", false, "Show only newly added entities (since HEAD~1 or --since ref)")
 	findCmd.Flags().BoolVar(&findChanged, "changed", false, "Show only modified entities (since HEAD~1 or --since ref)")
 	findCmd.Flags().BoolVar(&findRemoved, "removed", false, "Show only removed entities (since HEAD~1 or --since ref)")
+
+	// Semantic search flag
+	findCmd.Flags().BoolVar(&findSemantic, "semantic", false, "Use embedding-based semantic search (find by concept)")
 }
 
 func runFind(cmd *cobra.Command, args []string) error {
@@ -165,8 +177,13 @@ func runFind(cmd *cobra.Command, args []string) error {
 	isChangeTracking := findNew || findChanged || findRemoved || findSince != ""
 
 	// If no query and no ranking flags and no tag filters and no change tracking, show error
-	if query == "" && !findImportant && !findKeystones && !findBottlenecks && len(findTags) == 0 && !isChangeTracking {
-		return fmt.Errorf("query required (use --important, --keystones, --bottlenecks, --tag, --new, --changed, --removed, or --since for results without query)")
+	if query == "" && !findImportant && !findKeystones && !findBottlenecks && len(findTags) == 0 && !isChangeTracking && !findSemantic {
+		return fmt.Errorf("query required (use --important, --keystones, --bottlenecks, --tag, --new, --changed, --removed, --since, or --semantic for results without query)")
+	}
+
+	// Semantic search requires a query
+	if findSemantic && query == "" {
+		return fmt.Errorf("--semantic requires a query (e.g., cx find --semantic \"user authentication\")")
 	}
 
 	// Load config for thresholds
@@ -201,6 +218,11 @@ func runFind(cmd *cobra.Command, args []string) error {
 	// Handle change tracking mode (--since, --new, --changed, --removed)
 	if isChangeTracking {
 		return runFindWithChangeTracking(cmd, storeDB, query, format, density)
+	}
+
+	// Handle semantic search mode (--semantic)
+	if findSemantic {
+		return runSemanticFind(cmd, storeDB, query, format, density)
 	}
 
 	// Determine if this is a rank-only query (no text query, just --important/--keystones/--bottlenecks)
@@ -519,6 +541,114 @@ func runFindByTagsOnly(cmd *cobra.Command, storeDB *store.Store, format output.F
 	}
 
 	return formatter.FormatToWriter(cmd.OutOrStdout(), listOutput, density)
+}
+
+// runSemanticFind performs embedding-based semantic search
+func runSemanticFind(cmd *cobra.Command, storeDB *store.Store, query string, format output.Format, density output.Density) error {
+	// Check if embeddings exist
+	count, err := storeDB.EmbeddingCount()
+	if err != nil || count == 0 {
+		return fmt.Errorf("no embeddings found. Run 'cx scan --embed' first to generate embeddings")
+	}
+
+	// Create embedder for query embedding
+	embedder, err := embeddings.NewLocalEmbedder()
+	if err != nil {
+		return fmt.Errorf("semantic search unavailable: %w", err)
+	}
+	defer embedder.Close()
+
+	// Embed the query
+	ctx := context.Background()
+	queryVec, err := embedder.Embed(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to embed query: %w", err)
+	}
+
+	// Find similar entities
+	limit := findTop
+	if findLimit > 0 && findLimit < limit {
+		limit = findLimit
+	}
+	results, err := storeDB.FindSimilar(queryVec, limit)
+	if err != nil {
+		return fmt.Errorf("similarity search failed: %w", err)
+	}
+
+	if len(results) == 0 {
+		fmt.Fprintf(cmd.OutOrStdout(), "No results found for: %s\n", query)
+		return nil
+	}
+
+	// Build output with entity details and similarity scores
+	type SemanticResult struct {
+		Type       string  `yaml:"type" json:"type"`
+		Location   string  `yaml:"location" json:"location"`
+		Similarity float64 `yaml:"similarity" json:"similarity"`
+		Signature  string  `yaml:"signature,omitempty" json:"signature,omitempty"`
+	}
+
+	type SemanticOutput struct {
+		Query   string                      `yaml:"query" json:"query"`
+		Results map[string]*SemanticResult `yaml:"results" json:"results"`
+		Count   int                         `yaml:"count" json:"count"`
+	}
+
+	semanticOutput := &SemanticOutput{
+		Query:   query,
+		Results: make(map[string]*SemanticResult),
+		Count:   0,
+	}
+
+	for _, r := range results {
+		// Get entity details
+		entity, err := storeDB.GetEntity(r.EntityID)
+		if err != nil || entity == nil {
+			continue
+		}
+
+		// Apply type filter if specified
+		if findType != "" && entity.EntityType != mapCGFTypeToStore(findType) {
+			continue
+		}
+
+		// Apply language filter if specified
+		if findLang != "" && entity.Language != normalizeLanguage(findLang) {
+			continue
+		}
+
+		// Apply file filter if specified
+		if findFile != "" && !strings.Contains(entity.FilePath, findFile) {
+			continue
+		}
+
+		result := &SemanticResult{
+			Type:       mapStoreEntityTypeToString(entity.EntityType),
+			Location:   formatEntityLocation(entity),
+			Similarity: r.Similarity,
+		}
+
+		// Add signature for medium/dense density
+		if density.IncludesSignature() && entity.Signature != "" {
+			result.Signature = entity.Signature
+		}
+
+		semanticOutput.Results[entity.Name] = result
+		semanticOutput.Count++
+	}
+
+	if semanticOutput.Count == 0 {
+		fmt.Fprintf(cmd.OutOrStdout(), "No results found matching filters for: %s\n", query)
+		return nil
+	}
+
+	// Get formatter and output
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), semanticOutput, density)
 }
 
 // runFindWithFTS performs full-text/concept search (migrated from search command)

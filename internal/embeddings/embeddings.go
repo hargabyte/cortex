@@ -15,4 +15,7 @@ type Embedder interface {
 
 	// Dimensions returns the embedding vector dimension.
 	Dimensions() int
+
+	// Close releases resources held by the embedder.
+	Close() error
 }

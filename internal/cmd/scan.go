@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/anthropics/cx/internal/config"
+	"github.com/anthropics/cx/internal/embeddings"
 	"github.com/anthropics/cx/internal/exclude"
 	"github.com/anthropics/cx/internal/extract"
 	"github.com/anthropics/cx/internal/graph"
@@ -54,6 +56,7 @@ Examples:
   cx scan --dry-run          # Show what would be created
   cx scan --no-auto-exclude  # Don't auto-exclude dependency directories
   cx scan --tag v1.0         # Create tag usable as: cx show Entity --at v1.0
+  cx scan --embed            # Generate embeddings for semantic search
   cx scan -v                 # Verbose: shows auto-excluded directories`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runScan,
@@ -69,6 +72,7 @@ var (
 	scanNoAutoExclude bool
 	scanDiff          bool
 	scanTag           string
+	scanEmbed         bool
 )
 
 func init() {
@@ -83,6 +87,7 @@ func init() {
 	scanCmd.Flags().BoolVar(&scanNoAutoExclude, "no-auto-exclude", false, "Disable automatic exclusion of dependency directories")
 	scanCmd.Flags().BoolVar(&scanDiff, "diff", false, "Show what changed since previous scan")
 	scanCmd.Flags().StringVar(&scanTag, "tag", "", "Create a Dolt tag after scan (usable as ref for --at, --since)")
+	scanCmd.Flags().BoolVar(&scanEmbed, "embed", false, "Generate embeddings for semantic search after scan")
 }
 
 // scanStats tracks scan statistics for summary output
@@ -648,6 +653,11 @@ func runScan(cmd *cobra.Command, args []string) error {
 				w.WriteComment(fmt.Sprintf("Note: unable to compute diff (may be first scan): %v", err))
 			}
 		}
+	}
+
+	// Generate embeddings if --embed flag is set
+	if scanEmbed && !scanDryRun && stats.errors == 0 {
+		generateEmbeddings(storeDB, w)
 	}
 
 	return nil
@@ -1224,6 +1234,111 @@ func getGitBranch(projectRoot string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// generateEmbeddings generates vector embeddings for entities that need them.
+// Runs after scan completion to enable semantic search.
+// Processes entities in batches for efficiency and logs progress.
+func generateEmbeddings(storeDB *store.Store, w *output.CGFWriter) {
+	// Get entities needing embedding
+	ids, err := storeDB.NeedsEmbedding(embeddings.ModelVersion)
+	if err != nil {
+		if verbose {
+			w.WriteComment(fmt.Sprintf("Warning: failed to check embedding needs: %v", err))
+		}
+		return
+	}
+
+	if len(ids) == 0 {
+		if verbose {
+			w.WriteComment("All entities have embeddings")
+		}
+		return
+	}
+
+	// Create embedder (downloads model on first use)
+	if !quiet {
+		w.WriteBlankLine()
+		w.WriteComment(fmt.Sprintf("Generating embeddings for %d entities...", len(ids)))
+	}
+
+	embedder, err := embeddings.NewLocalEmbedder()
+	if err != nil {
+		w.WriteComment(fmt.Sprintf("Warning: failed to create embedder: %v", err))
+		return
+	}
+	defer embedder.Close()
+
+	// Process in batches
+	ctx := context.Background()
+	const batchSize = 32
+	generated := 0
+	errors := 0
+	startTime := time.Now()
+
+	for i := 0; i < len(ids); i += batchSize {
+		end := i + batchSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+		batchIDs := ids[i:end]
+
+		// Get entities and prepare content
+		var texts []string
+		var entities []*store.Entity
+		for _, id := range batchIDs {
+			e, err := storeDB.GetEntity(id)
+			if err != nil || e == nil {
+				errors++
+				continue
+			}
+			entities = append(entities, e)
+			texts = append(texts, embeddings.PrepareEntityContent(e))
+		}
+
+		if len(texts) == 0 {
+			continue
+		}
+
+		// Generate embeddings
+		vecs, err := embedder.EmbedBatch(ctx, texts)
+		if err != nil {
+			errors += len(texts)
+			if verbose {
+				w.WriteComment(fmt.Sprintf("Warning: batch embedding failed: %v", err))
+			}
+			continue
+		}
+
+		// Save embeddings
+		for j, e := range entities {
+			if j >= len(vecs) {
+				break
+			}
+			contentHash := embeddings.ContentHash(e)
+			if err := storeDB.SaveEmbedding(e.ID, vecs[j], embeddings.ModelVersion, contentHash); err != nil {
+				errors++
+				if verbose {
+					w.WriteComment(fmt.Sprintf("Warning: failed to save embedding for %s: %v", e.ID, err))
+				}
+			} else {
+				generated++
+			}
+		}
+
+		// Progress update (every 100 entities or at end)
+		if !quiet && ((generated+errors)%100 < batchSize || i+batchSize >= len(ids)) {
+			elapsed := time.Since(startTime)
+			rate := float64(generated+errors) / elapsed.Seconds()
+			w.WriteComment(fmt.Sprintf("Progress: %d/%d (%.1f/sec)", generated+errors, len(ids), rate))
+		}
+	}
+
+	// Final summary
+	if !quiet {
+		elapsed := time.Since(startTime)
+		w.WriteComment(fmt.Sprintf("Embeddings: %d generated, %d errors (%.1fs)", generated, errors, elapsed.Seconds()))
+	}
 }
 
 // detectLanguages walks the directory and returns detected languages based on file extensions.
