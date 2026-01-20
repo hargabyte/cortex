@@ -1,0 +1,746 @@
+# CX D2 Visual Design System
+# ============================
+# Professional, showcase-worthy diagram styling for code intelligence reports
+#
+# This file defines the visual language for all CX-generated D2 diagrams.
+# It can be imported into other D2 files or used as a reference implementation.
+
+# ============================================================================
+# THEME CONFIGURATION
+# ============================================================================
+# Using theme 200 (Mixed Berry Blue) as base with custom overrides
+# for a professional, technical documentation aesthetic.
+
+vars: {
+  d2-config: {
+    theme-id: 200
+    layout-engine: elk
+  }
+
+  # Color Palette - Material Design inspired
+  # Primary colors for entity types
+  color-function: "#e3f2fd"      # Light blue - functions/methods
+  color-type: "#f3e5f5"          # Light purple - types/structs
+  color-interface: "#fff3e0"     # Light orange - interfaces
+  color-data: "#e8f5e9"          # Light green - data/constants
+  color-storage: "#eceff1"       # Light gray - storage/database
+  color-http: "#e0f7fa"          # Light cyan - HTTP handlers
+  color-test: "#e8f5e9"          # Light green - tests
+  color-module: "#fafafa"        # Near white - modules/packages
+
+  # Stroke colors (darker versions)
+  stroke-function: "#1976d2"     # Blue 700
+  stroke-type: "#7b1fa2"         # Purple 700
+  stroke-interface: "#f57c00"    # Orange 700
+  stroke-data: "#388e3c"         # Green 700
+  stroke-storage: "#455a64"      # Blue Gray 700
+  stroke-http: "#0097a7"         # Cyan 700
+  stroke-test: "#388e3c"         # Green 700
+  stroke-module: "#9e9e9e"       # Gray 500
+
+  # Importance colors
+  color-keystone: "#fff3e0"      # Warm highlight
+  stroke-keystone: "#e65100"     # Deep orange
+  color-bottleneck: "#fff8e1"    # Amber tint
+  stroke-bottleneck: "#ff8f00"   # Amber 800
+  color-normal: "#ffffff"        # White
+  stroke-normal: "#757575"       # Gray 600
+  color-leaf: "#fafafa"          # Off white
+  stroke-leaf: "#bdbdbd"         # Gray 400
+
+  # Coverage colors
+  color-coverage-high: "#c8e6c9"   # Green 100
+  stroke-coverage-high: "#4caf50"  # Green 500
+  color-coverage-med: "#fff9c4"    # Yellow 100
+  stroke-coverage-med: "#fbc02d"   # Yellow 700
+  color-coverage-low: "#ffcdd2"    # Red 100
+  stroke-coverage-low: "#f44336"   # Red 500
+  color-coverage-none: "#f5f5f5"   # Gray 100
+  stroke-coverage-none: "#9e9e9e"  # Gray 500
+
+  # Risk colors
+  color-risk-critical: "#ffebee"
+  stroke-risk-critical: "#c62828"
+  color-risk-warning: "#fff8e1"
+  stroke-risk-warning: "#f57f17"
+  color-risk-info: "#e3f2fd"
+  stroke-risk-info: "#1976d2"
+}
+
+# ============================================================================
+# ENTITY TYPE CLASSES
+# ============================================================================
+# Apply these classes to entities based on their type (function, method, etc.)
+
+classes: {
+  # Functions - the most common entity type
+  function: {
+    shape: rectangle
+    style: {
+      fill: "#e3f2fd"
+      stroke: "#1976d2"
+      stroke-width: 1
+      border-radius: 4
+    }
+  }
+
+  # Methods - similar to functions but for OOP
+  method: {
+    shape: rectangle
+    style: {
+      fill: "#e3f2fd"
+      stroke: "#1976d2"
+      stroke-width: 1
+      border-radius: 4
+    }
+  }
+
+  # Types/Structs - data structures
+  type: {
+    shape: rectangle
+    style: {
+      fill: "#f3e5f5"
+      stroke: "#7b1fa2"
+      stroke-width: 1
+      border-radius: 4
+    }
+  }
+
+  struct: {
+    shape: rectangle
+    style: {
+      fill: "#f3e5f5"
+      stroke: "#7b1fa2"
+      stroke-width: 1
+      border-radius: 4
+    }
+  }
+
+  # Interfaces - contracts/abstractions
+  interface: {
+    shape: rectangle
+    style: {
+      fill: "#fff3e0"
+      stroke: "#f57c00"
+      stroke-width: 1
+      stroke-dash: 3
+      border-radius: 4
+    }
+  }
+
+  # Constants and enums
+  constant: {
+    shape: rectangle
+    style: {
+      fill: "#e8f5e9"
+      stroke: "#388e3c"
+      stroke-width: 1
+      border-radius: 8
+    }
+  }
+
+  # Database/storage entities
+  database: {
+    shape: cylinder
+    style: {
+      fill: "#eceff1"
+      stroke: "#455a64"
+      stroke-width: 1
+    }
+  }
+
+  storage: {
+    shape: cylinder
+    style: {
+      fill: "#eceff1"
+      stroke: "#455a64"
+      stroke-width: 1
+    }
+  }
+
+  # HTTP handlers/endpoints
+  http: {
+    shape: rectangle
+    style: {
+      fill: "#e0f7fa"
+      stroke: "#0097a7"
+      stroke-width: 1
+      border-radius: 4
+    }
+  }
+
+  # Tests
+  test: {
+    shape: rectangle
+    style: {
+      fill: "#e8f5e9"
+      stroke: "#388e3c"
+      stroke-width: 1
+      border-radius: 4
+      stroke-dash: 2
+    }
+  }
+
+  # External/third-party
+  external: {
+    shape: rectangle
+    style: {
+      fill: "#fafafa"
+      stroke: "#9e9e9e"
+      stroke-width: 1
+      stroke-dash: 5
+      border-radius: 4
+    }
+  }
+}
+
+# ============================================================================
+# IMPORTANCE CLASSES
+# ============================================================================
+# Apply these to indicate entity importance (based on PageRank, centrality, etc.)
+
+classes: {
+  # Keystone - critical entities, highest importance
+  # Bold styling with shadow for visual prominence
+  keystone: {
+    style: {
+      stroke-width: 3
+      shadow: true
+      fill: "#fff3e0"
+      stroke: "#e65100"
+    }
+  }
+
+  # Bottleneck - high betweenness centrality
+  # Warning accent to draw attention
+  bottleneck: {
+    style: {
+      stroke-width: 2
+      fill: "#fff8e1"
+      stroke: "#ff8f00"
+    }
+  }
+
+  # High fan-in - many dependents rely on this
+  high-fan-in: {
+    style: {
+      stroke-width: 2
+      fill: "#e3f2fd"
+      stroke: "#1565c0"
+    }
+  }
+
+  # High fan-out - depends on many things
+  high-fan-out: {
+    style: {
+      stroke-width: 2
+      fill: "#fce4ec"
+      stroke: "#c2185b"
+    }
+  }
+
+  # Normal importance (default)
+  normal: {
+    style: {
+      stroke-width: 1
+      fill: "#ffffff"
+      stroke: "#757575"
+    }
+  }
+
+  # Leaf - low importance, minimal styling
+  leaf: {
+    style: {
+      stroke-width: 1
+      fill: "#fafafa"
+      stroke: "#bdbdbd"
+      opacity: 0.9
+    }
+  }
+}
+
+# ============================================================================
+# COVERAGE INDICATOR CLASSES
+# ============================================================================
+# Apply these to indicate test coverage levels
+
+classes: {
+  # High coverage (>80%) - green
+  coverage-high: {
+    style: {
+      fill: "#c8e6c9"
+      stroke: "#4caf50"
+    }
+  }
+
+  # Medium coverage (50-80%) - yellow
+  coverage-medium: {
+    style: {
+      fill: "#fff9c4"
+      stroke: "#fbc02d"
+    }
+  }
+
+  # Low coverage (<50%) - red
+  coverage-low: {
+    style: {
+      fill: "#ffcdd2"
+      stroke: "#f44336"
+    }
+  }
+
+  # No coverage (0%) - gray with warning
+  coverage-none: {
+    style: {
+      fill: "#f5f5f5"
+      stroke: "#9e9e9e"
+      stroke-dash: 3
+    }
+  }
+}
+
+# ============================================================================
+# RISK INDICATOR CLASSES
+# ============================================================================
+# For health reports and risk visualization
+
+classes: {
+  risk-critical: {
+    style: {
+      fill: "#ffebee"
+      stroke: "#c62828"
+      stroke-width: 2
+    }
+  }
+
+  risk-warning: {
+    style: {
+      fill: "#fff8e1"
+      stroke: "#f57f17"
+      stroke-width: 2
+    }
+  }
+
+  risk-info: {
+    style: {
+      fill: "#e3f2fd"
+      stroke: "#1976d2"
+      stroke-width: 1
+    }
+  }
+
+  risk-ok: {
+    style: {
+      fill: "#e8f5e9"
+      stroke: "#388e3c"
+      stroke-width: 1
+    }
+  }
+}
+
+# ============================================================================
+# CONTAINER/MODULE CLASSES
+# ============================================================================
+# For grouping entities into logical modules
+
+classes: {
+  # Standard module container
+  module: {
+    style: {
+      fill: "#fafafa"
+      stroke: "#e0e0e0"
+      stroke-width: 1
+      border-radius: 8
+    }
+  }
+
+  # API layer container
+  layer-api: {
+    style: {
+      fill: "#e0f7fa"
+      stroke: "#00838f"
+      stroke-width: 1
+      border-radius: 8
+    }
+  }
+
+  # Service/business logic layer
+  layer-service: {
+    style: {
+      fill: "#e3f2fd"
+      stroke: "#1565c0"
+      stroke-width: 1
+      border-radius: 8
+    }
+  }
+
+  # Data/storage layer
+  layer-data: {
+    style: {
+      fill: "#eceff1"
+      stroke: "#455a64"
+      stroke-width: 1
+      border-radius: 8
+    }
+  }
+
+  # Domain/model layer
+  layer-domain: {
+    style: {
+      fill: "#f3e5f5"
+      stroke: "#6a1b9a"
+      stroke-width: 1
+      border-radius: 8
+    }
+  }
+}
+
+# ============================================================================
+# EDGE/CONNECTION CLASSES
+# ============================================================================
+# Different edge styles for different relationship types
+
+classes: {
+  # Direct function calls - solid arrow
+  edge-calls: {
+    style: {
+      stroke: "#424242"
+      stroke-width: 1
+    }
+  }
+
+  # Type usage - lighter
+  edge-uses-type: {
+    style: {
+      stroke: "#757575"
+      stroke-width: 1
+      stroke-dash: 3
+    }
+  }
+
+  # Interface implementation - dashed
+  edge-implements: {
+    style: {
+      stroke: "#f57c00"
+      stroke-width: 1
+      stroke-dash: 5
+    }
+    target-arrowhead: {
+      shape: diamond
+    }
+  }
+
+  # Inheritance/extends
+  edge-extends: {
+    style: {
+      stroke: "#7b1fa2"
+      stroke-width: 2
+    }
+    target-arrowhead: {
+      shape: diamond
+      style.filled: true
+    }
+  }
+
+  # Data flow - thick, animated (if supported)
+  edge-data-flow: {
+    style: {
+      stroke: "#1976d2"
+      stroke-width: 2
+      animated: true
+    }
+  }
+
+  # Import/dependency - lighter dashed
+  edge-imports: {
+    style: {
+      stroke: "#9e9e9e"
+      stroke-width: 1
+      stroke-dash: 2
+    }
+  }
+
+  # Test coverage - green dashed
+  edge-tests: {
+    style: {
+      stroke: "#4caf50"
+      stroke-width: 1
+      stroke-dash: 4
+    }
+  }
+}
+
+# ============================================================================
+# ICON MAPPINGS
+# ============================================================================
+# Reference for icons from icons.terrastruct.com
+# Use these URLs in node definitions: icon: <url>
+#
+# Entity Type Icons:
+#   Function:   https://icons.terrastruct.com/essentials%2F142-lightning.svg
+#   Method:     https://icons.terrastruct.com/essentials%2F009-gear.svg
+#   Type:       https://icons.terrastruct.com/essentials%2F108-box.svg
+#   Struct:     https://icons.terrastruct.com/essentials%2F108-box.svg
+#   Interface:  https://icons.terrastruct.com/essentials%2F092-plug.svg
+#   Constant:   https://icons.terrastruct.com/essentials%2F078-pin.svg
+#   Database:   https://icons.terrastruct.com/essentials%2F119-database.svg
+#   HTTP:       https://icons.terrastruct.com/essentials%2F140-earth.svg
+#   Test:       https://icons.terrastruct.com/essentials%2F134-checkmark.svg
+#   Package:    https://icons.terrastruct.com/essentials%2F106-archive.svg
+#
+# Language Icons:
+#   Go:         https://icons.terrastruct.com/dev%2Fgo.svg
+#   TypeScript: https://icons.terrastruct.com/dev%2Ftypescript.svg
+#   JavaScript: https://icons.terrastruct.com/dev%2Fjavascript.svg
+#   Python:     https://icons.terrastruct.com/dev%2Fpython.svg
+#   Java:       https://icons.terrastruct.com/dev%2Fjava.svg
+#   Rust:       https://icons.terrastruct.com/dev%2Frustlang.svg
+#
+# Infrastructure Icons:
+#   Server:     https://icons.terrastruct.com/essentials%2F112-server.svg
+#   Cloud:      https://icons.terrastruct.com/essentials%2F096-cloud.svg
+#   Network:    https://icons.terrastruct.com/essentials%2F100-network.svg
+#   Lock:       https://icons.terrastruct.com/essentials%2F091-lock.svg
+#   Warning:    https://icons.terrastruct.com/essentials%2F149-warning-2.svg
+#   Error:      https://icons.terrastruct.com/essentials%2F150-error-1.svg
+#   Info:       https://icons.terrastruct.com/essentials%2F152-info-1.svg
+
+# ============================================================================
+# EXAMPLE: ARCHITECTURE DIAGRAM
+# ============================================================================
+# Demonstrates container styling, entity types, and connections
+
+example-architecture: {
+  label: "Example: Architecture Diagram"
+
+  cmd: {
+    label: "CLI Layer"
+    class: layer-api
+    icon: https://icons.terrastruct.com/essentials%2F087-display.svg
+
+    report: {
+      label: "report"
+      class: [function, keystone]
+    }
+    show: {
+      label: "show"
+      class: function
+    }
+    find: {
+      label: "find"
+      class: function
+    }
+  }
+
+  store: {
+    label: "Data Store"
+    class: layer-data
+    icon: https://icons.terrastruct.com/essentials%2F119-database.svg
+
+    Entity: {
+      label: "Entity"
+      class: [type, bottleneck]
+    }
+    GetEntity: {
+      label: "GetEntity"
+      class: [method, keystone]
+    }
+    Search: {
+      label: "Search"
+      class: method
+    }
+  }
+
+  scanner: {
+    label: "Scanner"
+    class: layer-service
+    icon: https://icons.terrastruct.com/essentials%2F107-zoom.svg
+
+    ScanFile: {
+      label: "ScanFile"
+      class: [function, high-fan-out]
+    }
+    Parser: {
+      label: "Parser"
+      class: interface
+    }
+  }
+
+  # Connections
+  cmd.report -> store.GetEntity: queries {
+    class: edge-calls
+  }
+  cmd.show -> store.GetEntity {
+    class: edge-calls
+  }
+  cmd.find -> store.Search {
+    class: edge-calls
+  }
+  scanner.ScanFile -> store.Entity: creates {
+    class: edge-data-flow
+  }
+  scanner.ScanFile -> scanner.Parser: uses {
+    class: edge-uses-type
+  }
+}
+
+# ============================================================================
+# EXAMPLE: CALL FLOW DIAGRAM
+# ============================================================================
+# Demonstrates sequential flow with icons and importance
+
+example-call-flow: {
+  label: "Example: Authentication Call Flow"
+  direction: down
+
+  request: {
+    label: "HTTP Request"
+    shape: oval
+    icon: https://icons.terrastruct.com/essentials%2F112-server.svg
+    style: {
+      fill: "#e0e0e0"
+      stroke: "#616161"
+    }
+  }
+
+  handler: {
+    label: "LoginHandler"
+    class: [function, http]
+    icon: https://icons.terrastruct.com/dev%2Fgo.svg
+  }
+
+  auth: {
+    label: "LoginUser"
+    class: [function, keystone]
+    icon: https://icons.terrastruct.com/essentials%2F091-lock.svg
+  }
+
+  validate: {
+    label: "ValidateToken"
+    class: [function, bottleneck]
+  }
+
+  store: {
+    label: "UserStore"
+    class: database
+    icon: https://icons.terrastruct.com/azure%2FDatabases%2F10121-icon-service-Azure-Database-PostgreSQL-Server.svg
+  }
+
+  response: {
+    label: "JWT Token"
+    shape: oval
+    style: {
+      fill: "#c8e6c9"
+      stroke: "#4caf50"
+    }
+  }
+
+  # Flow
+  request -> handler: "POST /login" {
+    class: edge-calls
+  }
+  handler -> auth: "authenticate()" {
+    class: edge-calls
+  }
+  auth -> validate: "check token" {
+    class: edge-calls
+  }
+  auth -> store: "GetByEmail()" {
+    class: edge-data-flow
+  }
+  store -> auth: "User" {
+    class: edge-data-flow
+    style.stroke-dash: 3
+  }
+  auth -> handler: "token" {
+    class: edge-calls
+    style.stroke-dash: 3
+  }
+  handler -> response {
+    class: edge-calls
+  }
+}
+
+# ============================================================================
+# EXAMPLE: COVERAGE HEATMAP
+# ============================================================================
+# Demonstrates coverage indicators on entities
+
+example-coverage: {
+  label: "Example: Coverage Analysis"
+
+  well-tested: {
+    label: "Store.GetEntity\n92% coverage"
+    class: [function, coverage-high]
+    icon: https://icons.terrastruct.com/essentials%2F134-checkmark.svg
+  }
+
+  needs-work: {
+    label: "Parser.Parse\n65% coverage"
+    class: [function, coverage-medium]
+  }
+
+  at-risk: {
+    label: "Scanner.Scan\n35% coverage"
+    class: [function, coverage-low, keystone]
+    icon: https://icons.terrastruct.com/essentials%2F149-warning-2.svg
+  }
+
+  untested: {
+    label: "Helper.Format\n0% coverage"
+    class: [function, coverage-none]
+  }
+
+  # Dependencies showing risk propagation
+  at-risk -> well-tested: depends on {
+    class: edge-calls
+  }
+  needs-work -> at-risk: calls {
+    class: edge-calls
+  }
+  untested -> needs-work: calls {
+    class: edge-calls
+  }
+}
+
+# ============================================================================
+# EXAMPLE: HEALTH RISK MAP
+# ============================================================================
+# Demonstrates risk indicators for health reports
+
+example-health: {
+  label: "Example: Health Risk Map"
+
+  critical: {
+    label: "Untested Keystone"
+    class: risk-critical
+    icon: https://icons.terrastruct.com/essentials%2F150-error-1.svg
+
+    CriticalFunc: {
+      label: "CriticalFunc\nPageRank: 0.045\nCoverage: 0%"
+      class: [function, keystone, coverage-none]
+    }
+  }
+
+  warning: {
+    label: "Low Coverage Bottleneck"
+    class: risk-warning
+    icon: https://icons.terrastruct.com/essentials%2F149-warning-2.svg
+
+    SessionCache: {
+      label: "SessionCache.Get\n45% coverage"
+      class: [method, bottleneck, coverage-low]
+    }
+  }
+
+  ok: {
+    label: "Healthy Code"
+    class: risk-ok
+    icon: https://icons.terrastruct.com/essentials%2F134-checkmark.svg
+
+    Store: {
+      label: "Store.Query\n95% coverage"
+      class: [method, coverage-high]
+    }
+  }
+}

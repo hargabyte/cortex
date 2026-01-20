@@ -29,6 +29,10 @@ var EntityShapes = map[string]EntityShape{
 	"package": {D2Shape: "cylinder", MermaidShape: "[()]"},
 	"module":  {D2Shape: "cylinder", MermaidShape: "[()]"},
 
+	// Database/storage - cylinders
+	"database": {D2Shape: "cylinder", MermaidShape: "[()]"},
+	"storage":  {D2Shape: "cylinder", MermaidShape: "[()]"},
+
 	// Default fallback
 	"default": {D2Shape: "rectangle", MermaidShape: "[]"},
 }
