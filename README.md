@@ -30,6 +30,7 @@ This is wasteful. Most of my time is spent *finding* code, not *writing* it.
 |----------|---------------|-------------|
 | "What's important here?" | Read 20+ files, guess | `cx find --keystones` |
 | "What code relates to this task?" | Grep, explore, hope | `cx context --smart "fix the login bug"` |
+| "Find code by concept?" | Grep for keywords, miss synonyms | `cx find --semantic "authentication flow"` |
 | "What breaks if I change this?" | No idea | `cx safe <file>` |
 | "What calls this function?" | Grep for the name, miss dynamic calls | `cx show <entity> --related` |
 | "Where should I start?" | Ask you, or guess | `cx map` |
@@ -168,12 +169,12 @@ Cortex extracts entities, tracks call relationships, and builds a dependency gra
 cx context --smart "add rate limiting to API endpoints" --budget 8000
 ```
 
-This is the command I use most. Give me a natural language description of what you want, and Cortex returns:
-- **Entry points**: Where to start looking
-- **Relevant entities**: Code semantically related to your task
-- **Dependencies**: What those entities call and what calls them
+This is the command I use most. Give me a natural language description of what you want, and Cortex uses **hybrid search** to find relevant code:
+- **Semantic matching** (50%): Vector embeddings find conceptually related code
+- **Keyword matching** (30%): Full-text search catches exact terms
+- **Importance weighting** (20%): PageRank prioritizes critical entities
 
-All within a token budget so I don't overflow my context window.
+Returns entry points, relevant entities, and their dependencies—all within a token budget so I don't overflow my context window.
 
 ### Before Editing: `cx safe`
 
@@ -201,10 +202,13 @@ cx show UserService --graph      # Dependency visualization
 
 ```bash
 cx find Login                    # Name search (prefix match)
-cx find "authentication JWT"     # Concept search
+cx find "authentication JWT"     # Full-text concept search
+cx find --semantic "code that validates user credentials"  # Semantic search
 cx find --keystones --top 10     # Most important entities
 cx find --type F --lang python   # Functions in Python files
 ```
+
+**Semantic Search:** When you use `--semantic`, Cortex uses vector embeddings to find code by meaning, not just keywords. This finds functions like `ValidateCredentials` even when you search for "authentication" — because the concepts are related.
 
 ### Project Overview: `cx map`
 
@@ -254,6 +258,31 @@ The database lives in `.cx/cortex/` (a Dolt repository). Run `cx scan` after maj
 
 ---
 
+## Semantic Search
+
+Cortex generates vector embeddings for every entity using pure Go (no Python, no external APIs). This enables concept-based code discovery:
+
+```bash
+# Find by meaning, not just keywords
+cx find --semantic "validate user credentials"    # Finds: LoginUser, AuthMiddleware, CheckPassword
+cx find --semantic "database connection pooling"  # Finds: NewPool, GetConn, releaseConn
+cx find --semantic "error handling for HTTP"      # Finds: HandleError, WriteErrorResponse
+
+# Hybrid search combines multiple signals
+cx context --smart "add rate limiting" --budget 8000
+# Uses: 50% semantic similarity + 30% keyword match + 20% PageRank importance
+```
+
+**How it works:**
+1. During `cx scan`, entity signatures and doc comments are embedded using all-MiniLM-L6-v2
+2. Embeddings are stored in Dolt with full version history
+3. Queries are embedded and compared using cosine similarity
+4. Results are ranked by conceptual relevance, not just string matching
+
+**Requirements:** Embeddings are generated automatically during scan. No API keys or external services needed—everything runs locally using Hugot (pure Go inference).
+
+---
+
 ## Full Command Reference
 
 ### Context Assembly
@@ -271,6 +300,7 @@ The database lives in `.cx/cortex/` (a Dolt repository). Run `cx scan` after maj
 |---------|---------|
 | `cx find <name>` | Search by name (prefix match) |
 | `cx find "concept query"` | Full-text concept search |
+| `cx find --semantic "query"` | Semantic search via embeddings |
 | `cx find --keystones` | Most-depended-on entities |
 | `cx find --important --top N` | Top N by PageRank |
 | `cx find --type F\|T\|M\|C` | Filter by type (Function/Type/Method/Constant) |
