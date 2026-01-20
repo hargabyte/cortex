@@ -285,6 +285,29 @@ cx report overview --data --format json      # JSON output
 
 **Output includes D2 diagram code** for visualizations.
 
+#### Report Skill Setup
+
+For interactive report generation with user preferences, install the /report skill:
+
+` + "```bash" + `
+# Create the skill (first time only)
+cx report --init-skill > ~/.claude/commands/report.md
+
+# Then use /report in Claude Code for interactive reports
+` + "```" + `
+
+The /report skill provides:
+- Interactive preference gathering (audience, format, focus areas)
+- Consistent report structure and naming convention
+- Multiple output formats (HTML, Markdown, terminal)
+- Diagram rendering options
+
+**Report Naming Convention:**
+Reports save to ` + "`reports/`" + ` with pattern: ` + "`<type>_<YYYY-MM-DD>[_<query>].<ext>`" + `
+- ` + "`overview_2026-01-20.html`" + `
+- ` + "`feature_2026-01-20_authentication.html`" + `
+- ` + "`health_2026-01-20.html`" + `
+
 ---
 
 ### cx render
@@ -482,12 +505,17 @@ func generateAgentReferenceJSON() string {
       "purpose": "Generate structured data for AI-powered reports",
       "usage": "cx report <type> --data",
       "subcommands": ["overview", "feature", "changes", "health"],
-      "flags": ["--data", "-o/--output", "--format", "--since", "--until"],
+      "flags": ["--data", "-o/--output", "--format", "--since", "--until", "--init-skill"],
       "report_types": {
         "overview": "System stats, keystones, modules, architecture diagram",
         "feature": "Semantic search deep-dive with call flow diagram",
         "changes": "Added/modified/deleted entities with change diagram (requires --since)",
         "health": "Risk score, untested keystones, dead code, complexity hotspots"
+      },
+      "skill_setup": {
+        "install": "cx report --init-skill > ~/.claude/commands/report.md",
+        "features": ["Interactive preference gathering", "Consistent naming", "Multiple formats", "Diagram rendering"],
+        "naming": "reports/<type>_<YYYY-MM-DD>[_<query>].<ext>"
       }
     },
     "render": {

@@ -121,6 +121,33 @@ func TestReportCmd_RequiresDataFlag(t *testing.T) {
 	}
 }
 
+func TestReportCmd_InitSkillFlag(t *testing.T) {
+	// Check that --init-skill flag exists
+	initSkillFlag := reportCmd.Flags().Lookup("init-skill")
+	if initSkillFlag == nil {
+		t.Error("missing --init-skill flag")
+	}
+
+	// Verify the skill template is not empty
+	if len(reportSkillTemplate) == 0 {
+		t.Error("reportSkillTemplate is empty")
+	}
+
+	// Verify template contains expected sections
+	expectedSections := []string{
+		"# /report",
+		"## Purpose",
+		"## Workflow",
+		"## Output Templates",
+		"AskUserQuestion",
+	}
+	for _, section := range expectedSections {
+		if !strings.Contains(reportSkillTemplate, section) {
+			t.Errorf("skill template missing expected section: %s", section)
+		}
+	}
+}
+
 func TestReportCmd_HelpOutput(t *testing.T) {
 	// Test the Long description directly instead of executing
 	help := reportCmd.Long

@@ -32,6 +32,10 @@ The --data flag outputs structured YAML (default) or JSON that includes:
   - D2 diagram code for visualizations
   - Coverage and health metrics
 
+Skill Setup:
+  Use --init-skill to generate a Claude Code skill for interactive reports:
+  cx report --init-skill > ~/.claude/commands/report.md
+
 Examples:
   cx report overview --data                    # System overview data
   cx report feature "authentication" --data    # Feature deep-dive
@@ -43,12 +47,14 @@ Examples:
 
   # JSON format
   cx report feature "auth" --data --format json`,
+	RunE: runReportRoot,
 }
 
 // Report flags
 var (
-	reportData   bool   // --data flag to output structured data
-	reportOutput string // -o/--output file path
+	reportData      bool   // --data flag to output structured data
+	reportOutput    string // -o/--output file path
+	reportInitSkill bool   // --init-skill flag to output skill template
 )
 
 // reportOverviewCmd generates overview report data
@@ -157,10 +163,22 @@ func init() {
 	reportCmd.PersistentFlags().BoolVar(&reportData, "data", false, "Output structured data for AI consumption")
 	reportCmd.PersistentFlags().StringVarP(&reportOutput, "output", "o", "", "Output file path (default: stdout)")
 
+	// Skill template flag (local to report command, not inherited)
+	reportCmd.Flags().BoolVar(&reportInitSkill, "init-skill", false, "Output skill template for interactive report generation")
+
 	// Changes-specific flags
 	reportChangesCmd.Flags().StringVar(&changesSince, "since", "", "Starting reference (commit, tag, date)")
 	reportChangesCmd.Flags().StringVar(&changesUntil, "until", "HEAD", "Ending reference (default: HEAD)")
 	reportChangesCmd.MarkFlagRequired("since")
+}
+
+// runReportRoot handles the root report command
+func runReportRoot(cmd *cobra.Command, args []string) error {
+	if reportInitSkill {
+		fmt.Print(reportSkillTemplate)
+		return nil
+	}
+	return cmd.Help()
 }
 
 // runReportOverview generates overview report data
