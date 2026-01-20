@@ -36,6 +36,7 @@ Complete reference for all Cortex commands, flags, and output formats. This docu
    - [cx reset](#cx-reset)
    - [cx link](#cx-link)
 8. [Integration Commands](#integration-commands)
+   - [cx serve](#cx-serve)
    - [cx live](#cx-live)
    - [cx daemon](#cx-daemon)
    - [cx help-agents](#cx-help-agents)
@@ -958,7 +959,83 @@ cx link --remove sa-fn-abc123 bd-task-456  # Remove link
 
 ## Integration Commands
 
+### cx serve
+
+Start MCP (Model Context Protocol) server for AI IDE integration. This is the **recommended** way to integrate Cortex with AI IDEs like Cursor, Windsurf, and Google Antigravity.
+
+**Usage:** `cx serve [flags]`
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--tools` | string | all | Comma-separated list of tools to expose |
+| `--list-tools` | bool | false | Show available tools and exit |
+
+**Available MCP Tools:**
+
+| Tool | Description |
+|------|-------------|
+| `cx_context` | Smart context assembly for task-focused context |
+| `cx_safe` | Pre-flight safety check before modifying code |
+| `cx_find` | Search for entities by name pattern |
+| `cx_show` | Show detailed information about an entity |
+| `cx_map` | Project skeleton overview |
+| `cx_diff` | Show changes since last scan |
+| `cx_impact` | Analyze blast radius of changes |
+| `cx_gaps` | Find coverage gaps in critical code |
+
+**Examples:**
+```bash
+cx serve                        # Start MCP server with all tools
+cx serve --tools=context,safe   # Limit to specific tools
+cx serve --list-tools           # Show available tools
+```
+
+**IDE Setup:**
+
+**Cursor:**
+Add to Cursor settings (Settings → MCP):
+```json
+{
+  "mcpServers": {
+    "cortex": {
+      "command": "cx",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+**Windsurf:**
+Add to `~/.windsurf/mcp.json`:
+```json
+{
+  "servers": {
+    "cortex": {
+      "command": "cx",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+**Google Antigravity:**
+Add to Antigravity MCP configuration:
+```json
+{
+  "mcpServers": {
+    "cortex": {
+      "command": "cx",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+---
+
 ### cx live
+
+> **Note:** `cx live` is the older MCP interface. Consider using `cx serve` instead for a simpler experience.
 
 Start MCP (Model Context Protocol) server for AI agent integration.
 

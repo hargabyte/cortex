@@ -237,6 +237,31 @@ cx reset --hard --force           # Delete everything
 
 ---
 
+### cx serve
+MCP server for AI IDE integration.
+
+` + "```bash" + `
+cx serve                          # Start MCP server (stdio)
+cx serve --list-tools             # Show available tools
+cx serve --tools=context,safe     # Limit to specific tools
+` + "```" + `
+
+**Available MCP Tools:**
+- ` + "`cx_context`" + ` - Smart context assembly
+- ` + "`cx_safe`" + ` - Pre-flight safety check
+- ` + "`cx_find`" + ` - Search entities
+- ` + "`cx_show`" + ` - Entity details
+- ` + "`cx_map`" + ` - Project skeleton
+- ` + "`cx_diff`" + ` - Changes since scan
+- ` + "`cx_impact`" + ` - Blast radius analysis
+- ` + "`cx_gaps`" + ` - Coverage gaps
+
+**IDE Setup:**
+- Cursor: Settings → MCP → ` + "`{\"mcpServers\":{\"cortex\":{\"command\":\"cx\",\"args\":[\"serve\"]}}}`" + `
+- Windsurf: ` + "`~/.windsurf/mcp.json`" + ` → ` + "`{\"servers\":{\"cortex\":{\"command\":\"cx\",\"args\":[\"serve\"]}}}`" + `
+
+---
+
 ## Global Flags
 
 ` + "```" + `
@@ -269,6 +294,7 @@ cx reset --hard --force           # Delete everything
 | Compare states | ` + "`cx diff --from HEAD~1`" + ` |
 | Old code state | ` + "`cx show <entity> --at v1.0`" + ` |
 | What changed? | ` + "`cx catchup --since v1.0`" + ` |
+| MCP IDE integration | ` + "`cx serve`" + ` |
 
 ---
 
@@ -396,6 +422,16 @@ func generateAgentReferenceJSON() string {
     "reset": {
       "purpose": "Reset database",
       "flags": ["--scan-only", "--hard", "--force"]
+    },
+    "serve": {
+      "purpose": "MCP server for AI IDE integration",
+      "usage": "cx serve",
+      "flags": ["--tools", "--list-tools"],
+      "mcp_tools": ["cx_context", "cx_safe", "cx_find", "cx_show", "cx_map", "cx_diff", "cx_impact", "cx_gaps"],
+      "ide_setup": {
+        "cursor": "Settings → MCP → mcpServers.cortex = {command: cx, args: [serve]}",
+        "windsurf": "~/.windsurf/mcp.json → servers.cortex = {command: cx, args: [serve]}"
+      }
     }
   },
   "global_flags": {
