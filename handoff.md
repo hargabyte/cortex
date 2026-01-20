@@ -12,41 +12,54 @@
 Continue CX Report implementation - D2 code generator phase.
 
 ## Context
-Read handoff.md for complete context. The D2 Visual Design System (R2.1) is now
-complete with professional color palette, icons, and styling. Next: implement
-the D2 code generator to use this design system.
+The D2 Visual Design System (R2.1) is complete with professional color palette,
+icons, and styling. The next task is R2.2: refactor internal/graph/d2.go to use
+this design system and generate showcase-worthy diagrams.
 
 ## Your Goal
-Implement R2.2 (D2 Code Generator) - refactor internal/graph/d2.go to use the
-new design system and generate professional diagrams.
+Implement R2.2 (D2 Code Generator):
+1. Create DiagramGenerator interface with Generate(entities, deps, DiagramType)
+2. Refactor d2.go to use d2_styles.go design system
+3. Support multiple diagram types (architecture, call_flow, dependency, coverage)
+4. Add theme/layout configuration support
 
 ## Quick Start
-1. Read handoff.md for context
-2. Review docs/D2_DESIGN_SYSTEM.md for visual design reference
-3. Review internal/graph/d2_styles.go for Go API
-4. bd ready | grep cortex-dkd to see available tasks
+1. bd update cortex-dkd.2.2 --status in_progress
+2. Review internal/graph/d2_styles.go for Go API
+3. Review internal/graph/d2_design_system.d2 for visual reference
+4. Refactor internal/graph/d2.go to use design system
 
-## What's Working
-- D2 Visual Design System with professional styling (R2.1)
-- Report data gathering for all 4 report types
-- Basic D2 generation in internal/graph/d2.go
+## Key Integration Points
+- Use GetD2NodeStyle() for node styling with colors, icons
+- Use GetD2EdgeStyle() for edge styling by dependency type
+- Use D2StyleToString() to convert styles to D2 syntax
+- Support DiagramType enum: architecture, call_flow, dependency, coverage
 
-## What Needs Implementation
-R2.2: Refactor D2 generator to use new design system
-R2.3-R2.5: Diagram presets (architecture, call flow, render command)
-R1.3-R1.4: Output formatting polish
+## Design System API Available
+graph.GetD2NodeStyle(entityType, importance, coverage, language) → D2NodeStyle
+graph.GetD2EdgeStyle(depType) → D2EdgeStyleDef
+graph.D2StyleToString(style) → string
+graph.D2EdgeStyleToString(style) → string
+graph.GetD2Icon(entityType) → D2Icon
+graph.GetD2LanguageIcon(language) → D2Icon
+graph.GetCoverageColor(percentage) → D2Color
+graph.GetD2LayerColor(layer) → D2Color
 
-## Ready Tasks
-cortex-dkd.2.2: R2.2: D2 Code Generator ← RECOMMENDED (unblocks R2.3-R2.5)
-cortex-dkd.1.3: R1.3: YAML/JSON Output
-cortex-dkd.1.4: R1.4: Output Handling
+## Expected Output
+Diagrams should include:
+- Theme configuration (vars block with theme-id, layout-engine)
+- Node icons from icons.terrastruct.com
+- Color-coded nodes by entity type and importance
+- Styled edges by dependency type
+- Container grouping for modules/packages
 
-## Key Files
-- internal/graph/d2_styles.go - D2 design system Go API (NEW - 465 lines)
-- internal/graph/d2_design_system.d2 - D2 reference implementation (NEW - 746 lines)
-- docs/D2_DESIGN_SYSTEM.md - Design system documentation (NEW)
-- internal/graph/d2.go - Existing D2 generator (needs refactor)
-- internal/graph/styles.go - Base shape mappings
+## Files to Modify
+- internal/graph/d2.go - Main refactor target
+
+## Files to Reference
+- internal/graph/d2_styles.go - Design system API (465 lines)
+- internal/graph/d2_design_system.d2 - Visual examples (746 lines)
+- docs/D2_DESIGN_SYSTEM.md - Documentation
 ```
 
 ---
@@ -55,70 +68,216 @@ cortex-dkd.1.4: R1.4: Output Handling
 
 ### What We Accomplished This Session
 
-1. **Implemented R2.1: D2 Visual Design System** (1 bead closed)
-   - Created professional color palette (Material Design inspired)
-   - Added entity type colors (function, method, type, interface, etc.)
-   - Added importance styling (keystone, bottleneck, high-fan-in/out, leaf)
-   - Added coverage indicator colors (high/medium/low/none)
-   - Added edge styling for dependency types
-   - Added layer colors for architectural containers
-   - Created icon mappings from icons.terrastruct.com
-   - Created Go API in `internal/graph/d2_styles.go` (465 lines)
-   - Created D2 reference implementation `internal/graph/d2_design_system.d2` (746 lines)
-   - Created documentation `docs/D2_DESIGN_SYSTEM.md`
-   - Added tests in `internal/graph/d2_styles_test.go`
-   - Updated `internal/graph/styles.go` with database/storage shapes
+**Implemented R2.1: D2 Visual Design System** (cortex-dkd.2.1 closed)
 
-### Commits This Session
+Created a comprehensive visual design system for professional D2 diagrams:
+
+1. **Color Palette** (Material Design inspired)
+   - Entity types: function (blue), type (purple), interface (orange), database (gray)
+   - Importance levels: keystone (orange+shadow), bottleneck (amber), normal (white)
+   - Coverage indicators: high (green), medium (yellow), low (red), none (gray)
+   - Layer colors: API (cyan), service (blue), data (gray), domain (purple)
+
+2. **Icons** (from icons.terrastruct.com)
+   - Entity icons: lightning (function), gear (method), box (type), plug (interface)
+   - Language icons: Go, TypeScript, Python, Java, Rust, C, PHP, Ruby, Kotlin
+   - Status icons: warning, error, info, success, lock, server, cloud
+
+3. **Edge Styling**
+   - calls: solid black arrow
+   - uses_type: gray dashed
+   - implements: orange dashed with diamond arrowhead
+   - extends: purple solid with filled diamond
+   - data_flow: blue animated
+   - imports: gray light dashed
+
+4. **Go API** (d2_styles.go - 465 lines)
+   - `GetD2NodeStyle(entityType, importance, coverage, language)` - Complete node styling
+   - `GetD2EdgeStyle(depType)` - Edge styling by dependency type
+   - `GetCoverageColor(percentage)` - Coverage level colors
+   - `D2StyleToString(style)` - Convert to D2 syntax
+   - `D2EdgeStyleToString(style)` - Convert edge style to D2 syntax
+
+5. **D2 Reference Implementation** (d2_design_system.d2 - 746 lines)
+   - Theme configuration with vars
+   - D2 classes for all styling categories
+   - Example diagrams: architecture, call_flow, coverage, health
+
+6. **Documentation** (docs/D2_DESIGN_SYSTEM.md - 407 lines)
+   - Complete color reference tables
+   - Icon URL reference
+   - Go API usage examples
+   - Example D2 code snippets
+
+### Files Created/Modified
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| internal/graph/d2_styles.go | 465 | D2 design system Go API |
+| internal/graph/d2_design_system.d2 | 746 | D2 reference implementation with examples |
+| internal/graph/d2_styles_test.go | 318 | Comprehensive test coverage |
+| docs/D2_DESIGN_SYSTEM.md | 407 | Design system documentation |
+| internal/graph/styles.go | +4 | Added database/storage shape mappings |
+| **Total New** | **~1,940** | |
+
+### Commits
 
 | Hash | Message |
 |------|---------|
 | d305800 | Add D2 Visual Design System for professional diagram styling (R2.1 complete) |
+| e628580 | Update handoff with R2.1 D2 Visual Design System completion |
 
 ---
 
-## Previous Session Summary
+## D2 Code Generator Refactor Guide (R2.2)
 
-1. **Implemented R1.2: Data Gathering Infrastructure** (1 bead closed)
-   - Created `internal/report/gather.go` (580 lines)
-   - `DataGatherer` struct with store reference
-   - `GatherOverviewData()` - statistics, keystones, modules from store
-   - `GatherFeatureData()` - FTS search, dependencies, coverage
-   - `GatherChangesData()` - Dolt time-travel entity diff
-   - `GatherHealthData()` - untested keystones, dead code, risk score
-   - Connected all report commands to actual store queries
+### Current State (d2.go)
+The existing `GenerateD2()` function is basic:
+- Takes `map[string]*output.GraphNode` and `[][]string` edges
+- Only uses `GetEntityShape()` and `GetImportanceStyle()` from styles.go
+- No icons, no color fills, no theme configuration
+- No diagram type support
 
-### Commits This Session
+### Required Changes
 
-| Hash | Message |
-|------|---------|
-| (pending) | Add data gathering infrastructure for report generation (R1.2 complete) |
+1. **Create DiagramGenerator Interface**
+```go
+type DiagramType string
+
+const (
+    DiagramTypeArchitecture DiagramType = "architecture"
+    DiagramTypeCallFlow     DiagramType = "call_flow"
+    DiagramTypeDependency   DiagramType = "dependency"
+    DiagramTypeCoverage     DiagramType = "coverage"
+)
+
+type DiagramGenerator interface {
+    Generate(entities []Entity, deps []Dependency, diagramType DiagramType) string
+}
+```
+
+2. **Update D2Options**
+```go
+type D2Options struct {
+    MaxNodes    int
+    Direction   string
+    ShowLabels  bool
+    Collapse    bool
+    Title       string
+    ThemeID     int          // NEW: D2 theme (200 = Mixed Berry Blue)
+    Layout      string       // NEW: elk, dagre, tala
+    ShowIcons   bool         // NEW: include icons
+    ShowCoverage bool        // NEW: color by coverage
+}
+```
+
+3. **Generate Theme Header**
+```go
+func generateThemeHeader(opts *D2Options) string {
+    return fmt.Sprintf(`vars: {
+  d2-config: {
+    theme-id: %d
+    layout-engine: %s
+  }
+}
+`, opts.ThemeID, opts.Layout)
+}
+```
+
+4. **Update generateD2Node to use design system**
+```go
+func generateD2Node(entity Entity, opts *D2Options) string {
+    style := GetD2NodeStyle(entity.Type, entity.Importance, entity.Coverage, entity.Language)
+
+    var sb strings.Builder
+    safeID := sanitizeD2ID(entity.ID)
+
+    sb.WriteString(fmt.Sprintf("%s: {\n", safeID))
+    sb.WriteString(fmt.Sprintf("  label: \"%s\"\n", entity.Name))
+    sb.WriteString(fmt.Sprintf("  shape: %s\n", style.Shape))
+
+    if opts.ShowIcons && style.Icon != "" {
+        sb.WriteString(fmt.Sprintf("  icon: %s\n", style.Icon))
+    }
+
+    sb.WriteString(fmt.Sprintf("  %s\n", D2StyleToString(style)))
+    sb.WriteString("}")
+
+    return sb.String()
+}
+```
+
+5. **Update generateD2Edge to use design system**
+```go
+func generateD2Edge(from, to, depType string, showLabel bool) string {
+    style := GetD2EdgeStyle(depType)
+
+    safeFrom := sanitizeD2ID(from)
+    safeTo := sanitizeD2ID(to)
+
+    edge := fmt.Sprintf("%s %s %s", safeFrom, style.Arrow, safeTo)
+
+    if showLabel {
+        edge += ": " + depType
+    }
+
+    // Add style block if non-default
+    styleStr := D2EdgeStyleToString(style)
+    if styleStr != "" {
+        edge += " {\n  " + styleStr + "\n}"
+    }
+
+    return edge
+}
+```
+
+### Expected Output Example
+
+```d2
+vars: {
+  d2-config: {
+    theme-id: 200
+    layout-engine: elk
+  }
+}
+
+direction: right
+
+# Nodes
+LoginUser: {
+  label: "LoginUser"
+  shape: rectangle
+  icon: https://icons.terrastruct.com/essentials%2F142-lightning.svg
+  style: {
+    fill: "#fff3e0"
+    stroke: "#e65100"
+    stroke-width: 3
+    shadow: true
+  }
+}
+
+ValidateToken: {
+  label: "ValidateToken"
+  shape: rectangle
+  icon: https://icons.terrastruct.com/essentials%2F142-lightning.svg
+  style: {
+    fill: "#fff8e1"
+    stroke: "#ff8f00"
+    stroke-width: 2
+  }
+}
+
+# Edges
+LoginUser -> ValidateToken: calls {
+  style: {
+    stroke: "#424242"
+  }
+}
+```
 
 ---
 
-## Previous Session Summary
-
-1. **Implemented R0: Data Output Schema** (5 beads closed)
-   - Created `internal/report/` package (3410 lines)
-   - Core schema types in schema.go
-   - Report-specific types in feature.go, overview.go, changes.go, health.go
-   - Comprehensive test coverage
-
-2. **Implemented R1.1: Command Scaffolding** (1 bead closed)
-   - Created `cx report` command with 4 subcommands
-   - Added --data, --format, -o flags
-   - Commands output YAML scaffolds using report package types
-
-### Previous Commits
-
-| Hash | Message |
-|------|---------|
-| 43b1eca | Add CX Report schema package (R0 complete) |
-| 0d35889 | Add cx report command scaffolding (R1.1 complete) |
-
----
-
-## Complete Epic Structure (Updated)
+## Complete Epic Structure
 
 ```
 cortex-dkd (P1 epic) CX 3.0: Report Generation
@@ -138,10 +297,11 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 │
 ├── cortex-dkd.2 (P1) R2: D2 Diagram Integration ← IN PROGRESS
 │   ├── cortex-dkd.2.1 R2.1: D2 Visual Design System ← CLOSED ✓
-│   ├── cortex-dkd.2.2 R2.2: D2 Code Generator ← READY
+│   ├── cortex-dkd.2.2 R2.2: D2 Code Generator ← READY (recommended next)
 │   ├── cortex-dkd.2.3 R2.3: Architecture Preset [blocked by .2.2]
 │   ├── cortex-dkd.2.4 R2.4: Call Flow Preset [blocked by .2.2]
-│   └── cortex-dkd.2.5 R2.5: Render Command [blocked by .2.2]
+│   ├── cortex-dkd.2.5 R2.5: Render Command [blocked by .2.2]
+│   └── cortex-dkd.2.6 R2.6: Animated D2 Diagrams [blocked by .2.2]
 │
 ├── cortex-dkd.4-7 (P2) Report Types [blocked by R1, R2]
 ```
@@ -154,76 +314,32 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 |-------|-------|--------|
 | R0: Schema | 5/5 | ✅ Complete |
 | R1: Engine | 2/4 | 🔄 In Progress |
-| R2: D2 | 1/5 | 🔄 In Progress |
+| R2: D2 | 1/6 | 🔄 In Progress |
 | R4-R7: Reports | 0/18 | ⏸️ Blocked |
 
 ---
 
-## Files Created/Modified This Session
+## Key Files Reference
 
+### D2 Generation
 | File | Lines | Purpose |
 |------|-------|---------|
+| internal/graph/d2.go | 167 | Current D2 generator (needs refactor) |
 | internal/graph/d2_styles.go | 465 | D2 design system Go API |
 | internal/graph/d2_design_system.d2 | 746 | D2 reference implementation |
-| internal/graph/d2_styles_test.go | 318 | Design system tests |
-| docs/D2_DESIGN_SYSTEM.md | 407 | Design system documentation |
-| internal/graph/styles.go | (modified) | Added database/storage shapes |
-| **Total New** | **~1,940** | |
+| internal/graph/styles.go | 157 | Base shape/edge mappings |
+| docs/D2_DESIGN_SYSTEM.md | 407 | Design documentation |
 
----
-
-## D2 Design System Implementation Details
-
-### Color Palette (Material Design Inspired)
-- Entity types have distinct colors for visual differentiation
-- Importance levels use warm colors (orange/amber) for emphasis
-- Coverage uses traffic-light colors (green/yellow/red)
-- Layers use semantic colors (cyan=API, blue=service, gray=data)
-
-### Icons from icons.terrastruct.com
-- Entity icons: lightning (function), gear (method), box (type), plug (interface)
-- Language icons: Go, TypeScript, Python, Java, Rust, etc.
-- Status icons: warning, error, info, success, lock, server
-
-### Go API Functions
-- `GetD2NodeStyle(entityType, importance, coverage, language)` - Complete node styling
-- `GetD2EdgeStyle(depType)` - Edge styling by dependency type
-- `GetCoverageColor(percentage)` - Coverage level colors
-- `D2StyleToString(style)` - Convert style to D2 syntax
-- `D2EdgeStyleToString(style)` - Convert edge style to D2 syntax
-
-### Files Reference
-- `internal/graph/d2_styles.go` - Go API implementation
-- `internal/graph/d2_design_system.d2` - D2 reference with examples
-- `docs/D2_DESIGN_SYSTEM.md` - Comprehensive documentation
-
----
-
-## Previous: Data Gathering Implementation Details
-
-### Overview Report Data
-- Entity counts by type and language from `store.CountEntities()`
-- Top 20 keystones from `store.GetTopByPageRank()`
-- Module structure from grouping entities by file path
-- Health summary (coverage, untested keystones count)
-
-### Feature Report Data
-- FTS search using `store.SearchEntities()` with relevance scoring
-- Dependencies between matched entities from `store.GetDependenciesFrom()`
-- Coverage data from `coverage.GetEntityCoverage()`
-- Test mappings from `coverage.GetTestsForEntity()`
-
-### Changes Report Data
-- Dolt time-travel queries using `store.QueryEntitiesAt()`
-- Entity comparison (added, modified, deleted) between commits
-- Impact analysis for high-dependency changes
-- **Note**: Requires full Dolt commit hashes (not `HEAD~N`)
-
-### Health Report Data
-- Untested keystones (PageRank > threshold, coverage = 0)
-- Dead code candidates (in-degree = 0, not exported)
-- Complexity hotspots (high out-degree)
-- Risk score calculation (0-100 scale)
+### Report Package
+| File | Lines | Purpose |
+|------|-------|---------|
+| internal/report/schema.go | 640 | Core report types |
+| internal/report/gather.go | 580 | Data gathering from store |
+| internal/report/feature.go | ~200 | Feature report types |
+| internal/report/overview.go | ~200 | Overview report types |
+| internal/report/changes.go | ~200 | Changes report types |
+| internal/report/health.go | ~200 | Health report types |
+| internal/cmd/report.go | 270 | Command scaffolding |
 
 ---
 
@@ -238,7 +354,7 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 │                                                                      │
 │  Claude Code:                                                        │
 │    1. Runs: cx report feature "auth" --data                          │
-│    2. Receives: Structured YAML with entities, coverage, deps        │
+│    2. Receives: Structured YAML with entities, D2 code, coverage     │
 │    3. Writes: Narrative prose explaining the feature                 │
 │    4. Assembles: Final HTML report with embedded diagrams            │
 │                                                                      │
@@ -251,15 +367,32 @@ No Anthropic API key needed - the AI agent IS the narrative generator.
 
 ---
 
+## Previous Session Summaries
+
+### Session 3: R1.2 Data Gathering (dcdebff)
+- Created `internal/report/gather.go` (580 lines)
+- `GatherOverviewData()` - statistics, keystones, modules from store
+- `GatherFeatureData()` - FTS search, dependencies, coverage
+- `GatherChangesData()` - Dolt time-travel entity diff
+- `GatherHealthData()` - untested keystones, dead code, risk score
+
+### Session 2: R0 Schema + R1.1 Scaffolding (43b1eca, 0d35889)
+- Created `internal/report/` package (3410 lines)
+- Core schema types, report-specific types
+- `cx report` command with 4 subcommands
+- --data, --format, -o flags
+
+---
+
 ## Session End Checklist
 
 ```
-[ ] 1. git status              (check what changed)
-[ ] 2. git add <files>         (stage code changes)
-[ ] 3. bd sync                 (commit beads changes)
-[ ] 4. git commit -m "..."     (commit code)
-[ ] 5. bd sync                 (commit any new beads changes)
-[ ] 6. git push                (push to remote)
+[x] 1. git status              (clean)
+[x] 2. git add <files>         (staged)
+[x] 3. bd sync                 (synced)
+[x] 4. git commit -m "..."     (committed)
+[x] 5. bd sync                 (synced)
+[x] 6. git push                (pushed)
 ```
 
-**NEVER skip this.** Work is not done until pushed.
+**Session complete. All changes pushed to origin/master.**
