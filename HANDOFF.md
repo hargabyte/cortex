@@ -1,139 +1,143 @@
-# Session Handoff: CX Report Generation - Diagram Presets
+# Session Handoff: CX Report Generation - Near Complete
 
 **Date:** 2026-01-20
-**Last Session:** Completed R2.3 Architecture Diagram Preset
+**Last Session:** Completed R2.5 Render Command + verified/closed many P2 tasks
 **Branch:** master
+**Commit:** 1898ad6
 
-## Completed: R2.3 - Architecture Diagram Preset
+## Epic Status: 89% Complete (33/37 tasks closed)
 
-Created preset system for D2 diagram generation with full report integration.
+The CX Report Generation epic is nearly complete. All P1 tasks are done, and most P2 tasks were already implemented.
 
-### Files Created
+### Completed This Session
 
-- `internal/graph/d2_presets.go` (350 lines)
-  - `DiagramPreset` type with Architecture, CallFlow, Coverage, Dependency presets
-  - `ArchitecturePreset()` - TALA layout, module containers, 50 max nodes
-  - `CallFlowPreset()` - ELK layout, vertical down direction
-  - `CoveragePreset()` - Coverage heatmap with status icons
-  - `DependencyPreset()` - Standard dependency graph
-  - `BuildArchitectureDiagram()` - Store integration via PageRank
-  - `BuildModuleArchitectureDiagram()` - Groups top 5 entities per module
-  - Helpers: `extractModuleFromPath`, `inferLanguage`, `inferLayer`, `classifyImportanceByRank`
+1. **R2.5: Render Command** - New `cx render` command that invokes D2 CLI
+   - Render standalone `.d2` files to SVG/PNG
+   - Stdin support: `echo "x -> y" | cx render -`
+   - HTML embedding: `cx render report.html --embed`
+   - Files: `internal/cmd/render.go`, `internal/cmd/render_test.go`
 
-- `internal/graph/d2_presets_test.go` (313 lines) - Full test coverage
+2. **Verified & Closed Previously Implemented Tasks:**
+   - R1.3, R1.4 (YAML/JSON output, file handling)
+   - R4.1-R4.4 (Overview Report - all subtasks)
+   - R5.2-R5.6 (Feature Report - hybrid search, ranking, deps, call flow, tests)
+   - R7.1-R7.3, R7.5 (Health Report - risk score, untested keystones, dead code, complexity)
 
-### Files Modified
+## What's Working
 
-- `internal/report/gather.go` - Added `gatherArchitectureDiagram()` for overview reports
-
-### API Reference
-
-```go
-// Get preset configuration
-cfg := graph.ArchitecturePreset()  // TALA layout, modules as containers
-cfg := graph.CallFlowPreset()      // ELK layout, vertical flow
-cfg := graph.CoveragePreset()      // Coverage heatmap
-cfg := graph.DependencyPreset()    // Standard dependency graph
-cfg := graph.GetPreset(graph.PresetArchitecture)  // By name
-
-// Generate diagram from store
-d2Code, err := graph.BuildArchitectureDiagram(store, "Title", 50)
-d2Code, err := graph.BuildModuleArchitectureDiagram(store, "Title")
-
-// Generate from entities/deps directly
-gen := graph.NewD2Generator(cfg)
-d2Code := gen.Generate(entities, deps)
-```
-
-## Now Unblocked
-
-The following tasks are ready to work on:
-
-| Task | Description | Priority |
-|------|-------------|----------|
-| R2.4 | Call Flow Diagram Preset | P1 |
-| R2.5 | Render Command | P1 |
-| R1.3 | YAML/JSON Output | P1 |
-| R1.4 | Output Handling | P1 |
-
-## Recommended Next Task: R2.4 - Call Flow Diagram Preset
-
-The Call Flow preset already exists in `d2_presets.go`, but needs:
-1. Integration with report system for feature reports
-2. `BuildCallFlowDiagram()` function to query call chains from store
-3. Test coverage for call flow generation
-
-### Quick Start for R2.4
+All four report commands are functional:
 
 ```bash
-# Context recovery
-cx prime
-bd show cortex-dkd.2.4
-bd update cortex-dkd.2.4 --status in_progress
+# Overview Report - system statistics, keystones, modules, architecture diagram
+cx report overview --data
 
-# Implementation
-# 1. Add BuildCallFlowDiagram() to d2_presets.go
-# 2. Add gatherCallFlowDiagram() to gather.go for feature reports
-# 3. Add tests
+# Feature Report - search-based deep dive with call flow diagram
+cx report feature "authentication" --data
 
-# Test
-go test ./internal/graph/... ./internal/report/...
+# Health Report - risk score, untested keystones, dead code, complexity hotspots
+cx report health --data
 
-# When done
-bd close cortex-dkd.2.4 --reason "Added call flow diagram generation with report integration"
-bd sync
-git add .
-git commit -m "Add Call Flow Diagram Preset with report integration (R2.4 complete)"
-git push
+# Render Command - convert D2 to images
+cx render diagram.d2                    # → diagram.svg
+echo "x -> y" | cx render -             # → stdout SVG
+cx render report.html --embed           # → inline SVGs in HTML
 ```
 
-## Alternative: R2.5 - Render Command
+## Remaining Tasks (4 open)
 
-Create CLI command to render D2 diagrams to SVG/PNG.
+| Task | Description | Status | Notes |
+|------|-------------|--------|-------|
+| **R6: Change Report** | Time-travel diff reports | Blocked | Dolt query issues |
+| R6.1-R6.4 | Dolt diff, entity comparison, impact analysis, before/after D2 | Blocked | `QueryEntitiesAt()` returning errors |
+| **R7.4** | Circular dependency detection | Not implemented | Health report enhancement |
+| **R2.6** | Animated D2 diagrams | Nice-to-have | Low priority enhancement |
+
+### Change Report Issue
+
+The Change Report (R6) has Dolt time-travel query issues:
+```bash
+$ cx report changes --since 66udgoo --data
+Error: query entities at 66udgoo: Error 1105: branch not found
+```
+
+The `QueryEntitiesAt()` function in `store/dolt.go` needs debugging. It may be passing refs incorrectly to Dolt's `AS OF` clause.
+
+## Recommended Next Steps
+
+### Option 1: Debug Change Report (R6) - Medium effort
+Fix the Dolt time-travel queries to enable change reports:
+1. Debug `store.QueryEntitiesAt()` - check ref format handling
+2. Test with Dolt commit hashes vs branch names
+3. May require understanding Dolt's `AS OF` syntax better
 
 ```bash
-# Target usage
-cx render diagram.d2 -o diagram.svg
-cx report overview --data | cx render --stdin -o arch.svg
+bd update cortex-dkd.6.1 --status in_progress
+cx show QueryEntitiesAt --related
 ```
 
-## Epic Structure
+### Option 2: Add Circular Dependency Detection (R7.4) - Small effort
+Add cycle detection to health reports:
+1. Implement `findCircularDependencies()` in `gather.go`
+2. Use graph traversal to detect cycles
+3. Add to health report output
 
+```bash
+bd update cortex-dkd.7.4 --status in_progress
 ```
-cortex-dkd: CX 3.0: Report Generation
-├── R1: Report Engine Core
-│   ├── R1.1: Report Schema Types ✓
-│   ├── R1.2: Data Gathering ✓
-│   ├── R1.3: YAML/JSON Output (ready)
-│   └── R1.4: Output Handling (ready)
-├── R2: D2 Diagram Integration
-│   ├── R2.1: D2 Visual Design System ✓
-│   ├── R2.2: D2 Code Generator ✓
-│   ├── R2.3: Architecture Diagram Preset ✓ ← JUST COMPLETED
-│   ├── R2.4: Call Flow Diagram Preset (ready)
-│   └── R2.5: Render Command (ready)
-└── R3: Report Commands (blocked on R1, R2)
+
+### Option 3: Close the Epic - Smallest effort
+The core functionality is complete. Consider:
+1. Close R6, R7.4, R2.6 as "wontfix" or move to backlog
+2. Close the epic as "MVP complete"
+3. Create new issues for enhancements later
+
+## File Summary
+
+### Core Report Files
+- `internal/cmd/report.go` - Report subcommands (overview, feature, changes, health)
+- `internal/cmd/render.go` - D2 render command (NEW)
+- `internal/report/schema.go` - Report data structures
+- `internal/report/gather.go` - Data gathering functions
+
+### D2 Diagram Files
+- `internal/graph/d2.go` - D2Generator with 4 diagram types
+- `internal/graph/d2_styles.go` - Visual design system
+- `internal/graph/d2_presets.go` - Diagram presets (Architecture, CallFlow, etc.)
+
+## Quick Reference
+
+```bash
+# Check remaining work
+bd list --status open | grep cortex-dkd
+
+# Test reports
+cx report overview --data | head -50
+cx report feature "scan" --data | head -50
+cx report health --data | head -50
+
+# Test render
+echo "a -> b -> c" | ./cx render -
+
+# Debug change report issue
+cx show QueryEntitiesAt --related
 ```
 
 ## Previous Session Summaries
 
-### Session 5 (2026-01-20) - R2.3 Architecture Preset
-- Created `d2_presets.go` with four diagram presets
-- Architecture preset uses TALA layout for superior container handling
-- Integrated with report system via `gatherArchitectureDiagram()`
-- Full test coverage in `d2_presets_test.go`
+### Session 6 (2026-01-20) - R2.5 Render Command + Verification
+- Implemented `cx render` command with D2 CLI integration
+- HTML embedding with three block format support
+- Verified and closed 18 tasks that were already implemented
+- Epic now at 89% completion
 
-### Session 4 (2026-01-20) - R2.2 D2 Code Generator
-- Implemented `DiagramGenerator` interface
-- Four diagram types: Architecture, CallFlow, Dependency, Coverage
-- Visual design system integration
+### Session 5 (2026-01-20) - R2.4 Call Flow Diagram Preset
+- Created `BuildCallFlowDiagram()` with BFS traversal
+- Integrated with feature reports via `gatherCallFlowDiagram()`
 
-### Session 3 (2026-01-19) - R2.1 D2 Visual Design System
-- Created `d2_styles.go` with colors, icons, themes
-- Entity type → color mapping
-- Importance → visual emphasis mapping
+### Session 4 (2026-01-20) - R2.3 Architecture Diagram Preset
+- Created preset system with TALA layout for architecture diagrams
+- `BuildArchitectureDiagram()` integration with overview reports
 
-### Session 2 (2026-01-18) - R1.1/R1.2 Report Schema & Data Gathering
-- Created report schema types in `internal/report/schema.go`
-- Implemented `DataGatherer` in `internal/report/gather.go`
-- Overview, Feature, Changes, Health report structures
+### Session 3 (2026-01-19) - R2.1/R2.2 D2 Design System & Generator
+- Visual design system in `d2_styles.go`
+- `DiagramGenerator` interface with four diagram types
