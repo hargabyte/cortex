@@ -138,7 +138,7 @@ func TestReportCmd_InitSkillFlag(t *testing.T) {
 		"# /report",
 		"## Purpose",
 		"## Workflow",
-		"## Output Templates",
+		"DIAGRAMS ARE PRIMARY",
 		"AskUserQuestion",
 	}
 	for _, section := range expectedSections {

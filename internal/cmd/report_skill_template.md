@@ -1,7 +1,9 @@
 # /report [type] [query] - Generate Codebase Report
 
 ## Purpose
-Generate publication-quality codebase reports by combining structured data from CX with AI-written narratives. This skill guides you through an interactive workflow to create the right report for your audience.
+Generate publication-quality codebase reports with **visual D2 diagrams as the primary output**. Reports combine structured data from CX with AI-written narratives and automatically-generated architecture/call flow diagrams.
+
+**Key Feature:** Every report includes D2 diagrams that visualize the codebase structure. These diagrams are rendered to SVG and embedded directly in the HTML output.
 
 ## Arguments
 - `type` (optional): Report type - `overview`, `feature`, `changes`, or `health`
@@ -24,13 +26,13 @@ AskUserQuestion:
   header: "Report type"
   options:
     - label: "Overview"
-      description: "System-level summary with architecture diagram and health metrics"
+      description: "System architecture diagram with module structure and health metrics"
     - label: "Feature"
-      description: "Deep-dive into a specific feature using semantic search"
+      description: "Call flow diagram showing how a feature works end-to-end"
     - label: "Changes"
-      description: "What changed between two points in time (requires --since)"
+      description: "Before/after diagrams showing what changed (requires --since)"
     - label: "Health"
-      description: "Risk analysis with coverage gaps and recommendations"
+      description: "Risk visualization with coverage gaps and complexity hotspots"
 ```
 
 ### Step 2: Gather Report-Specific Parameters
@@ -69,8 +71,6 @@ AskUserQuestion:
 
 ### Step 3: Gather Preferences
 
-Ask for audience and format:
-
 ```
 AskUserQuestion:
   question: "Who is the primary audience for this report?"
@@ -91,81 +91,157 @@ AskUserQuestion:
   question: "What output format do you prefer?"
   header: "Format"
   options:
-    - label: "HTML (Recommended)"
-      description: "Rich formatting with embedded diagrams, best for sharing"
-    - label: "Markdown"
-      description: "Plain text with formatting, good for documentation"
-    - label: "Terminal"
-      description: "Concise summary displayed here, no file created"
+    - label: "HTML with diagrams (Recommended)"
+      description: "Rich formatting with rendered SVG diagrams, best for sharing"
+    - label: "Markdown with D2 code"
+      description: "Plain text with D2 code blocks for later rendering"
+    - label: "Terminal summary"
+      description: "Concise summary with ASCII diagram representation"
 ```
 
-```
-AskUserQuestion:
-  question: "Which sections should the report emphasize?"
-  header: "Focus areas"
-  multiSelect: true
-  options:
-    - label: "Diagrams"
-      description: "Include D2 architecture and flow diagrams"
-    - label: "Coverage"
-      description: "Test coverage analysis and gaps"
-    - label: "Dependencies"
-      description: "Call graphs and dependency relationships"
-    - label: "Recommendations"
-      description: "Actionable suggestions for improvement"
-```
+### Step 4: Collect Data and Extract Diagrams
 
-### Step 4: Collect Data
-
-Run the appropriate cx report command based on type:
+Run the appropriate cx report command:
 
 ```bash
-# Overview report
+# Overview report - includes architecture diagram
 cx report overview --data
 
-# Feature report
+# Feature report - includes call flow diagram
 cx report feature "<query>" --data
 
-# Changes report
+# Changes report - includes changes diagram
 cx report changes --since <ref> --data
 
-# Health report
+# Health report - includes risk distribution
 cx report health --data
 ```
 
-**Parse the YAML output and extract:**
-- `report.type` and `report.generated_at`
-- `metadata.*` for context
-- `entities[]` for key code elements
-- `dependencies[]` for relationships
-- `diagrams.*` for D2 code blocks
-- `coverage.*` for test metrics
+**IMPORTANT: Parse the YAML output and extract the `diagrams` section:**
 
-### Step 5: Write Narrative Sections
+The YAML output contains pre-generated D2 diagrams:
+```yaml
+diagrams:
+  architecture:  # For overview reports
+    title: "System Architecture"
+    d2: |
+      direction: right
+      # ... D2 code ...
 
-Based on audience, write narratives with appropriate depth:
+  call_flow:  # For feature reports
+    title: "Call Flow: LoginUser"
+    d2: |
+      direction: down
+      # ... D2 code ...
 
-**For Developers:**
-- Include code references with file:line links
-- Explain implementation details
-- Highlight technical decisions and tradeoffs
+  changes_summary:  # For changes reports
+    title: "Changes: HEAD~50 → HEAD"
+    d2: |
+      # ... D2 code ...
+```
 
-**For Tech Leads:**
-- Focus on architecture and patterns
-- Emphasize risks and coverage gaps
-- Include actionable recommendations
+**Extract each diagram's D2 code for rendering.**
 
-**For Stakeholders:**
-- Use plain language, avoid jargon
-- Focus on progress and health metrics
-- Highlight business impact
+### Step 5: Render Diagrams to SVG
 
-**For New Team Members:**
-- Provide context and explanations
-- Include learning paths
-- Explain why things are structured this way
+**This step is REQUIRED for HTML reports.** Diagrams are the primary visual element.
 
-### Step 6: Assemble Output
+For each diagram in the YAML output:
+
+```bash
+# Save D2 code to temp file
+echo '<D2 code from diagrams.*.d2>' > /tmp/diagram.d2
+
+# Render to SVG
+cx render /tmp/diagram.d2 -o /tmp/diagram.svg
+
+# Or pipe directly
+echo '<D2 code>' | cx render - -o /tmp/diagram.svg
+```
+
+**If `cx render` fails** (D2 not installed):
+- Keep the D2 code in `<pre class="d2-diagram">` blocks
+- Inform the user: "Diagrams included as D2 code. Install D2 to render: `brew install d2`"
+
+### Step 6: Write Narrative Around Diagrams
+
+The narrative should **explain the diagrams**, not replace them.
+
+**For Overview Reports:**
+1. Start with the architecture diagram
+2. Explain what each module does
+3. Highlight key dependencies shown in the diagram
+4. Reference diagram entities by name
+
+**For Feature Reports:**
+1. Start with the call flow diagram
+2. Walk through the flow step-by-step
+3. Explain what each node in the diagram does
+4. Reference line numbers from the entities
+
+**For Changes Reports:**
+1. Start with the changes diagram (green=added, yellow=modified, red=deleted)
+2. Explain the impact of changes
+3. Walk through high-impact modifications
+
+**For Health Reports:**
+1. Show coverage distribution visualization
+2. Highlight risk areas with diagram annotations
+3. Explain untested keystones visible in the diagram
+
+### Step 7: Assemble HTML with Embedded Diagrams
+
+**Template structure with diagrams as primary content:**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{title}} - CX Report</title>
+  <style>
+    /* ... CSS styles ... */
+    .diagram-container {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1.5rem 0;
+      overflow-x: auto;
+    }
+    .diagram-container svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .diagram-title {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>{{title}}</h1>
+
+  <!-- DIAGRAM FIRST - Primary visual -->
+  <section id="architecture-diagram">
+    <h2>Architecture Overview</h2>
+    <div class="diagram-container">
+      <div class="diagram-title">{{diagram_title}}</div>
+      {{EMBEDDED_SVG_HERE}}
+    </div>
+    <p>{{diagram_explanation}}</p>
+  </section>
+
+  <!-- Then entities, coverage, etc. -->
+  <section id="key-entities">
+    <h2>Key Entities</h2>
+    <!-- ... -->
+  </section>
+</body>
+</html>
+```
+
+### Step 8: Save Report
 
 **Naming Convention:**
 ```
@@ -174,412 +250,53 @@ reports/<type>_<YYYY-MM-DD>[_<query>].<ext>
 Examples:
   reports/overview_2026-01-20.html
   reports/feature_2026-01-20_authentication.html
-  reports/changes_2026-01-20_HEAD~50.md
+  reports/changes_2026-01-20_HEAD~50.html
   reports/health_2026-01-20.html
 ```
 
-Create the `reports/` directory if it doesn't exist.
-
-### Step 7: Optional Diagram Rendering
-
-If HTML format with diagrams:
+Create the `reports/` directory if it doesn't exist:
 ```bash
-# Check if D2 is available
-cx render --check
-
-# If available, render diagrams in-place
-cx render reports/<filename>.html
-```
-
-If D2 is not available, keep the D2 code blocks in `<pre class="d2-diagram">` tags for later rendering.
-
----
-
-## Output Templates
-
-### HTML Template
-
-```html
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{title}} - CX Report</title>
-  <style>
-    :root {
-      --bg-primary: #ffffff;
-      --bg-secondary: #f5f5f5;
-      --text-primary: #1a1a1a;
-      --text-secondary: #666666;
-      --accent: #1976d2;
-      --success: #4caf50;
-      --warning: #ff9800;
-      --error: #f44336;
-      --border: #e0e0e0;
-      --code-bg: #f8f9fa;
-    }
-
-    [data-theme="dark"] {
-      --bg-primary: #1a1a1a;
-      --bg-secondary: #2d2d2d;
-      --text-primary: #f5f5f5;
-      --text-secondary: #a0a0a0;
-      --border: #404040;
-      --code-bg: #2d2d2d;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.6;
-      color: var(--text-primary);
-      background: var(--bg-primary);
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    h1, h2, h3 { color: var(--text-primary); margin-top: 1.5em; }
-    h1 { border-bottom: 2px solid var(--accent); padding-bottom: 0.5em; }
-
-    .metadata {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      margin-bottom: 2rem;
-      padding: 1rem;
-      background: var(--bg-secondary);
-      border-radius: 8px;
-    }
-
-    .toc {
-      background: var(--bg-secondary);
-      padding: 1rem 1.5rem;
-      border-radius: 8px;
-      margin-bottom: 2rem;
-    }
-
-    .toc ul { margin: 0.5rem 0; padding-left: 1.5rem; }
-    .toc a { color: var(--accent); text-decoration: none; }
-    .toc a:hover { text-decoration: underline; }
-
-    section {
-      margin-bottom: 3rem;
-      padding-bottom: 2rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1rem 0;
-    }
-
-    th, td {
-      padding: 0.75rem;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-
-    th { background: var(--bg-secondary); font-weight: 600; }
-
-    .diagram {
-      background: var(--bg-secondary);
-      padding: 1rem;
-      border-radius: 8px;
-      overflow-x: auto;
-      margin: 1rem 0;
-    }
-
-    .diagram svg { max-width: 100%; height: auto; }
-
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      font-weight: 500;
-    }
-
-    .badge-success { background: #c8e6c9; color: #2e7d32; }
-    .badge-warning { background: #fff9c4; color: #f57f17; }
-    .badge-error { background: #ffcdd2; color: #c62828; }
-    .badge-info { background: #e3f2fd; color: #1565c0; }
-
-    code {
-      background: var(--code-bg);
-      padding: 0.2rem 0.4rem;
-      border-radius: 4px;
-      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
-      font-size: 0.9em;
-    }
-
-    pre {
-      background: var(--code-bg);
-      padding: 1rem;
-      border-radius: 8px;
-      overflow-x: auto;
-    }
-
-    .entity-card {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem;
-      margin: 0.5rem 0;
-    }
-
-    .entity-card h4 { margin: 0 0 0.5rem 0; }
-    .entity-card .location { color: var(--text-secondary); font-size: 0.85rem; }
-
-    .risk-high { border-left: 4px solid var(--error); }
-    .risk-medium { border-left: 4px solid var(--warning); }
-    .risk-low { border-left: 4px solid var(--success); }
-
-    .coverage-bar {
-      height: 8px;
-      background: var(--bg-secondary);
-      border-radius: 4px;
-      overflow: hidden;
-      margin-top: 0.25rem;
-    }
-
-    .coverage-bar-fill {
-      height: 100%;
-      border-radius: 4px;
-    }
-
-    .coverage-high { background: var(--success); }
-    .coverage-medium { background: var(--warning); }
-    .coverage-low { background: var(--error); }
-
-    footer {
-      margin-top: 3rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--border);
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      text-align: center;
-    }
-
-    footer a { color: var(--accent); }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>{{title}}</h1>
-    <div class="metadata">
-      <strong>Generated:</strong> {{generated_at}} |
-      <strong>Type:</strong> {{report_type}} |
-      <strong>Entities:</strong> {{entity_count}}
-      {{#if query}} | <strong>Query:</strong> <code>{{query}}</code>{{/if}}
-    </div>
-  </header>
-
-  <nav class="toc">
-    <strong>Contents</strong>
-    <ul>
-      <!-- TOC items based on sections -->
-    </ul>
-  </nav>
-
-  <main>
-    <!-- Sections inserted based on report type -->
-  </main>
-
-  <footer>
-    Generated by <a href="https://github.com/anthropics/cx">CX</a> with Claude
-  </footer>
-</body>
-</html>
-```
-
-### Markdown Template
-
-```markdown
-# {{title}}
-
-> Generated: {{generated_at}} | Type: {{report_type}} | Entities: {{entity_count}}
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Key Entities](#key-entities)
-- [Dependencies](#dependencies)
-- [Coverage](#coverage)
-- [Recommendations](#recommendations)
-
----
-
-## Overview
-
-{{overview_narrative}}
-
-## Key Entities
-
-| Name | Type | Location | Importance | Coverage |
-|------|------|----------|------------|----------|
-{{#each entities}}
-| `{{name}}` | {{type}} | [{{file}}:{{line}}]({{file}}#L{{line}}) | {{importance}} | {{coverage}}% |
-{{/each}}
-
-## Dependencies
-
-{{dependencies_narrative}}
-
-### Call Flow
-
-\`\`\`d2
-{{call_flow_d2}}
-\`\`\`
-
-## Coverage
-
-{{coverage_narrative}}
-
-| Entity | Coverage | Risk |
-|--------|----------|------|
-{{#each coverage_gaps}}
-| `{{entity}}` | {{coverage}}% | {{risk}} |
-{{/each}}
-
-## Recommendations
-
-{{#each recommendations}}
-{{@index}}. **{{title}}**: {{description}}
-{{/each}}
-
----
-
-*Generated by [CX](https://github.com/anthropics/cx) with Claude*
-```
-
-### Terminal Summary Template
-
-```
-═══════════════════════════════════════════════════════════════
-                    {{TITLE}}
-═══════════════════════════════════════════════════════════════
-
-📊 SUMMARY
-───────────────────────────────────────────────────────────────
-Type:       {{report_type}}
-Generated:  {{generated_at}}
-Entities:   {{entity_count}}
-{{#if query}}Query:      {{query}}{{/if}}
-
-🔑 KEY ENTITIES
-───────────────────────────────────────────────────────────────
-{{#each top_entities}}
-{{importance_icon}} {{name}} ({{type}})
-   └─ {{file}}:{{line}} | Coverage: {{coverage}}%
-{{/each}}
-
-📈 COVERAGE
-───────────────────────────────────────────────────────────────
-Overall: {{overall_coverage}}%
-
-Gaps ({{coverage_gap_count}}):
-{{#each coverage_gaps}}
-  ⚠️  {{entity}}: {{coverage}}% ({{importance}})
-{{/each}}
-
-💡 RECOMMENDATIONS
-───────────────────────────────────────────────────────────────
-{{#each recommendations}}
-{{@index}}. {{title}}
-{{/each}}
-
-═══════════════════════════════════════════════════════════════
+mkdir -p reports
 ```
 
 ---
 
-## Report Type-Specific Sections
+## Diagram Types by Report
 
-### Overview Report Sections
+### Overview Report Diagrams
 
-1. **Executive Summary** - High-level health and architecture
-2. **Statistics** - Entity counts by type and language
-3. **Architecture Diagram** - D2 visualization of modules
-4. **Keystones** - Most important entities
-5. **Health Summary** - Overall risk assessment
+**Architecture Diagram** - Shows module containers with top entities:
+- Modules shown as containers with rounded corners
+- Top 3-5 entities shown inside each module
+- Inter-module dependencies as arrows
+- Color-coded by entity type
 
-### Feature Report Sections
+### Feature Report Diagrams
 
-1. **Feature Overview** - What this feature does
-2. **Key Entities** - Relevant code with relevance scores
-3. **Call Flow** - How the feature executes
-4. **Data Flow** - How data moves through the feature
-5. **Tests** - Associated test coverage
-6. **Recommendations** - Improvements and risks
+**Call Flow Diagram** - Shows execution path:
+- Entry point at top
+- Called functions below with arrows
+- Each node shows function name and file
+- Keystone entities highlighted with bold borders
 
-### Changes Report Sections
+### Changes Report Diagrams
 
-1. **Change Summary** - What changed and why it matters
-2. **Added Entities** - New code introduced
-3. **Modified Entities** - Existing code changed
-4. **Deleted Entities** - Code removed
-5. **Impact Analysis** - What was affected
-6. **Before/After Diagrams** - Architecture evolution
+**Changes Summary Diagram** - Shows what changed:
+- Green nodes = Added entities
+- Yellow nodes = Modified entities
+- Red nodes = Deleted entities
+- Grouped by module
 
-### Health Report Sections
+### Health Report Diagrams
 
-1. **Risk Score** - Overall health (0-100)
-2. **Critical Issues** - Must fix immediately
-3. **Warnings** - Should address soon
-4. **Coverage Analysis** - Test coverage by importance
-5. **Complexity Hotspots** - Areas that need attention
-6. **Recommendations** - Prioritized action items
+**Risk Distribution** - Shows coverage by importance:
+- Node size = entity importance
+- Node color = coverage level (green/yellow/red)
+- Critical issues highlighted
 
 ---
 
-## Writing Guidelines
-
-### For Each Audience
-
-**Developers:**
-- Use precise technical language
-- Include code snippets and file references
-- Explain implementation decisions
-- Link to specific lines: `[function](file.go#L42)`
-
-**Tech Leads:**
-- Focus on patterns and architecture
-- Highlight technical debt and risks
-- Provide strategic recommendations
-- Include metrics and trends
-
-**Stakeholders:**
-- Avoid jargon, explain concepts
-- Focus on business impact
-- Use percentages and trends
-- Keep it concise
-
-**New Team Members:**
-- Provide context and history
-- Explain "why" not just "what"
-- Include learning paths
-- Link to documentation
-
-### Diagram Guidelines
-
-- Use D2's `direction: down` for call flows
-- Use `direction: right` for data flows
-- Group related entities in containers
-- Apply importance-based styling:
-  - Keystone: bold stroke, shadow
-  - Bottleneck: warning colors
-  - Normal: default styling
-  - Leaf: lighter, reduced opacity
-
-### Coverage Color Coding
-
-- **Green** (>80%): Well tested
-- **Yellow** (50-80%): Needs attention
-- **Red** (<50%): Risk area
-
----
-
-## Example Session
+## Complete Example Session
 
 ```
 User: /report
@@ -596,42 +313,127 @@ User types: "authentication"
 User selects: "Tech Leads"
 
 [AskUserQuestion: Format]
-User selects: "HTML (Recommended)"
-
-[AskUserQuestion: Focus areas]
-User selects: "Diagrams", "Coverage", "Recommendations"
+User selects: "HTML with diagrams (Recommended)"
 
 Claude: Gathering authentication feature data...
 
 [Runs: cx report feature "authentication" --data]
 
-Found 12 relevant entities. Analyzing...
+Found 12 relevant entities. Extracting call flow diagram...
 
-Key findings:
-- LoginUser (keystone, 85% coverage)
-- ValidateToken (bottleneck, 92% coverage)
-- SessionCache.Get (45% coverage - risk)
+Diagram found in output:
+- call_flow: "Call Flow: LoginUser" (47 lines of D2)
 
-Generating report...
+Rendering diagram to SVG...
+[Runs: echo "<d2 code>" | cx render - -o /tmp/call_flow.svg]
+✓ Rendered call_flow.svg (2.3 KB)
+
+Generating report with embedded diagram...
+
+---
+
+# Authentication Feature Report
+
+## Call Flow Diagram
+
+[EMBEDDED SVG showing LoginUser → ValidateToken → SessionCache flow]
+
+The authentication flow follows this path:
+1. **LoginUser** receives credentials and validates input
+2. **ValidateToken** checks JWT signature and expiry
+3. **SessionCache** manages active sessions
+
+## Key Entities
+
+| Name | Type | Coverage | Importance |
+|------|------|----------|------------|
+| LoginUser | function | 85% | keystone |
+| ValidateToken | function | 92% | bottleneck |
+| SessionCache.Get | method | 45% | bottleneck |
+
+## Coverage Gaps
+
+⚠️ **SessionCache.Get** has only 45% coverage but is a bottleneck with 23 callers.
+   Recommendation: Add tests for cache miss scenarios.
+
+---
 
 Report saved to: reports/feature_2026-01-20_authentication.html
 
 Summary:
 - 12 entities analyzed
-- 2 coverage gaps identified
+- 1 call flow diagram rendered
+- 1 coverage gap identified (SessionCache.Get at 45%)
 - 3 recommendations provided
-- Call flow and dependency diagrams included
-
-[If D2 available: Rendered diagrams to SVG]
 ```
+
+---
+
+## Audience-Specific Narrative Style
+
+### For Developers
+- Reference specific lines: `LoginUser` at [internal/auth/login.go:45](internal/auth/login.go#L45)
+- Include function signatures in entity tables
+- Explain implementation details visible in the diagram
+- Link to test files
+
+### For Tech Leads
+- Focus on what the diagram reveals about architecture
+- Highlight risk areas shown in red/yellow
+- Provide strategic recommendations
+- Include metrics trends
+
+### For Stakeholders
+- Simplify diagram explanation - "This shows how login works"
+- Use percentages and counts
+- Avoid code references
+- Focus on health and progress
+
+### For New Team Members
+- Explain each part of the diagram step-by-step
+- Provide context for why things are structured this way
+- Link to documentation
+- Suggest what to explore next
 
 ---
 
 ## Important Rules
 
-1. **Always use --data flag** - Reports are structured data for AI consumption
-2. **Follow naming convention** - `reports/<type>_<date>[_<query>].<ext>`
-3. **Match audience depth** - Technical for devs, strategic for leads, simple for stakeholders
-4. **Include actionable recommendations** - Every report should have next steps
-5. **Render diagrams when possible** - Check `cx render --check` first
-6. **Create reports/ directory** - Ensure it exists before writing
+1. **DIAGRAMS ARE PRIMARY** - Every report MUST include at least one rendered diagram
+2. **Extract D2 from YAML** - The `diagrams` section contains pre-generated D2 code
+3. **Render before embedding** - Use `cx render` to convert D2 → SVG
+4. **Diagram explains the story** - Write narrative that explains the diagram, not vice versa
+5. **Follow naming convention** - `reports/<type>_<date>[_<query>].<ext>`
+6. **Handle render failures gracefully** - If D2 not installed, keep D2 code blocks
+7. **Embed SVG directly** - Don't link to external files, embed the SVG in HTML
+
+---
+
+## Troubleshooting
+
+### "cx render" not found
+D2 CLI is required for diagram rendering:
+```bash
+# macOS
+brew install d2
+
+# Linux
+curl -fsSL https://d2lang.com/install.sh | sh
+
+# Windows
+choco install d2
+```
+
+### No diagrams in YAML output
+Some report types may not generate diagrams if:
+- No entities match the query (feature reports)
+- No changes detected (changes reports)
+- Database not scanned recently
+
+Run `cx scan` to update the code graph.
+
+### SVG too large
+For very large diagrams:
+1. Limit depth in call flow: adjust the diagram generation
+2. Filter to specific modules
+3. Use `--density sparse` for less detail
