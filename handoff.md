@@ -1,65 +1,66 @@
 # CX Report Implementation Handoff
 
 **Date**: 2026-01-20
-**Session Focus**: D2 Visual Design System
-**Status**: R0 complete, R1.1 complete, R1.2 complete, **R2.1 complete**, ready for D2 code generator
+**Session Focus**: D2 Code Generator
+**Status**: R0 complete, R1.1 complete, R1.2 complete, R2.1 complete, **R2.2 complete**, ready for diagram presets
 
 ---
 
 ## Next Session Prompt
 
 ```
-Continue CX Report implementation - D2 code generator phase.
+Continue CX Report implementation - diagram presets phase.
 
 ## Context
-The D2 Visual Design System (R2.1) is complete with professional color palette,
-icons, and styling. The next task is R2.2: refactor internal/graph/d2.go to use
-this design system and generate showcase-worthy diagrams.
+R2.2 (D2 Code Generator) is complete with DiagramGenerator interface and four
+diagram types. The next tasks are the preset commands that configure diagrams
+for specific use cases.
 
 ## Your Goal
-Implement R2.2 (D2 Code Generator):
-1. Create DiagramGenerator interface with Generate(entities, deps, DiagramType)
-2. Refactor d2.go to use d2_styles.go design system
-3. Support multiple diagram types (architecture, call_flow, dependency, coverage)
-4. Add theme/layout configuration support
+Choose one of the now-unblocked tasks:
+
+### Option A: R2.3 Architecture Diagram Preset (recommended)
+- Create preset configuration for architecture diagrams
+- Auto-selects DiagramArchitecture type
+- Configures module grouping and layer detection
+- Command: cx report feature --diagram architecture
+
+### Option B: R2.4 Call Flow Diagram Preset
+- Create preset for call flow diagrams
+- Uses DiagramCallFlow type with down direction
+- Configures sequential flow visualization
+- Command: cx report feature --diagram call-flow
+
+### Option C: R1.3 YAML/JSON Output
+- Implement YAML marshaling for report data
+- Add --format yaml|json flags to cx report commands
 
 ## Quick Start
-1. bd update cortex-dkd.2.2 --status in_progress
-2. Review internal/graph/d2_styles.go for Go API
-3. Review internal/graph/d2_design_system.d2 for visual reference
-4. Refactor internal/graph/d2.go to use design system
+1. bd update cortex-dkd.2.3 --status in_progress  # or 2.4 or 1.3
+2. Review internal/graph/d2.go for D2Generator API
+3. Implement the preset logic
 
-## Key Integration Points
-- Use GetD2NodeStyle() for node styling with colors, icons
-- Use GetD2EdgeStyle() for edge styling by dependency type
-- Use D2StyleToString() to convert styles to D2 syntax
-- Support DiagramType enum: architecture, call_flow, dependency, coverage
+## D2Generator API Available
+```go
+// Create generator with config
+gen := NewD2Generator(&DiagramConfig{
+    Type:       DiagramArchitecture,  // or DiagramCallFlow, DiagramDeps, DiagramCoverage
+    Theme:      "default",            // default, light, dark, neutral
+    Layout:     "elk",                // elk, dagre, tala
+    Direction:  "right",              // right, down, left, up
+    ShowLabels: true,
+    ShowIcons:  true,
+    Title:      "My Diagram",
+})
 
-## Design System API Available
-graph.GetD2NodeStyle(entityType, importance, coverage, language) → D2NodeStyle
-graph.GetD2EdgeStyle(depType) → D2EdgeStyleDef
-graph.D2StyleToString(style) → string
-graph.D2EdgeStyleToString(style) → string
-graph.GetD2Icon(entityType) → D2Icon
-graph.GetD2LanguageIcon(language) → D2Icon
-graph.GetCoverageColor(percentage) → D2Color
-graph.GetD2LayerColor(layer) → D2Color
+// Generate diagram
+d2Code := gen.Generate(entities, deps)
+```
 
-## Expected Output
-Diagrams should include:
-- Theme configuration (vars block with theme-id, layout-engine)
-- Node icons from icons.terrastruct.com
-- Color-coded nodes by entity type and importance
-- Styled edges by dependency type
-- Container grouping for modules/packages
-
-## Files to Modify
-- internal/graph/d2.go - Main refactor target
-
-## Files to Reference
-- internal/graph/d2_styles.go - Design system API (465 lines)
-- internal/graph/d2_design_system.d2 - Visual examples (746 lines)
-- docs/D2_DESIGN_SYSTEM.md - Documentation
+## Key Types
+- DiagramEntity: ID, Name, Type, Importance, Coverage, Language, Module, Layer
+- DiagramEdge: From, To, Type, Label
+- DiagramConfig: Type, Theme, Layout, Direction, ShowLabels, ShowIcons, Title
 ```
 
 ---
@@ -68,212 +69,56 @@ Diagrams should include:
 
 ### What We Accomplished This Session
 
-**Implemented R2.1: D2 Visual Design System** (cortex-dkd.2.1 closed)
+**Implemented R2.2: D2 Code Generator** (cortex-dkd.2.2 closed)
 
-Created a comprehensive visual design system for professional D2 diagrams:
+Refactored d2.go with comprehensive DiagramGenerator interface:
 
-1. **Color Palette** (Material Design inspired)
-   - Entity types: function (blue), type (purple), interface (orange), database (gray)
-   - Importance levels: keystone (orange+shadow), bottleneck (amber), normal (white)
-   - Coverage indicators: high (green), medium (yellow), low (red), none (gray)
-   - Layer colors: API (cyan), service (blue), data (gray), domain (purple)
+1. **DiagramGenerator Interface**
+   ```go
+   type DiagramGenerator interface {
+       Generate(entities []DiagramEntity, deps []DiagramEdge) string
+       SetConfig(config *DiagramConfig)
+       GetConfig() *DiagramConfig
+   }
+   ```
 
-2. **Icons** (from icons.terrastruct.com)
-   - Entity icons: lightning (function), gear (method), box (type), plug (interface)
-   - Language icons: Go, TypeScript, Python, Java, Rust, C, PHP, Ruby, Kotlin
-   - Status icons: warning, error, info, success, lock, server, cloud
+2. **Four Diagram Types**
+   - `DiagramArchitecture` - Module containers with layered entities
+   - `DiagramCallFlow` - Sequential function call flow
+   - `DiagramDeps` - Entity dependency graph (default)
+   - `DiagramCoverage` - Coverage heatmap overlay
 
-3. **Edge Styling**
-   - calls: solid black arrow
-   - uses_type: gray dashed
-   - implements: orange dashed with diamond arrowhead
-   - extends: purple solid with filled diamond
-   - data_flow: blue animated
-   - imports: gray light dashed
+3. **DiagramConfig Options**
+   - Type: architecture, call_flow, dependency, coverage
+   - Theme: default, light, dark, neutral
+   - Layout: elk, dagre, tala
+   - Direction: right, down, left, up
+   - ShowLabels, ShowIcons, Title
 
-4. **Go API** (d2_styles.go - 465 lines)
-   - `GetD2NodeStyle(entityType, importance, coverage, language)` - Complete node styling
-   - `GetD2EdgeStyle(depType)` - Edge styling by dependency type
-   - `GetCoverageColor(percentage)` - Coverage level colors
-   - `D2StyleToString(style)` - Convert to D2 syntax
-   - `D2EdgeStyleToString(style)` - Convert edge style to D2 syntax
+4. **Design System Integration**
+   - Theme configuration with vars block
+   - Node styling with colors and icons from terrastruct
+   - Edge styling by dependency type
+   - Module container grouping for architecture diagrams
+   - Coverage legend for coverage diagrams
 
-5. **D2 Reference Implementation** (d2_design_system.d2 - 746 lines)
-   - Theme configuration with vars
-   - D2 classes for all styling categories
-   - Example diagrams: architecture, call_flow, coverage, health
-
-6. **Documentation** (docs/D2_DESIGN_SYSTEM.md - 407 lines)
-   - Complete color reference tables
-   - Icon URL reference
-   - Go API usage examples
-   - Example D2 code snippets
+5. **Backwards Compatibility**
+   - Legacy `GenerateD2()` function preserved
+   - Wraps new D2Generator internally
 
 ### Files Created/Modified
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| internal/graph/d2_styles.go | 465 | D2 design system Go API |
-| internal/graph/d2_design_system.d2 | 746 | D2 reference implementation with examples |
-| internal/graph/d2_styles_test.go | 318 | Comprehensive test coverage |
-| docs/D2_DESIGN_SYSTEM.md | 407 | Design system documentation |
-| internal/graph/styles.go | +4 | Added database/storage shape mappings |
-| **Total New** | **~1,940** | |
+| File | Lines | Change |
+|------|-------|--------|
+| internal/graph/d2.go | 829 | Refactored with DiagramGenerator |
+| internal/graph/d2_test.go | 571 | New comprehensive test suite |
+| **Total** | **1400** | |
 
 ### Commits
 
 | Hash | Message |
 |------|---------|
-| d305800 | Add D2 Visual Design System for professional diagram styling (R2.1 complete) |
-| e628580 | Update handoff with R2.1 D2 Visual Design System completion |
-
----
-
-## D2 Code Generator Refactor Guide (R2.2)
-
-### Current State (d2.go)
-The existing `GenerateD2()` function is basic:
-- Takes `map[string]*output.GraphNode` and `[][]string` edges
-- Only uses `GetEntityShape()` and `GetImportanceStyle()` from styles.go
-- No icons, no color fills, no theme configuration
-- No diagram type support
-
-### Required Changes
-
-1. **Create DiagramGenerator Interface**
-```go
-type DiagramType string
-
-const (
-    DiagramTypeArchitecture DiagramType = "architecture"
-    DiagramTypeCallFlow     DiagramType = "call_flow"
-    DiagramTypeDependency   DiagramType = "dependency"
-    DiagramTypeCoverage     DiagramType = "coverage"
-)
-
-type DiagramGenerator interface {
-    Generate(entities []Entity, deps []Dependency, diagramType DiagramType) string
-}
-```
-
-2. **Update D2Options**
-```go
-type D2Options struct {
-    MaxNodes    int
-    Direction   string
-    ShowLabels  bool
-    Collapse    bool
-    Title       string
-    ThemeID     int          // NEW: D2 theme (200 = Mixed Berry Blue)
-    Layout      string       // NEW: elk, dagre, tala
-    ShowIcons   bool         // NEW: include icons
-    ShowCoverage bool        // NEW: color by coverage
-}
-```
-
-3. **Generate Theme Header**
-```go
-func generateThemeHeader(opts *D2Options) string {
-    return fmt.Sprintf(`vars: {
-  d2-config: {
-    theme-id: %d
-    layout-engine: %s
-  }
-}
-`, opts.ThemeID, opts.Layout)
-}
-```
-
-4. **Update generateD2Node to use design system**
-```go
-func generateD2Node(entity Entity, opts *D2Options) string {
-    style := GetD2NodeStyle(entity.Type, entity.Importance, entity.Coverage, entity.Language)
-
-    var sb strings.Builder
-    safeID := sanitizeD2ID(entity.ID)
-
-    sb.WriteString(fmt.Sprintf("%s: {\n", safeID))
-    sb.WriteString(fmt.Sprintf("  label: \"%s\"\n", entity.Name))
-    sb.WriteString(fmt.Sprintf("  shape: %s\n", style.Shape))
-
-    if opts.ShowIcons && style.Icon != "" {
-        sb.WriteString(fmt.Sprintf("  icon: %s\n", style.Icon))
-    }
-
-    sb.WriteString(fmt.Sprintf("  %s\n", D2StyleToString(style)))
-    sb.WriteString("}")
-
-    return sb.String()
-}
-```
-
-5. **Update generateD2Edge to use design system**
-```go
-func generateD2Edge(from, to, depType string, showLabel bool) string {
-    style := GetD2EdgeStyle(depType)
-
-    safeFrom := sanitizeD2ID(from)
-    safeTo := sanitizeD2ID(to)
-
-    edge := fmt.Sprintf("%s %s %s", safeFrom, style.Arrow, safeTo)
-
-    if showLabel {
-        edge += ": " + depType
-    }
-
-    // Add style block if non-default
-    styleStr := D2EdgeStyleToString(style)
-    if styleStr != "" {
-        edge += " {\n  " + styleStr + "\n}"
-    }
-
-    return edge
-}
-```
-
-### Expected Output Example
-
-```d2
-vars: {
-  d2-config: {
-    theme-id: 200
-    layout-engine: elk
-  }
-}
-
-direction: right
-
-# Nodes
-LoginUser: {
-  label: "LoginUser"
-  shape: rectangle
-  icon: https://icons.terrastruct.com/essentials%2F142-lightning.svg
-  style: {
-    fill: "#fff3e0"
-    stroke: "#e65100"
-    stroke-width: 3
-    shadow: true
-  }
-}
-
-ValidateToken: {
-  label: "ValidateToken"
-  shape: rectangle
-  icon: https://icons.terrastruct.com/essentials%2F142-lightning.svg
-  style: {
-    fill: "#fff8e1"
-    stroke: "#ff8f00"
-    stroke-width: 2
-  }
-}
-
-# Edges
-LoginUser -> ValidateToken: calls {
-  style: {
-    stroke: "#424242"
-  }
-}
-```
+| b3316d8 | Add D2 Code Generator with DiagramGenerator interface (R2.2 complete) |
 
 ---
 
@@ -297,11 +142,11 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 │
 ├── cortex-dkd.2 (P1) R2: D2 Diagram Integration ← IN PROGRESS
 │   ├── cortex-dkd.2.1 R2.1: D2 Visual Design System ← CLOSED ✓
-│   ├── cortex-dkd.2.2 R2.2: D2 Code Generator ← READY (recommended next)
-│   ├── cortex-dkd.2.3 R2.3: Architecture Preset [blocked by .2.2]
-│   ├── cortex-dkd.2.4 R2.4: Call Flow Preset [blocked by .2.2]
-│   ├── cortex-dkd.2.5 R2.5: Render Command [blocked by .2.2]
-│   └── cortex-dkd.2.6 R2.6: Animated D2 Diagrams [blocked by .2.2]
+│   ├── cortex-dkd.2.2 R2.2: D2 Code Generator ← CLOSED ✓
+│   ├── cortex-dkd.2.3 R2.3: Architecture Preset ← READY (recommended)
+│   ├── cortex-dkd.2.4 R2.4: Call Flow Preset ← READY
+│   ├── cortex-dkd.2.5 R2.5: Render Command ← READY
+│   └── cortex-dkd.2.6 R2.6: Animated D2 Diagrams ← READY (P2)
 │
 ├── cortex-dkd.4-7 (P2) Report Types [blocked by R1, R2]
 ```
@@ -314,7 +159,7 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 |-------|-------|--------|
 | R0: Schema | 5/5 | ✅ Complete |
 | R1: Engine | 2/4 | 🔄 In Progress |
-| R2: D2 | 1/6 | 🔄 In Progress |
+| R2: D2 | 2/6 | 🔄 In Progress |
 | R4-R7: Reports | 0/18 | ⏸️ Blocked |
 
 ---
@@ -324,7 +169,8 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 ### D2 Generation
 | File | Lines | Purpose |
 |------|-------|---------|
-| internal/graph/d2.go | 167 | Current D2 generator (needs refactor) |
+| internal/graph/d2.go | 829 | D2Generator with design system |
+| internal/graph/d2_test.go | 571 | Comprehensive test suite |
 | internal/graph/d2_styles.go | 465 | D2 design system Go API |
 | internal/graph/d2_design_system.d2 | 746 | D2 reference implementation |
 | internal/graph/styles.go | 157 | Base shape/edge mappings |
@@ -343,44 +189,88 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 
 ---
 
-## Architecture Reminder
+## D2Generator API Reference
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         USER IN CLAUDE CODE                          │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  User: "Generate a report on authentication"                         │
-│                                                                      │
-│  Claude Code:                                                        │
-│    1. Runs: cx report feature "auth" --data                          │
-│    2. Receives: Structured YAML with entities, D2 code, coverage     │
-│    3. Writes: Narrative prose explaining the feature                 │
-│    4. Assembles: Final HTML report with embedded diagrams            │
-│                                                                      │
-│  Result: auth-report.html                                            │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+### Creating Diagrams
+
+```go
+// Basic usage
+gen := graph.NewD2Generator(nil) // uses defaults
+d2Code := gen.Generate(entities, deps)
+
+// With configuration
+config := &graph.DiagramConfig{
+    Type:       graph.DiagramArchitecture,
+    Theme:      "default",
+    Layout:     "elk",
+    Direction:  "right",
+    ShowLabels: true,
+    ShowIcons:  true,
+    Title:      "System Architecture",
+}
+gen := graph.NewD2Generator(config)
+d2Code := gen.Generate(entities, deps)
 ```
 
-No Anthropic API key needed - the AI agent IS the narrative generator.
+### DiagramEntity Structure
+
+```go
+entity := graph.DiagramEntity{
+    ID:         "internal/auth.LoginUser",
+    Name:       "LoginUser",
+    Type:       "function",           // function, method, type, struct, interface, database, http
+    Importance: "keystone",           // keystone, bottleneck, high-fan-in, high-fan-out, normal, leaf
+    Coverage:   85.5,                 // 0-100, or -1 for unknown
+    Language:   "go",                 // go, typescript, python, java, rust, etc.
+    Module:     "internal/auth",      // for architecture grouping
+    Layer:      "service",            // api, service, data, domain
+}
+```
+
+### DiagramEdge Structure
+
+```go
+edge := graph.DiagramEdge{
+    From:  "internal/auth.LoginUser",
+    To:    "internal/store.GetUser",
+    Type:  "calls",                   // calls, uses_type, implements, extends, data_flow, imports
+    Label: "authenticate",            // optional edge label
+}
+```
+
+### Diagram Types
+
+| Type | Output |
+|------|--------|
+| `DiagramDeps` | Standard dependency graph |
+| `DiagramArchitecture` | Module containers with layer colors |
+| `DiagramCallFlow` | Sequential flow with topological order |
+| `DiagramCoverage` | Coverage heatmap with legend |
 
 ---
 
 ## Previous Session Summaries
 
-### Session 3: R1.2 Data Gathering (dcdebff)
-- Created `internal/report/gather.go` (580 lines)
-- `GatherOverviewData()` - statistics, keystones, modules from store
-- `GatherFeatureData()` - FTS search, dependencies, coverage
-- `GatherChangesData()` - Dolt time-travel entity diff
-- `GatherHealthData()` - untested keystones, dead code, risk score
+### Session 4: R2.2 D2 Code Generator (b3316d8)
+- Refactored d2.go with DiagramGenerator interface
+- Four diagram types: architecture, call_flow, dependency, coverage
+- Full design system integration (colors, icons, styling)
+- 30+ tests in d2_test.go
 
-### Session 2: R0 Schema + R1.1 Scaffolding (43b1eca, 0d35889)
-- Created `internal/report/` package (3410 lines)
+### Session 3: R2.1 D2 Design System (d305800)
+- Created d2_styles.go (465 lines) - Go API
+- Created d2_design_system.d2 (746 lines) - reference
+- Material Design color palette
+- Icons from terrastruct
+
+### Session 2: R1.2 Data Gathering (dcdebff)
+- Created gather.go (580 lines)
+- GatherOverviewData, GatherFeatureData, GatherChangesData, GatherHealthData
+
+### Session 1: R0 Schema + R1.1 Scaffolding (43b1eca, 0d35889)
+- Created internal/report/ package (3410 lines)
 - Core schema types, report-specific types
-- `cx report` command with 4 subcommands
-- --data, --format, -o flags
+- cx report command with 4 subcommands
 
 ---
 
