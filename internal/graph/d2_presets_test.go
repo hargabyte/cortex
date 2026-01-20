@@ -1,0 +1,313 @@
+package graph
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestArchitecturePreset(t *testing.T) {
+	cfg := ArchitecturePreset()
+
+	if cfg.Type != DiagramArchitecture {
+		t.Errorf("expected DiagramArchitecture, got %v", cfg.Type)
+	}
+	if cfg.Layout != "tala" {
+		t.Errorf("expected tala layout, got %s", cfg.Layout)
+	}
+	if cfg.Direction != "right" {
+		t.Errorf("expected right direction, got %s", cfg.Direction)
+	}
+	if cfg.MaxNodes != 50 {
+		t.Errorf("expected MaxNodes 50, got %d", cfg.MaxNodes)
+	}
+	if !cfg.ShowLabels {
+		t.Error("expected ShowLabels true")
+	}
+	if !cfg.ShowIcons {
+		t.Error("expected ShowIcons true")
+	}
+	if !cfg.Collapse {
+		t.Error("expected Collapse true")
+	}
+}
+
+func TestCallFlowPreset(t *testing.T) {
+	cfg := CallFlowPreset()
+
+	if cfg.Type != DiagramCallFlow {
+		t.Errorf("expected DiagramCallFlow, got %v", cfg.Type)
+	}
+	if cfg.Layout != "elk" {
+		t.Errorf("expected elk layout, got %s", cfg.Layout)
+	}
+	if cfg.Direction != "down" {
+		t.Errorf("expected down direction, got %s", cfg.Direction)
+	}
+	if cfg.Collapse {
+		t.Error("expected Collapse false for call flow")
+	}
+}
+
+func TestCoveragePreset(t *testing.T) {
+	cfg := CoveragePreset()
+
+	if cfg.Type != DiagramCoverage {
+		t.Errorf("expected DiagramCoverage, got %v", cfg.Type)
+	}
+	if cfg.ShowLabels {
+		t.Error("expected ShowLabels false for coverage")
+	}
+	if !cfg.ShowIcons {
+		t.Error("expected ShowIcons true for status icons")
+	}
+}
+
+func TestDependencyPreset(t *testing.T) {
+	cfg := DependencyPreset()
+
+	if cfg.Type != DiagramDeps {
+		t.Errorf("expected DiagramDeps, got %v", cfg.Type)
+	}
+	if cfg.MaxNodes != 30 {
+		t.Errorf("expected MaxNodes 30, got %d", cfg.MaxNodes)
+	}
+}
+
+func TestGetPreset(t *testing.T) {
+	tests := []struct {
+		preset   DiagramPreset
+		wantType DiagramType
+	}{
+		{PresetArchitecture, DiagramArchitecture},
+		{PresetCallFlow, DiagramCallFlow},
+		{PresetCoverage, DiagramCoverage},
+		{PresetDependency, DiagramDeps},
+		{"unknown", DiagramDeps}, // Default fallback
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.preset), func(t *testing.T) {
+			cfg := GetPreset(tt.preset)
+			if cfg.Type != tt.wantType {
+				t.Errorf("expected type %v, got %v", tt.wantType, cfg.Type)
+			}
+		})
+	}
+}
+
+func TestExtractModuleFromPath(t *testing.T) {
+	tests := []struct {
+		filePath string
+		want     string
+	}{
+		{"internal/store/entity.go", "internal/store"},
+		{"cmd/main.go", "cmd"},
+		{"main.go", "_root"},
+		{"", "_root"},
+		{"src/components/Button.tsx", "src/components"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filePath, func(t *testing.T) {
+			got := extractModuleFromPath(tt.filePath)
+			if got != tt.want {
+				t.Errorf("extractModuleFromPath(%q) = %q, want %q", tt.filePath, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInferLanguage(t *testing.T) {
+	tests := []struct {
+		filePath string
+		want     string
+	}{
+		{"main.go", "go"},
+		{"app.ts", "typescript"},
+		{"app.tsx", "typescript"},
+		{"script.js", "javascript"},
+		{"script.jsx", "javascript"},
+		{"main.py", "python"},
+		{"lib.rs", "rust"},
+		{"Main.java", "java"},
+		{"main.c", "c"},
+		{"main.cpp", "cpp"},
+		{"App.cs", "csharp"},
+		{"index.php", "php"},
+		{"app.rb", "ruby"},
+		{"Main.kt", "kotlin"},
+		{"unknown.xyz", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filePath, func(t *testing.T) {
+			got := inferLanguage(tt.filePath)
+			if got != tt.want {
+				t.Errorf("inferLanguage(%q) = %q, want %q", tt.filePath, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInferLayer(t *testing.T) {
+	tests := []struct {
+		entityType string
+		module     string
+		want       string
+	}{
+		{"function", "internal/api/handlers", "api"},
+		{"function", "internal/handler", "api"},
+		{"function", "internal/http", "api"},
+		{"function", "internal/store", "data"},
+		{"function", "internal/db", "data"},
+		{"function", "internal/repo", "data"},
+		{"struct", "internal/model", "domain"},
+		{"struct", "internal/domain", "domain"},
+		{"function", "internal/service", "service"},
+		{"function", "internal/pkg", "service"},
+		{"http", "internal/foo", "api"},
+		{"database", "internal/foo", "data"},
+		{"struct", "internal/foo", "domain"},
+		{"function", "internal/foo", "service"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.module+"_"+tt.entityType, func(t *testing.T) {
+			got := inferLayer(tt.entityType, tt.module)
+			if got != tt.want {
+				t.Errorf("inferLayer(%q, %q) = %q, want %q", tt.entityType, tt.module, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestClassifyImportanceByRank(t *testing.T) {
+	tests := []struct {
+		pageRank float64
+		want     string
+	}{
+		{0.02, "keystone"},
+		{0.01, "keystone"},
+		{0.008, "bottleneck"},
+		{0.005, "bottleneck"},
+		{0.003, "normal"},
+		{0.001, "normal"},
+		{0.0005, "leaf"},
+		{0.0, "leaf"},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			got := classifyImportanceByRank(tt.pageRank)
+			if got != tt.want {
+				t.Errorf("classifyImportanceByRank(%v) = %q, want %q", tt.pageRank, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestArchitecturePresetGeneratesDiagram(t *testing.T) {
+	// Create entities with module grouping
+	entities := []DiagramEntity{
+		{ID: "fn1", Name: "HandleRequest", Type: "function", Module: "internal/api", Importance: "keystone"},
+		{ID: "fn2", Name: "GetUser", Type: "function", Module: "internal/store", Importance: "bottleneck"},
+		{ID: "fn3", Name: "CreateUser", Type: "function", Module: "internal/store", Importance: "normal"},
+		{ID: "type1", Name: "User", Type: "struct", Module: "internal/model", Importance: "normal"},
+	}
+
+	deps := []DiagramEdge{
+		{From: "fn1", To: "fn2", Type: "calls"},
+		{From: "fn2", To: "type1", Type: "uses_type"},
+	}
+
+	cfg := ArchitecturePreset()
+	cfg.Title = "Test Architecture"
+	gen := NewD2Generator(cfg)
+	result := gen.Generate(entities, deps)
+
+	// Check for module containers
+	if !strings.Contains(result, "internal-api:") && !strings.Contains(result, `"internal/api":`) {
+		t.Error("expected internal/api module container in output")
+	}
+	if !strings.Contains(result, "internal-store:") && !strings.Contains(result, `"internal/store":`) {
+		t.Error("expected internal/store module container in output")
+	}
+
+	// Check for title
+	if !strings.Contains(result, `label: "Test Architecture"`) {
+		t.Error("expected title in output")
+	}
+
+	// Check for TALA layout (or ELK fallback)
+	if !strings.Contains(result, "layout-engine: tala") && !strings.Contains(result, "layout-engine: elk") {
+		t.Error("expected layout engine configuration")
+	}
+
+	// Check for connections section
+	if !strings.Contains(result, "# Connections") {
+		t.Error("expected connections section")
+	}
+}
+
+func TestCallFlowPresetGeneratesDiagram(t *testing.T) {
+	entities := []DiagramEntity{
+		{ID: "fn1", Name: "Main", Type: "function"},
+		{ID: "fn2", Name: "Process", Type: "function"},
+		{ID: "fn3", Name: "Cleanup", Type: "function"},
+	}
+
+	deps := []DiagramEdge{
+		{From: "fn1", To: "fn2", Type: "calls", Label: "process data"},
+		{From: "fn2", To: "fn3", Type: "calls", Label: "cleanup"},
+	}
+
+	cfg := CallFlowPreset()
+	cfg.Title = "Call Flow"
+	gen := NewD2Generator(cfg)
+	result := gen.Generate(entities, deps)
+
+	// Check for downward direction
+	if !strings.Contains(result, "direction: down") {
+		t.Error("expected down direction for call flow")
+	}
+
+	// Check for call flow section
+	if !strings.Contains(result, "# Call Flow") {
+		t.Error("expected call flow section")
+	}
+
+	// Check for flow section
+	if !strings.Contains(result, "# Flow") {
+		t.Error("expected flow section")
+	}
+}
+
+func TestCoveragePresetGeneratesDiagram(t *testing.T) {
+	entities := []DiagramEntity{
+		{ID: "fn1", Name: "WellTested", Type: "function", Coverage: 95, Importance: "keystone"},
+		{ID: "fn2", Name: "PartiallyTested", Type: "function", Coverage: 60, Importance: "normal"},
+		{ID: "fn3", Name: "Untested", Type: "function", Coverage: 0, Importance: "bottleneck"},
+	}
+
+	deps := []DiagramEdge{}
+
+	cfg := CoveragePreset()
+	cfg.Title = "Coverage Analysis"
+	gen := NewD2Generator(cfg)
+	result := gen.Generate(entities, deps)
+
+	// Check for coverage analysis section
+	if !strings.Contains(result, "# Coverage Analysis") {
+		t.Error("expected coverage analysis section")
+	}
+
+	// Check for legend
+	if !strings.Contains(result, "Coverage Legend") {
+		t.Error("expected coverage legend")
+	}
+
+	// Check for coverage percentage in labels
+	if !strings.Contains(result, "coverage") {
+		t.Error("expected coverage percentages in labels")
+	}
+}

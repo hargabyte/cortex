@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/anthropics/cx/internal/coverage"
+	"github.com/anthropics/cx/internal/graph"
 	"github.com/anthropics/cx/internal/store"
 )
 
@@ -49,6 +50,15 @@ func (g *DataGatherer) GatherOverviewData(data *OverviewReportData) error {
 		health = nil
 	}
 	data.Health = health
+
+	// Generate architecture diagram using preset
+	if err := g.gatherArchitectureDiagram(data); err != nil {
+		// Diagram is optional, don't fail the whole report
+		// But ensure the map exists
+		if data.Diagrams == nil {
+			data.Diagrams = make(map[string]DiagramData)
+		}
+	}
 
 	return nil
 }
@@ -385,6 +395,28 @@ func (g *DataGatherer) gatherHealthSummary(health *HealthSummary) error {
 				health.UntestedKeystones++
 			}
 		}
+	}
+
+	return nil
+}
+
+// gatherArchitectureDiagram generates the architecture diagram for overview reports.
+// It uses the ArchitecturePreset from the graph package to create a D2 diagram
+// showing modules as containers with top entities inside and inter-module edges.
+func (g *DataGatherer) gatherArchitectureDiagram(data *OverviewReportData) error {
+	if data.Diagrams == nil {
+		data.Diagrams = make(map[string]DiagramData)
+	}
+
+	// Use the architecture preset to build the diagram
+	d2Code, err := graph.BuildArchitectureDiagram(g.store, "System Architecture", 50)
+	if err != nil {
+		return fmt.Errorf("build architecture diagram: %w", err)
+	}
+
+	data.Diagrams["architecture"] = DiagramData{
+		Title: "System Architecture",
+		D2:    d2Code,
 	}
 
 	return nil
