@@ -85,6 +85,7 @@ var (
 	safeCoverage bool // Just coverage gaps
 	safeDrift    bool // Just drift/verify check
 	safeChanges  bool // Just diff (what changed since scan)
+	safeTrend    bool // Show blast radius trend over history
 	// Coverage-specific flags (from gaps command)
 	safeKeystonesOnly bool
 	safeThreshold     int
@@ -100,6 +101,9 @@ var (
 	safeImpactThreshold float64
 	// Inline drift flag
 	safeInline bool
+	// Trend-specific flags
+	safeSince      string // Git ref to start trend from
+	safeTrendLimit int    // Number of commits to analyze
 )
 
 func init() {
@@ -134,6 +138,11 @@ func init() {
 
 	// Inline drift flag
 	safeCmd.Flags().BoolVar(&safeInline, "inline", false, "Inline mode: quick drift check for a specific file")
+
+	// Trend analysis flags
+	safeCmd.Flags().BoolVar(&safeTrend, "trend", false, "Show blast radius trend over commit history")
+	safeCmd.Flags().StringVar(&safeSince, "since", "", "Git ref to start trend analysis from (default: HEAD~5)")
+	safeCmd.Flags().IntVar(&safeTrendLimit, "trend-limit", 5, "Number of commits to analyze for trend")
 }
 
 // SafeOutput represents the safety check results
@@ -194,10 +203,13 @@ func runSafe(cmd *cobra.Command, args []string) error {
 	if safeInline {
 		modeCount++
 	}
+	if safeTrend {
+		modeCount++
+	}
 
 	// Validate: only one mode flag at a time (quick is different - it's a modifier)
 	if modeCount > 1 {
-		return fmt.Errorf("only one of --coverage, --drift, --changes, or --inline can be specified")
+		return fmt.Errorf("only one of --coverage, --drift, --changes, --inline, or --trend can be specified")
 	}
 
 	// Route to the appropriate mode handler
@@ -216,10 +228,16 @@ func runSafe(cmd *cobra.Command, args []string) error {
 		}
 		return runSafeInline(cmd, args[0])
 	}
+	if safeTrend {
+		if len(args) == 0 {
+			return fmt.Errorf("target file or entity required for --trend mode")
+		}
+		return runSafeTrend(cmd, args[0])
+	}
 
 	// Default mode: full check or quick (impact-only) - requires a target
 	if len(args) == 0 {
-		return fmt.Errorf("target file or entity required (or use --coverage, --drift, --changes, or --inline)")
+		return fmt.Errorf("target file or entity required (or use --coverage, --drift, --changes, --inline, or --trend)")
 	}
 
 	target := args[0]
@@ -1874,4 +1892,216 @@ func createSafeTask(target string, safeOut *SafeOutput) error {
 
 	fmt.Fprintf(os.Stdout, "\n# Created task: %s\n", beadID)
 	return nil
+}
+
+// TrendOutput represents the blast radius trend analysis results
+type TrendOutput struct {
+	Target      string          `yaml:"target" json:"target"`
+	Trend       string          `yaml:"trend" json:"trend"` // "growing", "shrinking", "stable"
+	Summary     string          `yaml:"summary" json:"summary"`
+	CurrentSize int             `yaml:"current_size" json:"current_size"`
+	History     []TrendSnapshot `yaml:"history" json:"history"`
+}
+
+// TrendSnapshot represents blast radius at a specific commit
+type TrendSnapshot struct {
+	Commit       string `yaml:"commit" json:"commit"`
+	Date         string `yaml:"date,omitempty" json:"date,omitempty"`
+	ImpactRadius int    `yaml:"impact_radius" json:"impact_radius"`
+	Keystones    int    `yaml:"keystones" json:"keystones"`
+	Change       string `yaml:"change,omitempty" json:"change,omitempty"` // "+5", "-3", "0"
+}
+
+// runSafeTrend shows blast radius trend over commit history
+func runSafeTrend(cmd *cobra.Command, target string) error {
+	// Find .cx directory
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx init && cx scan' first")
+	}
+
+	// Open store
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	// Load config
+	cfg, err := config.Load(".")
+	if err != nil {
+		cfg = config.DefaultConfig()
+	}
+
+	// Get commit history
+	limit := safeTrendLimit
+	if limit <= 0 {
+		limit = 5
+	}
+
+	commits, err := storeDB.DoltLog(limit + 1) // +1 to have a baseline
+	if err != nil || len(commits) == 0 {
+		return fmt.Errorf("no commit history found - need multiple scans to show trend")
+	}
+
+	// Build graph for current state
+	g, err := graph.BuildFromStore(storeDB)
+	if err != nil {
+		return fmt.Errorf("failed to build graph: %w", err)
+	}
+
+	// Find direct entities for the target
+	directEntities, err := findDirectEntitiesSafe(target, storeDB)
+	if err != nil {
+		return err
+	}
+
+	if len(directEntities) == 0 {
+		return fmt.Errorf("no entities found matching: %s", target)
+	}
+
+	// Calculate current impact
+	affected := findAffectedEntitiesSafe(directEntities, g, storeDB, cfg, safeDepth)
+	currentSize := len(affected)
+	currentKeystones := countKeystonesSafe(affected, cfg)
+
+	// Build trend output
+	trendOut := &TrendOutput{
+		Target:      target,
+		CurrentSize: currentSize,
+		History:     []TrendSnapshot{},
+	}
+
+	// Add current state as first snapshot
+	trendOut.History = append(trendOut.History, TrendSnapshot{
+		Commit:       "HEAD",
+		Date:         "now",
+		ImpactRadius: currentSize,
+		Keystones:    currentKeystones,
+	})
+
+	// Query historical impact at each commit
+	prevSize := currentSize
+	for i, commit := range commits {
+		if i >= limit {
+			break
+		}
+
+		// Get entity count at this commit as a proxy for impact
+		stats, err := storeDB.DoltLogStats(commit.CommitHash)
+		if err != nil || stats == nil {
+			continue
+		}
+
+		// Calculate approximate impact based on entity count changes
+		historicalSize := estimateHistoricalImpact(storeDB, target, commit.CommitHash, currentSize)
+
+		changeStr := ""
+		if historicalSize < prevSize {
+			changeStr = fmt.Sprintf("+%d", prevSize-historicalSize)
+		} else if historicalSize > prevSize {
+			changeStr = fmt.Sprintf("-%d", historicalSize-prevSize)
+		} else {
+			changeStr = "0"
+		}
+
+		snapshot := TrendSnapshot{
+			Commit:       shortenCommitSafe(commit.CommitHash),
+			Date:         commit.Date,
+			ImpactRadius: historicalSize,
+			Keystones:    0, // Would need full graph rebuild at each commit
+			Change:       changeStr,
+		}
+		trendOut.History = append(trendOut.History, snapshot)
+		prevSize = historicalSize
+	}
+
+	// Determine overall trend
+	if len(trendOut.History) >= 2 {
+		first := trendOut.History[len(trendOut.History)-1].ImpactRadius
+		last := trendOut.History[0].ImpactRadius
+
+		// 20% growth/shrink thresholds
+		growthThreshold := first + first/5  // first * 1.2
+		shrinkThreshold := first - first/5  // first * 0.8
+
+		if first > 0 && last > growthThreshold {
+			trendOut.Trend = "growing"
+			trendOut.Summary = fmt.Sprintf("Impact radius grew from %d to %d entities (%d%% increase)",
+				first, last, (last-first)*100/first)
+		} else if first > 0 && last < shrinkThreshold {
+			trendOut.Trend = "shrinking"
+			trendOut.Summary = fmt.Sprintf("Impact radius shrank from %d to %d entities (%d%% decrease)",
+				first, last, (first-last)*100/first)
+		} else {
+			trendOut.Trend = "stable"
+			trendOut.Summary = fmt.Sprintf("Impact radius stable at ~%d entities", last)
+		}
+	} else {
+		trendOut.Trend = "unknown"
+		trendOut.Summary = "Not enough history to determine trend"
+	}
+
+	// Format output
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	density, err := output.ParseDensity(outputDensity)
+	if err != nil {
+		return fmt.Errorf("invalid density: %w", err)
+	}
+
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), trendOut, density)
+}
+
+// countKeystonesSafe counts keystone entities in the affected set
+func countKeystonesSafe(affected map[string]*safeEntity, cfg *config.Config) int {
+	count := 0
+	for _, e := range affected {
+		if e.metrics != nil && e.metrics.PageRank >= cfg.Metrics.KeystoneThreshold {
+			count++
+		}
+	}
+	return count
+}
+
+// estimateHistoricalImpact estimates the impact radius at a historical commit
+// This is an approximation based on entity count changes
+func estimateHistoricalImpact(storeDB *store.Store, target string, commitHash string, currentSize int) int {
+	// Get diff between this commit and HEAD to estimate changes
+	diffResult, err := storeDB.DoltDiff(store.DiffOptions{
+		FromRef: commitHash,
+		ToRef:   "HEAD",
+		Table:   "entities",
+	})
+	if err != nil {
+		return currentSize
+	}
+
+	// Adjust current size based on changes
+	// If entities were added since this commit, the historical size was smaller
+	// If entities were removed since this commit, the historical size was larger
+	adjustment := len(diffResult.Added) - len(diffResult.Removed)
+	historicalSize := currentSize - adjustment
+
+	if historicalSize < 0 {
+		historicalSize = 0
+	}
+
+	return historicalSize
+}
+
+// shortenCommitSafe returns a shortened commit hash
+func shortenCommitSafe(commit string) string {
+	if len(commit) > 7 {
+		return commit[:7]
+	}
+	return commit
 }

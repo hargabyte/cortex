@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/dolthub/driver"
 )
@@ -120,6 +121,8 @@ func (s *Store) DoltCommit(message string) (string, error) {
 
 // ScanMetadata represents metadata about a scan operation.
 type ScanMetadata struct {
+	ID                int
+	ScanTime          time.Time
 	GitCommit         string
 	GitBranch         string
 	FilesScanned      int
@@ -137,4 +140,33 @@ func (s *Store) SaveScanMetadata(meta *ScanMetadata) error {
 		meta.GitCommit, meta.GitBranch, meta.FilesScanned, meta.EntitiesFound,
 		meta.DependenciesFound, meta.DurationMs)
 	return err
+}
+
+// GetLatestScanMetadata returns the most recent scan metadata, or nil if no scans exist.
+func (s *Store) GetLatestScanMetadata() (*ScanMetadata, error) {
+	row := s.db.QueryRow(`
+		SELECT id, scan_time, git_commit, git_branch, files_scanned, entities_found, dependencies_found, scan_duration_ms
+		FROM scan_metadata
+		ORDER BY id DESC
+		LIMIT 1`)
+
+	meta := &ScanMetadata{}
+	var scanTimeStr string
+	err := row.Scan(&meta.ID, &scanTimeStr, &meta.GitCommit, &meta.GitBranch,
+		&meta.FilesScanned, &meta.EntitiesFound, &meta.DependenciesFound, &meta.DurationMs)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query scan metadata: %w", err)
+	}
+
+	// Parse scan time
+	meta.ScanTime, err = time.Parse("2006-01-02 15:04:05", scanTimeStr)
+	if err != nil {
+		// Try RFC3339 format as fallback
+		meta.ScanTime, _ = time.Parse(time.RFC3339, scanTimeStr)
+	}
+
+	return meta, nil
 }
