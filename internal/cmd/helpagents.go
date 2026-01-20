@@ -39,8 +39,9 @@ func runHelpAgents(cmd *cobra.Command, args []string) {
 func generateAgentReference() string {
 	return `# CX Command Reference for AI Agents
 
-> This tool exists because exploring codebases burns tokens.
-> Query what you need directly instead.
+> **CX exists to help AI agents do better work on codebases.**
+> Query what you need directly instead of burning tokens exploring.
+> When users are confused, generate a visual report to explain the codebase.
 
 ## Quick Start Workflow
 
@@ -263,7 +264,16 @@ cx serve --tools=context,safe     # Limit to specific tools
 ---
 
 ### cx report
-Generate structured data for AI-powered codebase reports.
+Generate visual reports to explain codebases to users.
+
+**When to generate reports proactively:**
+- User seems confused about codebase structure → ` + "`overview`" + ` report
+- User asks "how does X work?" → ` + "`feature`" + ` report with call flow diagram
+- User asks "what changed?" → ` + "`changes`" + ` report
+- User asks about code quality/risk → ` + "`health`" + ` report
+
+**Reports are a communication tool.** When text explanations aren't enough,
+a visual diagram can clarify architecture, call flows, and dependencies.
 
 ` + "```bash" + `
 cx report overview --data                    # System stats, keystones, architecture diagram
@@ -283,7 +293,7 @@ cx report overview --data --format json      # JSON output
 - ` + "`changes`" + ` - Added/modified/deleted entities with change diagram (requires ` + "`--since`" + `)
 - ` + "`health`" + ` - Risk score, untested keystones, dead code, complexity hotspots
 
-**Output includes D2 diagram code** for visualizations.
+**Output includes D2 diagram code** - render with ` + "`cx render`" + ` for visual diagrams.
 
 #### Report Skill Setup
 
@@ -361,7 +371,9 @@ cx render report.html --embed           # Inline SVGs in HTML (replaces D2 code 
 | Old code state | ` + "`cx show <entity> --at v1.0`" + ` |
 | What changed? | ` + "`cx catchup --since v1.0`" + ` |
 | MCP IDE integration | ` + "`cx serve`" + ` |
-| Generate report data | ` + "`cx report overview --data`" + ` |
+| **User confused about structure** | ` + "`cx report overview --data`" + ` → visual diagram |
+| **User asks "how does X work?"** | ` + "`cx report feature \"X\" --data`" + ` → call flow |
+| **Explain code quality/risk** | ` + "`cx report health --data`" + ` → risk analysis |
 | Render D2 to image | ` + "`cx render diagram.d2`" + ` |
 
 ---
@@ -379,12 +391,13 @@ Go, TypeScript, JavaScript, Python, Java, Rust, C, C#, PHP
 func generateAgentReferenceJSON() string {
 	return `{
   "version": "` + Version + `",
-  "purpose": "AI agents waste tokens exploring codebases. This tool lets you query what you need directly.",
+  "purpose": "CX helps AI agents do better work on codebases. Query directly instead of exploring. Generate visual reports to explain code to users.",
   "workflow": {
     "1_start_task": "cx context --smart \"<task>\" --budget 8000",
     "2_before_modify": "cx safe <file>",
     "3_understand": "cx show <entity> --related",
-    "4_after_changes": "cx test --diff --run"
+    "4_after_changes": "cx test --diff --run",
+    "5_explain_to_user": "cx report <type> --data → visual diagram"
   },
   "commands": {
     "context": {
@@ -502,8 +515,14 @@ func generateAgentReferenceJSON() string {
       }
     },
     "report": {
-      "purpose": "Generate structured data for AI-powered reports",
+      "purpose": "Generate visual reports to explain codebases to users",
       "usage": "cx report <type> --data",
+      "when_to_use": {
+        "user_confused_about_structure": "overview → architecture diagram",
+        "user_asks_how_x_works": "feature \"X\" → call flow diagram",
+        "user_asks_what_changed": "changes --since → change diagram",
+        "user_asks_about_quality": "health → risk analysis"
+      },
       "subcommands": ["overview", "feature", "changes", "health"],
       "flags": ["--data", "-o/--output", "--format", "--since", "--until", "--init-skill"],
       "report_types": {
