@@ -311,3 +311,195 @@ func TestCoveragePresetGeneratesDiagram(t *testing.T) {
 		t.Error("expected coverage percentages in labels")
 	}
 }
+
+func TestCallFlowPresetWithMultipleEntities(t *testing.T) {
+	// Simulate a call flow: main -> process -> validate -> save
+	entities := []DiagramEntity{
+		{ID: "fn-main", Name: "Main", Type: "function", Importance: "keystone"},
+		{ID: "fn-process", Name: "ProcessRequest", Type: "function", Importance: "normal"},
+		{ID: "fn-validate", Name: "ValidateInput", Type: "function", Importance: "normal"},
+		{ID: "fn-save", Name: "SaveToDatabase", Type: "function", Importance: "normal"},
+	}
+
+	deps := []DiagramEdge{
+		{From: "fn-main", To: "fn-process", Type: "calls"},
+		{From: "fn-process", To: "fn-validate", Type: "calls"},
+		{From: "fn-process", To: "fn-save", Type: "calls"},
+	}
+
+	cfg := CallFlowPreset()
+	cfg.Title = "Request Processing Flow"
+	gen := NewD2Generator(cfg)
+	result := gen.Generate(entities, deps)
+
+	// Verify direction is down for call flow
+	if !strings.Contains(result, "direction: down") {
+		t.Error("expected downward direction for call flow")
+	}
+
+	// Verify title is included
+	if !strings.Contains(result, `label: "Request Processing Flow"`) {
+		t.Error("expected title in output")
+	}
+
+	// Verify all entities are present
+	for _, e := range entities {
+		if !strings.Contains(result, e.Name) {
+			t.Errorf("expected entity %s in output", e.Name)
+		}
+	}
+
+	// Verify call flow edges use arrow syntax
+	if !strings.Contains(result, "->") {
+		t.Error("expected arrow edges in call flow")
+	}
+
+	// Verify layout is elk
+	if !strings.Contains(result, "layout-engine: elk") {
+		t.Error("expected ELK layout engine for call flow")
+	}
+}
+
+func TestCallFlowEdgeStyling(t *testing.T) {
+	entities := []DiagramEntity{
+		{ID: "fn1", Name: "Caller", Type: "function"},
+		{ID: "fn2", Name: "Callee", Type: "function"},
+	}
+
+	deps := []DiagramEdge{
+		{From: "fn1", To: "fn2", Type: "calls", Label: "invoke"},
+	}
+
+	cfg := CallFlowPreset()
+	cfg.ShowLabels = true
+	gen := NewD2Generator(cfg)
+	result := gen.Generate(entities, deps)
+
+	// Verify edge has proper structure
+	if !strings.Contains(result, "fn1 -> fn2") {
+		t.Error("expected fn1 -> fn2 edge")
+	}
+
+	// Verify label is included
+	if !strings.Contains(result, "invoke") {
+		t.Error("expected label 'invoke' on edge")
+	}
+}
+
+func TestCallFlowEntityOrdering(t *testing.T) {
+	// Test that buildEntityOrder correctly orders entities based on dependencies
+	entities := []DiagramEntity{
+		{ID: "leaf1", Name: "Leaf1", Type: "function"},
+		{ID: "root", Name: "Root", Type: "function"},
+		{ID: "leaf2", Name: "Leaf2", Type: "function"},
+		{ID: "middle", Name: "Middle", Type: "function"},
+	}
+
+	deps := []DiagramEdge{
+		{From: "root", To: "middle", Type: "calls"},
+		{From: "middle", To: "leaf1", Type: "calls"},
+		{From: "middle", To: "leaf2", Type: "calls"},
+	}
+
+	ordered := buildEntityOrder(entities, deps)
+
+	// Root should come before middle
+	rootIdx, middleIdx := -1, -1
+	for i, e := range ordered {
+		if e.ID == "root" {
+			rootIdx = i
+		}
+		if e.ID == "middle" {
+			middleIdx = i
+		}
+	}
+
+	if rootIdx == -1 || middleIdx == -1 {
+		t.Error("expected both root and middle in ordered entities")
+	}
+
+	if rootIdx > middleIdx {
+		t.Error("expected root to come before middle in call flow order")
+	}
+}
+
+func TestCallFlowWithCycles(t *testing.T) {
+	// Test handling of cyclic dependencies (e.g., A calls B, B calls A)
+	entities := []DiagramEntity{
+		{ID: "fn-a", Name: "FuncA", Type: "function"},
+		{ID: "fn-b", Name: "FuncB", Type: "function"},
+	}
+
+	deps := []DiagramEdge{
+		{From: "fn-a", To: "fn-b", Type: "calls"},
+		{From: "fn-b", To: "fn-a", Type: "calls"},
+	}
+
+	cfg := CallFlowPreset()
+	gen := NewD2Generator(cfg)
+	result := gen.Generate(entities, deps)
+
+	// Should not panic and should include both entities
+	if !strings.Contains(result, "FuncA") || !strings.Contains(result, "FuncB") {
+		t.Error("expected both functions in output despite cycle")
+	}
+
+	// Both edges should be present
+	if !strings.Contains(result, "fn-a -> fn-b") {
+		t.Error("expected fn-a -> fn-b edge")
+	}
+	if !strings.Contains(result, "fn-b -> fn-a") {
+		t.Error("expected fn-b -> fn-a edge")
+	}
+}
+
+func TestCallFlowEmptyDeps(t *testing.T) {
+	entities := []DiagramEntity{
+		{ID: "fn1", Name: "StandaloneFunc", Type: "function"},
+	}
+
+	deps := []DiagramEdge{}
+
+	cfg := CallFlowPreset()
+	gen := NewD2Generator(cfg)
+	result := gen.Generate(entities, deps)
+
+	// Should generate valid output with single entity
+	if !strings.Contains(result, "StandaloneFunc") {
+		t.Error("expected standalone function in output")
+	}
+
+	// Should still have proper sections
+	if !strings.Contains(result, "# Call Flow") {
+		t.Error("expected call flow section")
+	}
+}
+
+func TestCallFlowWithModuleInfo(t *testing.T) {
+	// Call flow entities can have module info but it's not used for grouping
+	entities := []DiagramEntity{
+		{ID: "fn1", Name: "Handler", Type: "function", Module: "internal/api"},
+		{ID: "fn2", Name: "Service", Type: "function", Module: "internal/service"},
+		{ID: "fn3", Name: "Query", Type: "function", Module: "internal/store"},
+	}
+
+	deps := []DiagramEdge{
+		{From: "fn1", To: "fn2", Type: "calls"},
+		{From: "fn2", To: "fn3", Type: "calls"},
+	}
+
+	cfg := CallFlowPreset()
+	gen := NewD2Generator(cfg)
+	result := gen.Generate(entities, deps)
+
+	// Call flow should NOT group by module (unlike architecture diagrams)
+	// Entities should be listed directly, not in containers
+	if strings.Contains(result, "internal-api:") || strings.Contains(result, `"internal/api":`) {
+		t.Error("call flow should not group entities into module containers")
+	}
+
+	// All entities should be present at top level
+	if !strings.Contains(result, "fn1:") {
+		t.Error("expected fn1 entity at top level")
+	}
+}

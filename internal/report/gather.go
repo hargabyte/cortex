@@ -137,6 +137,14 @@ func (g *DataGatherer) GatherFeatureData(data *FeatureReportData, query string) 
 		data.Tests = nil
 	}
 
+	// Generate call flow diagram for the top search result
+	if err := g.gatherCallFlowDiagram(data); err != nil {
+		// Diagram is optional, don't fail the whole report
+		if data.Diagrams == nil {
+			data.Diagrams = make(map[string]DiagramData)
+		}
+	}
+
 	return nil
 }
 
@@ -416,6 +424,35 @@ func (g *DataGatherer) gatherArchitectureDiagram(data *OverviewReportData) error
 
 	data.Diagrams["architecture"] = DiagramData{
 		Title: "System Architecture",
+		D2:    d2Code,
+	}
+
+	return nil
+}
+
+// gatherCallFlowDiagram generates a call flow diagram for feature reports.
+// It uses the top search result as the root entity and shows its call chain.
+func (g *DataGatherer) gatherCallFlowDiagram(data *FeatureReportData) error {
+	if len(data.Entities) == 0 {
+		return nil // No entities to diagram
+	}
+
+	if data.Diagrams == nil {
+		data.Diagrams = make(map[string]DiagramData)
+	}
+
+	// Use the top entity as the root for the call flow
+	rootEntity := data.Entities[0]
+	title := fmt.Sprintf("Call Flow: %s", rootEntity.Name)
+
+	// Build call flow diagram with depth 3
+	d2Code, err := graph.BuildCallFlowDiagram(g.store, rootEntity.ID, 3, title)
+	if err != nil {
+		return fmt.Errorf("build call flow diagram: %w", err)
+	}
+
+	data.Diagrams["call_flow"] = DiagramData{
+		Title: title,
 		D2:    d2Code,
 	}
 

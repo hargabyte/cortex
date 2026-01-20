@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -422,4 +423,273 @@ func classifyImportanceByRank(pageRank float64) string {
 		return "normal"
 	}
 	return "leaf"
+}
+
+// BuildCallFlowDiagram creates a D2 call flow diagram starting from a root entity.
+// It performs BFS traversal following outgoing calls to the specified depth.
+// The diagram shows the call chain with entities ordered top-to-bottom.
+func BuildCallFlowDiagram(s *store.Store, rootEntityID string, depth int, title string) (string, error) {
+	if depth <= 0 {
+		depth = 3 // Default depth
+	}
+	if depth > 10 {
+		depth = 10 // Cap depth to prevent excessive expansion
+	}
+
+	config := CallFlowPreset()
+	config.Title = title
+
+	// Get root entity
+	rootEntity, err := s.GetEntity(rootEntityID)
+	if err != nil {
+		return "", err
+	}
+
+	// BFS traversal to collect entities and edges
+	entities := make([]DiagramEntity, 0)
+	edges := make([]DiagramEdge, 0)
+	visited := make(map[string]bool)
+	entityMap := make(map[string]*store.Entity)
+
+	// Queue for BFS: (entityID, currentDepth)
+	type queueItem struct {
+		entityID string
+		depth    int
+	}
+	queue := []queueItem{{entityID: rootEntityID, depth: 0}}
+	visited[rootEntityID] = true
+	entityMap[rootEntityID] = rootEntity
+
+	for len(queue) > 0 && len(entities) < config.MaxNodes {
+		item := queue[0]
+		queue = queue[1:]
+
+		// Stop expanding at max depth
+		if item.depth >= depth {
+			continue
+		}
+
+		// Get outgoing dependencies (calls)
+		deps, err := s.GetDependenciesFrom(item.entityID)
+		if err != nil {
+			continue
+		}
+
+		for _, dep := range deps {
+			// Only follow "calls" dependencies for call flow
+			if dep.DepType != "calls" {
+				continue
+			}
+
+			// Add edge
+			edges = append(edges, DiagramEdge{
+				From:  dep.FromID,
+				To:    dep.ToID,
+				Type:  dep.DepType,
+				Label: "", // Could add call info here
+			})
+
+			// Add target to queue if not visited
+			if !visited[dep.ToID] {
+				visited[dep.ToID] = true
+
+				targetEntity, err := s.GetEntity(dep.ToID)
+				if err != nil {
+					continue
+				}
+				entityMap[dep.ToID] = targetEntity
+
+				queue = append(queue, queueItem{
+					entityID: dep.ToID,
+					depth:    item.depth + 1,
+				})
+			}
+		}
+	}
+
+	// Convert collected entities to diagram entities
+	for entityID, entity := range entityMap {
+		metrics, _ := s.GetMetrics(entityID)
+
+		importance := "normal"
+		if metrics != nil {
+			importance = classifyImportanceFromMetrics(metrics)
+		}
+
+		// Mark root entity as keystone for visual emphasis
+		if entityID == rootEntityID {
+			importance = "keystone"
+		}
+
+		entities = append(entities, DiagramEntity{
+			ID:         entity.ID,
+			Name:       entity.Name,
+			Type:       entity.EntityType,
+			Importance: importance,
+			Coverage:   -1, // Not shown in call flow
+			Language:   inferLanguage(entity.FilePath),
+			Module:     extractModuleFromPath(entity.FilePath),
+			Layer:      inferLayer(entity.EntityType, extractModuleFromPath(entity.FilePath)),
+		})
+	}
+
+	// Sort entities to ensure root is first (for proper flow visualization)
+	sort.Slice(entities, func(i, j int) bool {
+		// Root entity comes first
+		if entities[i].ID == rootEntityID {
+			return true
+		}
+		if entities[j].ID == rootEntityID {
+			return false
+		}
+		// Otherwise sort by ID for deterministic output
+		return entities[i].ID < entities[j].ID
+	})
+
+	// Generate D2 code
+	gen := NewD2Generator(config)
+	return gen.Generate(entities, edges), nil
+}
+
+// BuildCallFlowDiagramFromName creates a call flow diagram by finding an entity by name.
+// This is a convenience wrapper for cases where only the entity name is known.
+func BuildCallFlowDiagramFromName(s *store.Store, entityName string, depth int, title string) (string, error) {
+	// Search for the entity by name
+	opts := store.DefaultSearchOptions()
+	opts.Query = entityName
+	opts.Limit = 1
+
+	results, err := s.SearchEntities(opts)
+	if err != nil {
+		return "", err
+	}
+
+	if len(results) == 0 {
+		// Try exact match query
+		entities, err := s.QueryEntities(store.EntityFilter{Name: entityName, Limit: 1})
+		if err != nil || len(entities) == 0 {
+			return "", fmt.Errorf("entity not found: %s", entityName)
+		}
+		return BuildCallFlowDiagram(s, entities[0].ID, depth, title)
+	}
+
+	return BuildCallFlowDiagram(s, results[0].Entity.ID, depth, title)
+}
+
+// BuildCallersFlowDiagram creates a diagram showing what calls a given entity.
+// It traverses incoming dependencies (callers) instead of outgoing calls.
+func BuildCallersFlowDiagram(s *store.Store, targetEntityID string, depth int, title string) (string, error) {
+	if depth <= 0 {
+		depth = 3
+	}
+	if depth > 10 {
+		depth = 10
+	}
+
+	config := CallFlowPreset()
+	config.Title = title
+	config.Direction = "up" // Reverse direction for callers view
+
+	// Get target entity
+	targetEntity, err := s.GetEntity(targetEntityID)
+	if err != nil {
+		return "", err
+	}
+
+	// BFS traversal following callers (incoming dependencies)
+	entities := make([]DiagramEntity, 0)
+	edges := make([]DiagramEdge, 0)
+	visited := make(map[string]bool)
+	entityMap := make(map[string]*store.Entity)
+
+	type queueItem struct {
+		entityID string
+		depth    int
+	}
+	queue := []queueItem{{entityID: targetEntityID, depth: 0}}
+	visited[targetEntityID] = true
+	entityMap[targetEntityID] = targetEntity
+
+	for len(queue) > 0 && len(entities) < config.MaxNodes {
+		item := queue[0]
+		queue = queue[1:]
+
+		if item.depth >= depth {
+			continue
+		}
+
+		// Get incoming dependencies (callers)
+		deps, err := s.GetDependenciesTo(item.entityID)
+		if err != nil {
+			continue
+		}
+
+		for _, dep := range deps {
+			if dep.DepType != "calls" {
+				continue
+			}
+
+			// Add edge (caller -> current)
+			edges = append(edges, DiagramEdge{
+				From:  dep.FromID,
+				To:    dep.ToID,
+				Type:  dep.DepType,
+				Label: "",
+			})
+
+			if !visited[dep.FromID] {
+				visited[dep.FromID] = true
+
+				callerEntity, err := s.GetEntity(dep.FromID)
+				if err != nil {
+					continue
+				}
+				entityMap[dep.FromID] = callerEntity
+
+				queue = append(queue, queueItem{
+					entityID: dep.FromID,
+					depth:    item.depth + 1,
+				})
+			}
+		}
+	}
+
+	// Convert to diagram entities
+	for entityID, entity := range entityMap {
+		metrics, _ := s.GetMetrics(entityID)
+
+		importance := "normal"
+		if metrics != nil {
+			importance = classifyImportanceFromMetrics(metrics)
+		}
+
+		if entityID == targetEntityID {
+			importance = "keystone"
+		}
+
+		entities = append(entities, DiagramEntity{
+			ID:         entity.ID,
+			Name:       entity.Name,
+			Type:       entity.EntityType,
+			Importance: importance,
+			Coverage:   -1,
+			Language:   inferLanguage(entity.FilePath),
+			Module:     extractModuleFromPath(entity.FilePath),
+			Layer:      inferLayer(entity.EntityType, extractModuleFromPath(entity.FilePath)),
+		})
+	}
+
+	// Sort with target entity first
+	sort.Slice(entities, func(i, j int) bool {
+		if entities[i].ID == targetEntityID {
+			return true
+		}
+		if entities[j].ID == targetEntityID {
+			return false
+		}
+		return entities[i].ID < entities[j].ID
+	})
+
+	gen := NewD2Generator(config)
+	return gen.Generate(entities, edges), nil
 }
