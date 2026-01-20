@@ -44,10 +44,10 @@ type Config struct {
 }
 
 // DefaultTools is the default set of tools to expose
-var DefaultTools = []string{"cx_diff", "cx_impact", "cx_context", "cx_show"}
+var DefaultTools = []string{"cx_context", "cx_safe", "cx_show", "cx_find", "cx_map"}
 
 // AllTools lists all available tools
-var AllTools = []string{"cx_diff", "cx_impact", "cx_context", "cx_show", "cx_find", "cx_gaps"}
+var AllTools = []string{"cx_context", "cx_safe", "cx_find", "cx_show", "cx_map", "cx_diff", "cx_impact", "cx_gaps"}
 
 // New creates a new MCP server for cx
 func New(cfg Config) (*Server, error) {
@@ -122,6 +122,10 @@ func (s *Server) registerTool(name string) error {
 		return s.registerFindTool()
 	case "cx_gaps":
 		return s.registerGapsTool()
+	case "cx_safe":
+		return s.registerSafeTool()
+	case "cx_map":
+		return s.registerMapTool()
 	default:
 		return fmt.Errorf("unknown tool: %s", name)
 	}
@@ -295,6 +299,45 @@ func (s *Server) registerGapsTool() error {
 	return nil
 }
 
+// registerSafeTool registers the cx_safe tool
+func (s *Server) registerSafeTool() error {
+	tool := mcp.NewTool("cx_safe",
+		mcp.WithDescription("Pre-flight safety check before modifying code. Returns risk level, impact radius, coverage gaps, and recommendations."),
+		mcp.WithString("target",
+			mcp.Required(),
+			mcp.Description("File path or entity name to check"),
+		),
+		mcp.WithBoolean("quick",
+			mcp.Description("Quick mode: just blast radius (impact analysis only)"),
+		),
+		mcp.WithNumber("depth",
+			mcp.Description("Transitive impact depth (default: 3)"),
+		),
+	)
+
+	s.mcpServer.AddTool(tool, s.handleSafe)
+	return nil
+}
+
+// registerMapTool registers the cx_map tool
+func (s *Server) registerMapTool() error {
+	tool := mcp.NewTool("cx_map",
+		mcp.WithDescription("Project skeleton overview showing function signatures and type definitions. Useful for codebase orientation."),
+		mcp.WithString("path",
+			mcp.Description("Subdirectory to map (default: project root)"),
+		),
+		mcp.WithString("filter",
+			mcp.Description("Filter by entity type: F (function), T (type), M (method), C (constant)"),
+		),
+		mcp.WithString("lang",
+			mcp.Description("Filter by language (go, typescript, python, rust, java)"),
+		),
+	)
+
+	s.mcpServer.AddTool(tool, s.handleMap)
+	return nil
+}
+
 // Tool handlers
 
 func (s *Server) handleDiff(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -424,6 +467,46 @@ func (s *Server) handleGaps(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	}
 
 	result, err := s.executeGaps(keystonesOnly, threshold)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	return mcp.NewToolResultText(result), nil
+}
+
+func (s *Server) handleSafe(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.updateActivity()
+
+	args := req.GetArguments()
+	target, ok := args["target"].(string)
+	if !ok || target == "" {
+		return mcp.NewToolResultError("target parameter is required"), nil
+	}
+
+	quick, _ := args["quick"].(bool)
+
+	depth := 3
+	if d, ok := args["depth"].(float64); ok {
+		depth = int(d)
+	}
+
+	result, err := s.executeSafe(target, quick, depth)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	return mcp.NewToolResultText(result), nil
+}
+
+func (s *Server) handleMap(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s.updateActivity()
+
+	args := req.GetArguments()
+	path, _ := args["path"].(string)
+	filter, _ := args["filter"].(string)
+	lang, _ := args["lang"].(string)
+
+	result, err := s.executeMap(path, filter, lang)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -755,6 +838,557 @@ func (s *Server) executeGaps(keystonesOnly bool, threshold float64) (string, err
 		"count":     len(gaps),
 		"note":      "Coverage data requires 'cx coverage import' first",
 	})
+}
+
+func (s *Server) executeSafe(target string, quick bool, depth int) (string, error) {
+	// Find direct entities matching the target
+	directEntities, err := s.findDirectEntities(target)
+	if err != nil {
+		return "", err
+	}
+
+	if len(directEntities) == 0 {
+		return "", fmt.Errorf("no entities found matching: %s", target)
+	}
+
+	// Find all affected entities via BFS traversal
+	affected := s.findAffectedEntities(directEntities, depth)
+
+	// For quick mode, just return impact analysis
+	if quick {
+		return s.buildQuickSafeOutput(target, affected, depth)
+	}
+
+	// Full safety assessment
+	return s.buildFullSafeOutput(target, affected, depth)
+}
+
+// findDirectEntities finds entities matching the target (file path or entity name)
+func (s *Server) findDirectEntities(target string) ([]*safeEntity, error) {
+	var results []*safeEntity
+
+	if isFilePath(target) {
+		// File path: find all entities in the file
+		entities, err := s.store.QueryEntities(store.EntityFilter{
+			FilePath: target,
+			Status:   "active",
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to query entities: %w", err)
+		}
+
+		// Try suffix match if exact match fails
+		if len(entities) == 0 {
+			entities, _ = s.store.QueryEntities(store.EntityFilter{
+				FilePathSuffix: "/" + target,
+				Status:         "active",
+			})
+		}
+
+		for _, e := range entities {
+			m, _ := s.store.GetMetrics(e.ID)
+			results = append(results, &safeEntity{
+				entity:  e,
+				metrics: m,
+				direct:  true,
+				depth:   0,
+			})
+		}
+	} else {
+		// Entity name: try direct ID lookup first, then name search
+		entity, err := s.store.GetEntity(target)
+		if err == nil && entity != nil {
+			m, _ := s.store.GetMetrics(entity.ID)
+			results = append(results, &safeEntity{
+				entity:  entity,
+				metrics: m,
+				direct:  true,
+				depth:   0,
+			})
+		} else {
+			// Try name search
+			entities, err := s.store.QueryEntities(store.EntityFilter{
+				Name:   target,
+				Status: "active",
+				Limit:  10,
+			})
+			if err == nil {
+				for _, e := range entities {
+					m, _ := s.store.GetMetrics(e.ID)
+					results = append(results, &safeEntity{
+						entity:  e,
+						metrics: m,
+						direct:  true,
+						depth:   0,
+					})
+				}
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// safeEntity holds entity info for safe analysis
+type safeEntity struct {
+	entity  *store.Entity
+	metrics *store.Metrics
+	depth   int
+	direct  bool
+}
+
+// findAffectedEntities performs BFS to find all transitively affected entities
+func (s *Server) findAffectedEntities(direct []*safeEntity, maxDepth int) map[string]*safeEntity {
+	affected := make(map[string]*safeEntity)
+
+	// Add direct entities
+	for _, e := range direct {
+		affected[e.entity.ID] = e
+	}
+
+	// BFS from each direct entity to find callers
+	for _, directEnt := range direct {
+		visited := make(map[string]int)
+		visited[directEnt.entity.ID] = 0
+
+		queue := []string{directEnt.entity.ID}
+		depth := 1
+
+		for len(queue) > 0 && depth <= maxDepth {
+			levelSize := len(queue)
+			for i := 0; i < levelSize; i++ {
+				current := queue[0]
+				queue = queue[1:]
+
+				// Get predecessors (callers)
+				preds := s.graph.Predecessors(current)
+				for _, pred := range preds {
+					if _, seen := visited[pred]; seen {
+						continue
+					}
+					visited[pred] = depth
+
+					if depth <= maxDepth {
+						queue = append(queue, pred)
+					}
+
+					// Skip if already tracked
+					if _, exists := affected[pred]; exists {
+						continue
+					}
+
+					callerEntity, err := s.store.GetEntity(pred)
+					if err != nil {
+						continue
+					}
+
+					m, _ := s.store.GetMetrics(pred)
+					affected[pred] = &safeEntity{
+						entity:  callerEntity,
+						metrics: m,
+						depth:   depth,
+						direct:  false,
+					}
+				}
+			}
+			depth++
+		}
+	}
+
+	return affected
+}
+
+// buildQuickSafeOutput builds the quick mode (impact-only) output
+func (s *Server) buildQuickSafeOutput(target string, affected map[string]*safeEntity, depth int) (string, error) {
+	// Build affected entities list
+	affectedList := make([]map[string]interface{}, 0, len(affected))
+	keystoneCount := 0
+
+	for _, e := range affected {
+		entry := map[string]interface{}{
+			"name":     e.entity.Name,
+			"type":     e.entity.EntityType,
+			"location": formatLocation(e.entity),
+			"depth":    e.depth,
+			"direct":   e.direct,
+		}
+
+		if e.metrics != nil {
+			entry["importance"] = computeImportance(e.metrics.PageRank)
+			if e.metrics.PageRank >= 0.30 {
+				keystoneCount++
+			}
+		}
+
+		affectedList = append(affectedList, entry)
+	}
+
+	// Count affected files
+	files := make(map[string]bool)
+	for _, e := range affected {
+		files[e.entity.FilePath] = true
+	}
+
+	return toJSON(map[string]interface{}{
+		"target":         target,
+		"mode":           "quick",
+		"impact_radius":  len(affected),
+		"files_affected": len(files),
+		"keystone_count": keystoneCount,
+		"depth":          depth,
+		"affected":       affectedList,
+	})
+}
+
+// buildFullSafeOutput builds the full safety assessment output
+func (s *Server) buildFullSafeOutput(target string, affected map[string]*safeEntity, depth int) (string, error) {
+	// Count keystones and identify coverage gaps
+	keystoneCount := 0
+	coverageGaps := 0
+	var keystones []map[string]interface{}
+	var warnings []string
+
+	// Use dynamic threshold based on actual PageRank distribution
+	keystoneThreshold := s.computeDynamicKeystoneThreshold(affected)
+
+	for _, e := range affected {
+		if e.metrics == nil {
+			continue
+		}
+
+		isKeystone := e.metrics.PageRank >= keystoneThreshold
+		if isKeystone {
+			keystoneCount++
+
+			// For now, assume coverage gap if no coverage data
+			// Full coverage integration would check actual coverage
+			hasCoverageGap := true // Assume gap until proven otherwise
+			coverageStr := "unknown"
+
+			if hasCoverageGap {
+				coverageGaps++
+			}
+
+			impactType := "indirect"
+			if e.direct {
+				impactType = "direct"
+			} else if e.depth == 1 {
+				impactType = "caller"
+			}
+
+			keystones = append(keystones, map[string]interface{}{
+				"name":         e.entity.Name,
+				"type":         e.entity.EntityType,
+				"location":     formatLocation(e.entity),
+				"pagerank":     e.metrics.PageRank,
+				"coverage":     coverageStr,
+				"impact":       impactType,
+				"coverage_gap": hasCoverageGap,
+			})
+
+			if hasCoverageGap {
+				warnings = append(warnings, fmt.Sprintf("Keystone '%s' has unknown coverage - add tests before modifying", e.entity.Name))
+			}
+		}
+	}
+
+	// Limit keystones to top 10
+	if len(keystones) > 10 {
+		keystones = keystones[:10]
+	}
+
+	// Count affected files
+	files := make(map[string]bool)
+	for _, e := range affected {
+		files[e.entity.FilePath] = true
+	}
+
+	// Determine risk level
+	riskLevel := s.computeRiskLevel(len(affected), keystoneCount, coverageGaps)
+
+	// Build recommendations
+	recommendations := s.buildRecommendations(riskLevel, coverageGaps, keystoneCount)
+
+	result := map[string]interface{}{
+		"safety_assessment": map[string]interface{}{
+			"target":         target,
+			"risk_level":     riskLevel,
+			"impact_radius":  len(affected),
+			"files_affected": len(files),
+			"keystone_count": keystoneCount,
+			"coverage_gaps":  coverageGaps,
+			"drift_detected": false, // Would require file parsing to detect
+		},
+		"warnings":           warnings,
+		"recommendations":    recommendations,
+		"affected_keystones": keystones,
+	}
+
+	return toJSON(result)
+}
+
+// computeDynamicKeystoneThreshold calculates threshold based on PageRank distribution
+func (s *Server) computeDynamicKeystoneThreshold(affected map[string]*safeEntity) float64 {
+	var pageranks []float64
+	for _, e := range affected {
+		if e.metrics != nil && e.metrics.PageRank > 0 {
+			pageranks = append(pageranks, e.metrics.PageRank)
+		}
+	}
+
+	if len(pageranks) == 0 {
+		return 1.0 // No keystones if no metrics
+	}
+
+	// Sort descending
+	for i := 0; i < len(pageranks)-1; i++ {
+		for j := i + 1; j < len(pageranks); j++ {
+			if pageranks[j] > pageranks[i] {
+				pageranks[i], pageranks[j] = pageranks[j], pageranks[i]
+			}
+		}
+	}
+
+	// Take top 5% or minimum of 10 entities
+	topN := len(pageranks) / 20 // 5%
+	if topN < 10 {
+		topN = 10
+	}
+	if topN > len(pageranks) {
+		topN = len(pageranks)
+	}
+
+	return pageranks[topN-1]
+}
+
+// computeRiskLevel determines overall risk level
+func (s *Server) computeRiskLevel(impactRadius, keystoneCount, coverageGaps int) string {
+	// Critical: multiple undertested keystones
+	if coverageGaps >= 3 {
+		return "critical"
+	}
+
+	// High: any coverage gaps on keystones
+	if coverageGaps > 0 {
+		return "high"
+	}
+
+	// Medium: multiple keystones affected
+	if keystoneCount >= 3 {
+		return "medium"
+	}
+
+	// Medium: large impact radius
+	if impactRadius >= 20 {
+		return "medium"
+	}
+
+	return "low"
+}
+
+// buildRecommendations generates actionable recommendations
+func (s *Server) buildRecommendations(riskLevel string, coverageGaps, keystoneCount int) []string {
+	var recs []string
+
+	switch riskLevel {
+	case "critical":
+		recs = append(recs, "STOP: Address safety issues before proceeding")
+		if coverageGaps > 0 {
+			recs = append(recs, "Add tests for undertested keystones before making changes")
+		}
+		recs = append(recs, "Consider breaking this change into smaller, safer increments")
+
+	case "high":
+		recs = append(recs, "Proceed with caution")
+		if coverageGaps > 0 {
+			recs = append(recs, "Add tests for affected keystones before or alongside changes")
+		}
+		recs = append(recs, "Request thorough code review for this change")
+
+	case "medium":
+		recs = append(recs, "Proceed with standard review process")
+		if keystoneCount > 0 {
+			recs = append(recs, "Pay attention to keystone entities in review")
+		}
+		recs = append(recs, "Run tests after making changes")
+
+	case "low":
+		recs = append(recs, "Safe to proceed")
+		recs = append(recs, "Run relevant tests after making changes")
+	}
+
+	return recs
+}
+
+func (s *Server) executeMap(path, filter, lang string) (string, error) {
+	// Build filter from parameters
+	queryFilter := store.EntityFilter{
+		Status: "active",
+		Limit:  10000, // Reasonable limit for MCP response
+	}
+
+	// Apply path filter if provided
+	if path != "" {
+		queryFilter.FilePath = path
+	}
+
+	// Apply type filter
+	if filter != "" {
+		queryFilter.EntityType = mapTypeFilter(filter)
+	}
+
+	// Apply language filter
+	if lang != "" {
+		queryFilter.Language = normalizeLanguageFilter(lang)
+	}
+
+	// Query entities
+	entities, err := s.store.QueryEntities(queryFilter)
+	if err != nil {
+		return "", fmt.Errorf("failed to query entities: %w", err)
+	}
+
+	// Group entities by file
+	fileMap := make(map[string][]map[string]interface{})
+
+	for _, e := range entities {
+		skeleton := e.Skeleton
+		if skeleton == "" {
+			skeleton = generateSkeleton(e)
+		}
+
+		entry := map[string]interface{}{
+			"name":     e.Name,
+			"type":     e.EntityType,
+			"location": formatLocation(e),
+			"skeleton": skeleton,
+		}
+
+		if e.DocComment != "" {
+			entry["doc_comment"] = e.DocComment
+		}
+
+		fileMap[e.FilePath] = append(fileMap[e.FilePath], entry)
+	}
+
+	return toJSON(map[string]interface{}{
+		"files": fileMap,
+		"count": len(entities),
+		"path":  path,
+	})
+}
+
+// mapTypeFilter converts short type filter to entity type
+func mapTypeFilter(f string) string {
+	switch f {
+	case "F", "f":
+		return "function"
+	case "T", "t":
+		return "type"
+	case "M", "m":
+		return "method"
+	case "C", "c":
+		return "constant"
+	case "V", "v":
+		return "variable"
+	default:
+		return ""
+	}
+}
+
+// normalizeLanguageFilter normalizes language name
+func normalizeLanguageFilter(lang string) string {
+	switch lang {
+	case "go", "Go", "golang":
+		return "go"
+	case "ts", "typescript", "TypeScript":
+		return "typescript"
+	case "js", "javascript", "JavaScript":
+		return "javascript"
+	case "py", "python", "Python":
+		return "python"
+	case "rs", "rust", "Rust":
+		return "rust"
+	case "java", "Java":
+		return "java"
+	default:
+		return lang
+	}
+}
+
+// generateSkeleton generates a skeleton from a store.Entity
+func generateSkeleton(e *store.Entity) string {
+	switch e.EntityType {
+	case "function":
+		sig := e.Signature
+		if sig == "" {
+			sig = "()"
+		}
+		return fmt.Sprintf("func %s%s { ... }", e.Name, formatSignature(sig))
+
+	case "method":
+		sig := e.Signature
+		if sig == "" {
+			sig = "()"
+		}
+		if e.Receiver != "" {
+			return fmt.Sprintf("func (%s) %s%s { ... }", e.Receiver, e.Name, formatSignature(sig))
+		}
+		return fmt.Sprintf("func %s%s { ... }", e.Name, formatSignature(sig))
+
+	case "type":
+		if e.Kind == "struct" {
+			return fmt.Sprintf("type %s struct { ... }", e.Name)
+		} else if e.Kind == "interface" {
+			return fmt.Sprintf("type %s interface { ... }", e.Name)
+		}
+		return fmt.Sprintf("type %s %s", e.Name, e.Kind)
+
+	case "constant":
+		return fmt.Sprintf("const %s", e.Name)
+
+	case "variable":
+		return fmt.Sprintf("var %s", e.Name)
+
+	default:
+		return e.Name
+	}
+}
+
+// formatSignature converts stored signature format to Go syntax
+func formatSignature(sig string) string {
+	if sig == "" {
+		return "()"
+	}
+	// Replace ": " with " " for parameter types
+	result := sig
+	for i := 0; i < len(result)-1; i++ {
+		if result[i] == ':' && result[i+1] == ' ' {
+			result = result[:i] + " " + result[i+2:]
+		}
+	}
+	// Replace " -> " with " " for return types
+	result = replaceArrow(result)
+	return result
+}
+
+// replaceArrow replaces " -> " with " "
+func replaceArrow(s string) string {
+	const arrow = " -> "
+	for {
+		idx := -1
+		for i := 0; i <= len(s)-len(arrow); i++ {
+			if s[i:i+len(arrow)] == arrow {
+				idx = i
+				break
+			}
+		}
+		if idx == -1 {
+			break
+		}
+		s = s[:idx] + " " + s[idx+len(arrow):]
+	}
+	return s
 }
 
 // Helper functions

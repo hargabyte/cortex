@@ -367,6 +367,12 @@ func runDaemonControlStart(cmd *cobra.Command, args []string) error {
 
 // runDaemonMCP runs the MCP server
 func runDaemonMCP(cmd *cobra.Command, args []string) error {
+	// Deprecation warning
+	fmt.Fprintln(os.Stderr, "DEPRECATED: 'cx daemon mcp' is deprecated. Use 'cx serve' instead.")
+	fmt.Fprintln(os.Stderr, "The new 'cx serve' command is simpler and has more tools available.")
+	fmt.Fprintln(os.Stderr, "This command will be removed in a future version.")
+	fmt.Fprintln(os.Stderr, "")
+
 	// Handle --list-tools
 	if daemonMCPListTools {
 		fmt.Println("Available MCP tools:")
