@@ -1,15 +1,13 @@
 module github.com/anthropics/cx
 
-go 1.24.0
-
-toolchain go1.24.11
+go 1.25.1
 
 require (
 	github.com/dolthub/driver v0.2.0
 	github.com/mark3labs/mcp-go v0.43.2
 	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
-	github.com/spf13/cobra v1.8.0
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/cobra v1.10.1
+	github.com/spf13/pflag v1.0.9
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.44.0
 )
@@ -90,6 +88,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sony/gobreaker v0.5.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/tetratelabs/wazero v1.6.0 // indirect
 	github.com/vbauerster/mpb/v8 v8.7.2 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
