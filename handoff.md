@@ -1,66 +1,45 @@
 # CX Report Implementation Handoff
 
 **Date**: 2026-01-20
-**Session Focus**: D2 Code Generator
-**Status**: R0 complete, R1.1 complete, R1.2 complete, R2.1 complete, **R2.2 complete**, ready for diagram presets
+**Session Focus**: Call Flow Diagram Preset
+**Status**: R0 complete, R1.1 complete, R1.2 complete, R2.1 complete, R2.2 complete, R2.3 complete, **R2.4 complete**, ready for render command
 
 ---
 
 ## Next Session Prompt
 
 ```
-Continue CX Report implementation - diagram presets phase.
+Continue CX Report implementation - Render Command (R2.5).
 
 ## Context
-R2.2 (D2 Code Generator) is complete with DiagramGenerator interface and four
-diagram types. The next tasks are the preset commands that configure diagrams
-for specific use cases.
+R2.4 (Call Flow Diagram Preset) is complete. The preset system is fully implemented
+with BuildArchitectureDiagram(), BuildCallFlowDiagram(), BuildCallersFlowDiagram(),
+and related functions. Feature reports now auto-generate call flow diagrams.
 
-## Your Goal
-Choose one of the now-unblocked tasks:
+## Current State
+- internal/graph/d2_presets.go has all diagram building functions
+- internal/graph/d2.go has D2Generator with 4 diagram types
+- internal/report/gather.go integrates diagrams into reports
+- Missing: CLI command to render D2 to SVG/PNG
 
-### Option A: R2.3 Architecture Diagram Preset (recommended)
-- Create preset configuration for architecture diagrams
-- Auto-selects DiagramArchitecture type
-- Configures module grouping and layer detection
-- Command: cx report feature --diagram architecture
-
-### Option B: R2.4 Call Flow Diagram Preset
-- Create preset for call flow diagrams
-- Uses DiagramCallFlow type with down direction
-- Configures sequential flow visualization
-- Command: cx report feature --diagram call-flow
-
-### Option C: R1.3 YAML/JSON Output
-- Implement YAML marshaling for report data
-- Add --format yaml|json flags to cx report commands
+## Task: R2.5 - Render Command
+1. Add `cx render` command to convert D2 code to images
+   - Input: D2 file or stdin
+   - Output: SVG (default) or PNG
+   - Options: --format svg|png, --output file
+2. Integrate with report generation
+   - `cx report overview --render` generates diagrams as files
+   - `cx report feature "auth" --render` generates call flow image
 
 ## Quick Start
-1. bd update cortex-dkd.2.3 --status in_progress  # or 2.4 or 1.3
-2. Review internal/graph/d2.go for D2Generator API
-3. Implement the preset logic
+1. bd update cortex-dkd.2.5 --status in_progress
+2. Check D2 CLI availability: which d2
+3. Implement render command in internal/cmd/render.go
+4. Test with: cx render internal/graph/d2_design_system.d2
 
-## D2Generator API Available
-```go
-// Create generator with config
-gen := NewD2Generator(&DiagramConfig{
-    Type:       DiagramArchitecture,  // or DiagramCallFlow, DiagramDeps, DiagramCoverage
-    Theme:      "default",            // default, light, dark, neutral
-    Layout:     "elk",                // elk, dagre, tala
-    Direction:  "right",              // right, down, left, up
-    ShowLabels: true,
-    ShowIcons:  true,
-    Title:      "My Diagram",
-})
-
-// Generate diagram
-d2Code := gen.Generate(entities, deps)
-```
-
-## Key Types
-- DiagramEntity: ID, Name, Type, Importance, Coverage, Language, Module, Layer
-- DiagramEdge: From, To, Type, Label
-- DiagramConfig: Type, Theme, Layout, Direction, ShowLabels, ShowIcons, Title
+## Alternative Tasks (if render command blocked)
+- R1.3: YAML/JSON Output - Add --format flag to report commands
+- R1.4: Output Handling - File output, stdout control
 ```
 
 ---
@@ -69,56 +48,48 @@ d2Code := gen.Generate(entities, deps)
 
 ### What We Accomplished This Session
 
-**Implemented R2.2: D2 Code Generator** (cortex-dkd.2.2 closed)
+**Implemented R2.4: Call Flow Diagram Preset** (cortex-dkd.2.4 closed)
 
-Refactored d2.go with comprehensive DiagramGenerator interface:
+Added call flow diagram generation with BFS traversal:
 
-1. **DiagramGenerator Interface**
-   ```go
-   type DiagramGenerator interface {
-       Generate(entities []DiagramEntity, deps []DiagramEdge) string
-       SetConfig(config *DiagramConfig)
-       GetConfig() *DiagramConfig
-   }
-   ```
+1. **BuildCallFlowDiagram(store, rootEntityID, depth, title)**
+   - BFS traversal following outgoing "calls" dependencies
+   - Configurable depth (default 3, max 10)
+   - MaxNodes limit (30) prevents diagram explosion
+   - Root entity marked as "keystone" for visual emphasis
+   - Top-to-bottom (down) direction for sequence-style layout
 
-2. **Four Diagram Types**
-   - `DiagramArchitecture` - Module containers with layered entities
-   - `DiagramCallFlow` - Sequential function call flow
-   - `DiagramDeps` - Entity dependency graph (default)
-   - `DiagramCoverage` - Coverage heatmap overlay
+2. **BuildCallFlowDiagramFromName(store, entityName, depth, title)**
+   - Convenience wrapper that finds entity by name first
+   - Uses FTS search, falls back to exact match
 
-3. **DiagramConfig Options**
-   - Type: architecture, call_flow, dependency, coverage
-   - Theme: default, light, dark, neutral
-   - Layout: elk, dagre, tala
-   - Direction: right, down, left, up
-   - ShowLabels, ShowIcons, Title
+3. **BuildCallersFlowDiagram(store, targetEntityID, depth, title)**
+   - Reverse traversal showing what calls a given entity
+   - "up" direction for callers view
 
-4. **Design System Integration**
-   - Theme configuration with vars block
-   - Node styling with colors and icons from terrastruct
-   - Edge styling by dependency type
-   - Module container grouping for architecture diagrams
-   - Coverage legend for coverage diagrams
+4. **Feature Report Integration**
+   - gatherCallFlowDiagram() in gather.go
+   - Auto-generates call flow for top search result
+   - Stored in data.Diagrams["call_flow"]
 
-5. **Backwards Compatibility**
-   - Legacy `GenerateD2()` function preserved
-   - Wraps new D2Generator internally
+5. **Test Coverage**
+   - 8 new unit tests for call flow generation
+   - Tests for edge styling, entity ordering, cycles, empty deps
 
-### Files Created/Modified
+### Files Modified
 
-| File | Lines | Change |
-|------|-------|--------|
-| internal/graph/d2.go | 829 | Refactored with DiagramGenerator |
-| internal/graph/d2_test.go | 571 | New comprehensive test suite |
-| **Total** | **1400** | |
+| File | Lines Added | Change |
+|------|-------------|--------|
+| internal/graph/d2_presets.go | 270 | BuildCallFlowDiagram functions |
+| internal/graph/d2_presets_test.go | 192 | Call flow unit tests |
+| internal/report/gather.go | 37 | gatherCallFlowDiagram integration |
+| **Total** | **499** | |
 
 ### Commits
 
 | Hash | Message |
 |------|---------|
-| b3316d8 | Add D2 Code Generator with DiagramGenerator interface (R2.2 complete) |
+| 88dd4fa | Add Call Flow Diagram Preset with BFS traversal (R2.4 complete) |
 
 ---
 
@@ -143,9 +114,9 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 ├── cortex-dkd.2 (P1) R2: D2 Diagram Integration ← IN PROGRESS
 │   ├── cortex-dkd.2.1 R2.1: D2 Visual Design System ← CLOSED ✓
 │   ├── cortex-dkd.2.2 R2.2: D2 Code Generator ← CLOSED ✓
-│   ├── cortex-dkd.2.3 R2.3: Architecture Preset ← READY (recommended)
-│   ├── cortex-dkd.2.4 R2.4: Call Flow Preset ← READY
-│   ├── cortex-dkd.2.5 R2.5: Render Command ← READY
+│   ├── cortex-dkd.2.3 R2.3: Architecture Preset ← CLOSED ✓
+│   ├── cortex-dkd.2.4 R2.4: Call Flow Preset ← CLOSED ✓
+│   ├── cortex-dkd.2.5 R2.5: Render Command ← READY (recommended)
 │   └── cortex-dkd.2.6 R2.6: Animated D2 Diagrams ← READY (P2)
 │
 ├── cortex-dkd.4-7 (P2) Report Types [blocked by R1, R2]
@@ -159,7 +130,7 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 |-------|-------|--------|
 | R0: Schema | 5/5 | ✅ Complete |
 | R1: Engine | 2/4 | 🔄 In Progress |
-| R2: D2 | 2/6 | 🔄 In Progress |
+| R2: D2 | 4/6 | 🔄 In Progress |
 | R4-R7: Reports | 0/18 | ⏸️ Blocked |
 
 ---
@@ -170,17 +141,18 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 | File | Lines | Purpose |
 |------|-------|---------|
 | internal/graph/d2.go | 829 | D2Generator with design system |
-| internal/graph/d2_test.go | 571 | Comprehensive test suite |
+| internal/graph/d2_presets.go | 695 | Preset functions (architecture, call flow) |
+| internal/graph/d2_presets_test.go | 505 | Preset unit tests |
+| internal/graph/d2_test.go | 571 | D2Generator test suite |
 | internal/graph/d2_styles.go | 465 | D2 design system Go API |
 | internal/graph/d2_design_system.d2 | 746 | D2 reference implementation |
-| internal/graph/styles.go | 157 | Base shape/edge mappings |
 | docs/D2_DESIGN_SYSTEM.md | 407 | Design documentation |
 
 ### Report Package
 | File | Lines | Purpose |
 |------|-------|---------|
 | internal/report/schema.go | 640 | Core report types |
-| internal/report/gather.go | 580 | Data gathering from store |
+| internal/report/gather.go | 920 | Data gathering from store |
 | internal/report/feature.go | ~200 | Feature report types |
 | internal/report/overview.go | ~200 | Overview report types |
 | internal/report/changes.go | ~200 | Changes report types |
@@ -189,88 +161,78 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 
 ---
 
-## D2Generator API Reference
+## Call Flow Diagram API Reference
 
-### Creating Diagrams
+### Building Call Flow Diagrams
 
 ```go
-// Basic usage
-gen := graph.NewD2Generator(nil) // uses defaults
-d2Code := gen.Generate(entities, deps)
+// From root entity - follow outgoing calls
+d2Code, err := graph.BuildCallFlowDiagram(store, "entity-id", 3, "Call Flow: MyFunc")
 
-// With configuration
-config := &graph.DiagramConfig{
-    Type:       graph.DiagramArchitecture,
+// From entity name - searches for entity first
+d2Code, err := graph.BuildCallFlowDiagramFromName(store, "MyFunc", 3, "Call Flow: MyFunc")
+
+// Show callers - follow incoming calls (reverse)
+d2Code, err := graph.BuildCallersFlowDiagram(store, "entity-id", 3, "Callers of MyFunc")
+```
+
+### Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| store | *store.Store - database connection | required |
+| rootEntityID | Starting entity for traversal | required |
+| depth | Maximum traversal depth | 3 (max 10) |
+| title | Diagram title | required |
+
+### Call Flow Config (from CallFlowPreset)
+
+```go
+&DiagramConfig{
+    Type:       DiagramCallFlow,
     Theme:      "default",
-    Layout:     "elk",
-    Direction:  "right",
-    ShowLabels: true,
-    ShowIcons:  true,
-    Title:      "System Architecture",
-}
-gen := graph.NewD2Generator(config)
-d2Code := gen.Generate(entities, deps)
-```
-
-### DiagramEntity Structure
-
-```go
-entity := graph.DiagramEntity{
-    ID:         "internal/auth.LoginUser",
-    Name:       "LoginUser",
-    Type:       "function",           // function, method, type, struct, interface, database, http
-    Importance: "keystone",           // keystone, bottleneck, high-fan-in, high-fan-out, normal, leaf
-    Coverage:   85.5,                 // 0-100, or -1 for unknown
-    Language:   "go",                 // go, typescript, python, java, rust, etc.
-    Module:     "internal/auth",      // for architecture grouping
-    Layer:      "service",            // api, service, data, domain
+    Layout:     "elk",      // ELK handles linear flow well
+    Direction:  "down",     // Top-to-bottom for sequence style
+    MaxNodes:   30,
+    Collapse:   false,      // Show full flow
+    ShowLabels: true,       // Show call labels
+    ShowIcons:  false,      // Simpler visual for flow
 }
 ```
-
-### DiagramEdge Structure
-
-```go
-edge := graph.DiagramEdge{
-    From:  "internal/auth.LoginUser",
-    To:    "internal/store.GetUser",
-    Type:  "calls",                   // calls, uses_type, implements, extends, data_flow, imports
-    Label: "authenticate",            // optional edge label
-}
-```
-
-### Diagram Types
-
-| Type | Output |
-|------|--------|
-| `DiagramDeps` | Standard dependency graph |
-| `DiagramArchitecture` | Module containers with layer colors |
-| `DiagramCallFlow` | Sequential flow with topological order |
-| `DiagramCoverage` | Coverage heatmap with legend |
 
 ---
 
 ## Previous Session Summaries
 
-### Session 4: R2.2 D2 Code Generator (b3316d8)
+### Session 5: R2.4 Call Flow Preset (88dd4fa)
+- BuildCallFlowDiagram with BFS traversal
+- BuildCallersFlowDiagram for reverse traversal
+- Integration with feature reports
+- 8 unit tests
+
+### Session 4: R2.3 Architecture Preset (5dc098b)
+- BuildArchitectureDiagram from store data
+- BuildModuleArchitectureDiagram for module overview
+- TALA layout for containers
+- Integration with overview reports
+
+### Session 3: R2.2 D2 Code Generator (b3316d8)
 - Refactored d2.go with DiagramGenerator interface
 - Four diagram types: architecture, call_flow, dependency, coverage
 - Full design system integration (colors, icons, styling)
 - 30+ tests in d2_test.go
 
-### Session 3: R2.1 D2 Design System (d305800)
+### Session 2: R2.1 D2 Design System (d305800)
 - Created d2_styles.go (465 lines) - Go API
 - Created d2_design_system.d2 (746 lines) - reference
 - Material Design color palette
 - Icons from terrastruct
 
-### Session 2: R1.2 Data Gathering (dcdebff)
-- Created gather.go (580 lines)
-- GatherOverviewData, GatherFeatureData, GatherChangesData, GatherHealthData
-
-### Session 1: R0 Schema + R1.1 Scaffolding (43b1eca, 0d35889)
+### Session 1: R0 Schema + R1.1/R1.2 (various)
 - Created internal/report/ package (3410 lines)
 - Core schema types, report-specific types
 - cx report command with 4 subcommands
+- Data gathering functions
 
 ---
 
