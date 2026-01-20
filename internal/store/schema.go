@@ -103,6 +103,15 @@ var schemaTables = []string{
     dependencies_found INT,
     scan_duration_ms INT
 )`,
+
+	// entity embeddings for semantic search
+	`CREATE TABLE IF NOT EXISTS entity_embeddings (
+    entity_id VARCHAR(255) PRIMARY KEY,
+    embedding JSON NOT NULL,
+    model_version VARCHAR(50) NOT NULL,
+    content_hash VARCHAR(16) NOT NULL,
+    created_at VARCHAR(30) NOT NULL
+)`,
 }
 
 // schemaIndexes defines indexes to be created after tables.
@@ -123,6 +132,8 @@ var schemaIndexes = []string{
 	"CREATE INDEX idx_tags_entity ON entity_tags(entity_id)",
 	"CREATE INDEX idx_coverage_percent ON entity_coverage(coverage_percent)",
 	"CREATE INDEX idx_test_entity ON test_entity_map(entity_id)",
+	"CREATE INDEX idx_embeddings_model ON entity_embeddings(model_version)",
+	"CREATE INDEX idx_embeddings_hash ON entity_embeddings(content_hash)",
 	// Note: FULLTEXT index is created inline in entities table for Dolt compatibility
 }
 
