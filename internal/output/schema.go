@@ -62,6 +62,30 @@ type EntityOutput struct {
 	// ChangeStatus indicates how the entity changed relative to a ref (--since flag)
 	// Values: "added", "modified", "unchanged", or empty if --since not used
 	ChangeStatus string `yaml:"change_status,omitempty" json:"change_status,omitempty"`
+
+	// History contains commit history for the entity (when --history flag is used)
+	History []*HistoryEntry `yaml:"history,omitempty" json:"history,omitempty"`
+}
+
+// HistoryEntry represents a single commit in an entity's history.
+type HistoryEntry struct {
+	// Commit is the short commit hash
+	Commit string `yaml:"commit" json:"commit"`
+
+	// Date is the commit date
+	Date string `yaml:"date" json:"date"`
+
+	// Committer is who made the commit
+	Committer string `yaml:"committer,omitempty" json:"committer,omitempty"`
+
+	// ChangeType is how the entity changed: "added", "modified", "current", "unchanged"
+	ChangeType string `yaml:"change_type" json:"change_type"`
+
+	// Location is the file:line-line at this commit
+	Location string `yaml:"location" json:"location"`
+
+	// Signature is the entity signature at this commit (optional)
+	Signature string `yaml:"signature,omitempty" json:"signature,omitempty"`
 }
 
 // Dependencies represents entity relationships and edges.

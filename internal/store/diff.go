@@ -331,3 +331,206 @@ func (s *Store) DoltLogStats(commitHash string) (*DoltLogStatsResult, error) {
 
 	return result, nil
 }
+
+// EntityHistoryEntry represents a single historical state of an entity.
+type EntityHistoryEntry struct {
+	CommitHash  string  // Dolt commit hash
+	CommitDate  string  // When the commit was made
+	Committer   string  // Who made the commit
+	FilePath    string  // File path at this commit
+	LineStart   int     // Line start at this commit
+	LineEnd     *int    // Line end at this commit
+	Signature   *string // Signature at this commit
+	SigHash     *string // Signature hash at this commit
+	BodyHash    *string // Body hash at this commit
+	ChangeType  string  // "added", "modified", "unchanged" (vs previous)
+}
+
+// EntityHistoryOptions specifies options for entity history queries.
+type EntityHistoryOptions struct {
+	EntityID string // The entity ID to get history for
+	Limit    int    // Max entries to return (default 20)
+}
+
+// EntityHistory returns the commit history for a specific entity.
+// Queries dolt_history_entities and computes change types between versions.
+func (s *Store) EntityHistory(opts EntityHistoryOptions) ([]EntityHistoryEntry, error) {
+	if opts.EntityID == "" {
+		return nil, fmt.Errorf("entity ID required")
+	}
+	if opts.Limit <= 0 {
+		opts.Limit = 20
+	}
+
+	// Query entity history from dolt_history_entities
+	query := `
+		SELECT
+			commit_hash,
+			commit_date,
+			committer,
+			file_path,
+			line_start,
+			line_end,
+			signature,
+			sig_hash,
+			body_hash
+		FROM dolt_history_entities
+		WHERE id = ?
+		ORDER BY commit_date DESC
+		LIMIT ?
+	`
+
+	rows, err := s.db.Query(query, opts.EntityID, opts.Limit)
+	if err != nil {
+		return nil, fmt.Errorf("entity history query: %w", err)
+	}
+	defer rows.Close()
+
+	var entries []EntityHistoryEntry
+	var prevSigHash, prevBodyHash *string
+
+	for rows.Next() {
+		var entry EntityHistoryEntry
+		var lineEnd sql.NullInt64
+		var signature, sigHash, bodyHash sql.NullString
+
+		err := rows.Scan(
+			&entry.CommitHash,
+			&entry.CommitDate,
+			&entry.Committer,
+			&entry.FilePath,
+			&entry.LineStart,
+			&lineEnd,
+			&signature,
+			&sigHash,
+			&bodyHash,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan history entry: %w", err)
+		}
+
+		if lineEnd.Valid {
+			v := int(lineEnd.Int64)
+			entry.LineEnd = &v
+		}
+		if signature.Valid {
+			entry.Signature = &signature.String
+		}
+		if sigHash.Valid {
+			entry.SigHash = &sigHash.String
+		}
+		if bodyHash.Valid {
+			entry.BodyHash = &bodyHash.String
+		}
+
+		// Determine change type by comparing with previous (newer) entry
+		// Since we're iterating newest to oldest, "previous" means the newer commit
+		if prevSigHash == nil && prevBodyHash == nil {
+			// This is the most recent state - check if entity still exists
+			entry.ChangeType = "current"
+		} else if !nullStrEqual(entry.SigHash, prevSigHash) || !nullStrEqual(entry.BodyHash, prevBodyHash) {
+			entry.ChangeType = "modified"
+		} else {
+			entry.ChangeType = "unchanged"
+		}
+
+		prevSigHash = entry.SigHash
+		prevBodyHash = entry.BodyHash
+
+		entries = append(entries, entry)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate history rows: %w", err)
+	}
+
+	// Mark the oldest entry as "added" (first appearance)
+	if len(entries) > 0 {
+		entries[len(entries)-1].ChangeType = "added"
+	}
+
+	return entries, nil
+}
+
+// nullStrEqual compares two nullable strings for equality.
+func nullStrEqual(a, b *string) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
+// DependencyHistoryEntry represents a single historical state of a dependency.
+type DependencyHistoryEntry struct {
+	CommitHash string // Dolt commit hash
+	CommitDate string // When the commit was made
+	Committer  string // Who made the commit
+	FromID     string // Source entity ID
+	ToID       string // Target entity ID
+	DepType    string // Type of dependency (calls, uses_type, etc.)
+	ChangeType string // "added", "removed", "unchanged"
+}
+
+// DependencyHistoryOptions specifies options for dependency history queries.
+type DependencyHistoryOptions struct {
+	EntityID string // The entity ID to get dependency history for (as source or target)
+	Limit    int    // Max entries to return (default 20)
+}
+
+// DependencyHistory returns the commit history for dependencies involving an entity.
+// Queries dolt_history_dependencies for both outgoing and incoming edges.
+func (s *Store) DependencyHistory(opts DependencyHistoryOptions) ([]DependencyHistoryEntry, error) {
+	if opts.EntityID == "" {
+		return nil, fmt.Errorf("entity ID required")
+	}
+	if opts.Limit <= 0 {
+		opts.Limit = 20
+	}
+
+	// Query dependency history for this entity (as from or to)
+	query := `
+		SELECT
+			commit_hash,
+			commit_date,
+			committer,
+			from_id,
+			to_id,
+			dep_type
+		FROM dolt_history_dependencies
+		WHERE from_id = ? OR to_id = ?
+		ORDER BY commit_date DESC
+		LIMIT ?
+	`
+
+	rows, err := s.db.Query(query, opts.EntityID, opts.EntityID, opts.Limit)
+	if err != nil {
+		return nil, fmt.Errorf("dependency history query: %w", err)
+	}
+	defer rows.Close()
+
+	var entries []DependencyHistoryEntry
+	for rows.Next() {
+		var entry DependencyHistoryEntry
+		err := rows.Scan(
+			&entry.CommitHash,
+			&entry.CommitDate,
+			&entry.Committer,
+			&entry.FromID,
+			&entry.ToID,
+			&entry.DepType,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan dependency history entry: %w", err)
+		}
+		entries = append(entries, entry)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate dependency history rows: %w", err)
+	}
+
+	return entries, nil
+}

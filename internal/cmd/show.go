@@ -45,6 +45,11 @@ Change Tracking Mode (--since):
   Shows if the entity was added, modified, or unchanged since the specified ref.
   Includes change_status field in output: added, modified, or unchanged.
 
+History Mode (--history):
+  Shows the commit history for the entity using Dolt's dolt_history_entities.
+  Displays when the entity was added, modified, and by whom.
+  Use --history-limit to control how many commits to show.
+
 Neighborhood Mode (--related):
   Shows the entity's neighborhood - what it calls, what calls it, same-file
   entities, and type relationships. Replaces the old 'cx near' command.
@@ -63,6 +68,7 @@ Output Fields:
   - hashes: Signature and body hashes (dense only)
   - timestamps: Created and updated timestamps (dense only)
   - coverage: Test coverage info with tested_by, percent, uncovered_lines
+  - history: Commit history for the entity (--history flag)
 
 Examples:
   cx show main                                             # Show entity named "main"
@@ -82,7 +88,9 @@ Examples:
   cx show LoginUser --graph --direction in                 # Only incoming edges
   cx show LoginUser --at HEAD~5                            # Show entity 5 commits ago
   cx show LoginUser --at abc123                            # Show entity at commit abc123
-  cx show LoginUser --since HEAD~10                        # Show with change status since 10 commits ago`,
+  cx show LoginUser --since HEAD~10                        # Show with change status since 10 commits ago
+  cx show LoginUser --history                              # Show commit history for entity
+  cx show LoginUser --history --history-limit 20           # Show more history entries`,
 	Args: cobra.ExactArgs(1),
 	RunE: runShow,
 }
@@ -92,6 +100,8 @@ var (
 	showCoverage       bool
 	showRelated        bool
 	showGraph          bool
+	showHistory        bool   // Show commit history for the entity
+	showHistoryLimit   int    // Number of history entries to show
 	showDepth          int
 	showHops           int
 	showDirection      string
@@ -135,6 +145,10 @@ func init() {
 
 	// Change tracking flag
 	showCmd.Flags().StringVar(&showSince, "since", "", "Show changes since ref (e.g., HEAD~5, commit hash)")
+
+	// History flag
+	showCmd.Flags().BoolVar(&showHistory, "history", false, "Show commit history for the entity")
+	showCmd.Flags().IntVar(&showHistoryLimit, "history-limit", 10, "Number of history entries to show (used with --history)")
 }
 
 func runShow(cmd *cobra.Command, args []string) error {
@@ -446,6 +460,38 @@ func runShowDefault(cmd *cobra.Command, entity *store.Entity, storeDB *store.Sto
 		changeStatus, err := getEntityChangeStatus(storeDB, entity, showSince)
 		if err == nil && changeStatus != "" {
 			entityOut.ChangeStatus = changeStatus
+		}
+	}
+
+	// Add history if --history is specified
+	if showHistory {
+		history, err := storeDB.EntityHistory(store.EntityHistoryOptions{
+			EntityID: entity.ID,
+			Limit:    showHistoryLimit,
+		})
+		if err == nil && len(history) > 0 {
+			entityOut.History = make([]*output.HistoryEntry, 0, len(history))
+			for _, h := range history {
+				// Build location string
+				location := h.FilePath
+				if h.LineEnd != nil {
+					location = fmt.Sprintf("%s:%d-%d", h.FilePath, h.LineStart, *h.LineEnd)
+				} else {
+					location = fmt.Sprintf("%s:%d", h.FilePath, h.LineStart)
+				}
+
+				entry := &output.HistoryEntry{
+					Commit:     shortenHash(h.CommitHash),
+					Date:       formatHistoryDate(h.CommitDate),
+					Committer:  h.Committer,
+					ChangeType: h.ChangeType,
+					Location:   location,
+				}
+				if h.Signature != nil {
+					entry.Signature = *h.Signature
+				}
+				entityOut.History = append(entityOut.History, entry)
+			}
 		}
 	}
 
@@ -1043,6 +1089,17 @@ func getEntityChangeStatus(storeDB *store.Store, entity *store.Entity, sinceRef 
 	}
 
 	return "unchanged", nil
+}
+
+// formatHistoryDate formats a Dolt commit date for display.
+// Input format: "2026-01-19 23:19:51.851 +0000 UTC"
+// Output format: "2026-01-19 23:19:51"
+func formatHistoryDate(date string) string {
+	parts := strings.Split(date, " ")
+	if len(parts) >= 2 {
+		return parts[0] + " " + strings.Split(parts[1], ".")[0]
+	}
+	return date
 }
 
 // Utility functions moved to utils.go
