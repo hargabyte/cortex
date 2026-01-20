@@ -1,59 +1,57 @@
 # CX Report Implementation Handoff
 
 **Date**: 2026-01-20
-**Session Focus**: Schema implementation + command scaffolding
-**Status**: R0 complete, R1.1 complete, **ready for data gathering**
+**Session Focus**: Data Gathering Implementation
+**Status**: R0 complete, R1.1 complete, R1.2 complete, **ready for output formatting & D2 diagrams**
 
 ---
 
 ## Next Session Prompt
 
 ```
-Continue CX Report implementation - data gathering phase.
+Continue CX Report implementation - output formatting and D2 diagram phase.
 
 ## Context
-Read handoff.md for complete context. The schema foundation (R0) and command
-scaffolding (R1.1) are complete. The `cx report` command exists but outputs
-empty structures. Next step is implementing data gathering.
+Read handoff.md for complete context. Schema (R0), command scaffolding (R1.1),
+and data gathering (R1.2) are complete. Reports now output real data from the
+cx database. Next steps: output formatting and D2 diagram generation.
 
 ## Your Goal
-Implement R1.2 (Data Gathering Infrastructure) - populate reports with real data.
+Implement R1.3 (YAML/JSON Output) and/or R2 (D2 Diagram Integration).
 
 ## Quick Start
 1. Read handoff.md for context
 2. Read docs/specs/CX_REPORT_SPEC.md for data contracts
 3. bd ready | grep cortex-dkd to see available tasks
-4. Start with cortex-dkd.1.2 (R1.2: Data Gathering)
+4. Choose: R1.3 (output formatting) or R2.1 (D2 visual design)
 
 ## What's Working
-- `cx report overview --data` → outputs YAML scaffold
-- `cx report feature "query" --data` → outputs YAML scaffold
-- `cx report changes --since HEAD~10 --data` → outputs YAML scaffold
-- `cx report health --data` → outputs YAML scaffold
+- `cx report overview --data` → outputs YAML with real statistics, keystones, modules
+- `cx report feature "store" --data` → FTS search, entities with relevance scores
+- `cx report changes --since <hash> --until <hash> --data` → Dolt time-travel diff
+- `cx report health --data` → risk score, untested keystones, dead code candidates
 
 ## What Needs Implementation
-R1.2: Connect report commands to store queries:
-- Overview: entity counts, keystones, modules from store
-- Feature: hybrid search (FTS + embeddings)
-- Changes: Dolt time-travel queries
-- Health: coverage gaps, dead code, complexity
+R1.3: Output formatting polish (prettier YAML, better JSON)
+R1.4: Output file handling improvements
+R2.x: D2 diagram generation for visualizations
 
 ## Ready Tasks (parallel options)
-cortex-dkd.1.2: R1.2: Data Gathering Infrastructure ← RECOMMENDED START
-cortex-dkd.1.3: R1.3: YAML/JSON Output (can parallel with 1.2)
-cortex-dkd.1.4: R1.4: Output Handling (can parallel with 1.2)
-cortex-dkd.2.1: R2.1: D2 Visual Design System
+cortex-dkd.1.3: R1.3: YAML/JSON Output
+cortex-dkd.1.4: R1.4: Output Handling
+cortex-dkd.2.1: R2.1: D2 Visual Design System ← RECOMMENDED
 cortex-dkd.2.2: R2.2: D2 Code Generator
 
 ## Key Files
 - internal/report/schema.go - Core types (640 lines)
+- internal/report/gather.go - Data gathering from store (NEW - 580 lines)
 - internal/report/feature.go - FeatureReportData
 - internal/report/overview.go - OverviewReportData
 - internal/report/changes.go - ChangesReportData
 - internal/report/health.go - HealthReportData
 - internal/cmd/report.go - Command scaffolding (270 lines)
-- internal/store/fts.go - FTS search to leverage
-- internal/store/entities.go - Entity queries to leverage
+- internal/store/fts.go - FTS search (used by feature reports)
+- internal/store/entities.go - Entity queries + time-travel
 ```
 
 ---
@@ -61,6 +59,25 @@ cortex-dkd.2.2: R2.2: D2 Code Generator
 ## Session Summary
 
 ### What We Accomplished This Session
+
+1. **Implemented R1.2: Data Gathering Infrastructure** (1 bead closed)
+   - Created `internal/report/gather.go` (580 lines)
+   - `DataGatherer` struct with store reference
+   - `GatherOverviewData()` - statistics, keystones, modules from store
+   - `GatherFeatureData()` - FTS search, dependencies, coverage
+   - `GatherChangesData()` - Dolt time-travel entity diff
+   - `GatherHealthData()` - untested keystones, dead code, risk score
+   - Connected all report commands to actual store queries
+
+### Commits This Session
+
+| Hash | Message |
+|------|---------|
+| (pending) | Add data gathering infrastructure for report generation (R1.2 complete) |
+
+---
+
+## Previous Session Summary
 
 1. **Implemented R0: Data Output Schema** (5 beads closed)
    - Created `internal/report/` package (3410 lines)
@@ -73,12 +90,7 @@ cortex-dkd.2.2: R2.2: D2 Code Generator
    - Added --data, --format, -o flags
    - Commands output YAML scaffolds using report package types
 
-3. **Orchestration Pattern**
-   - Used 1 sonnet agent for R0.1 (foundation)
-   - Used 4 parallel haiku agents for R0.2-R0.5
-   - Did R1.1 directly to conserve context
-
-### Commits This Session
+### Previous Commits
 
 | Hash | Message |
 |------|---------|
@@ -101,7 +113,7 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 │
 ├── cortex-dkd.1 (P1) R1: Report Engine Core ← IN PROGRESS
 │   ├── cortex-dkd.1.1 R1.1: Command Scaffolding ← CLOSED ✓
-│   ├── cortex-dkd.1.2 R1.2: Data Gathering ← READY
+│   ├── cortex-dkd.1.2 R1.2: Data Gathering ← CLOSED ✓
 │   ├── cortex-dkd.1.3 R1.3: YAML/JSON Output ← READY
 │   └── cortex-dkd.1.4 R1.4: Output Handling ← READY
 │
@@ -122,56 +134,48 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 | Phase | Tasks | Status |
 |-------|-------|--------|
 | R0: Schema | 5/5 | ✅ Complete |
-| R1: Engine | 1/4 | 🔄 In Progress |
+| R1: Engine | 2/4 | 🔄 In Progress |
 | R2: D2 | 0/5 | ⏳ Ready |
 | R4-R7: Reports | 0/18 | ⏸️ Blocked |
 
 ---
 
-## Files Created This Session
+## Files Created/Modified This Session
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| internal/report/schema.go | 640 | Core types |
-| internal/report/schema_test.go | 560 | Core tests |
-| internal/report/feature.go | 217 | Feature report |
-| internal/report/feature_test.go | 629 | Feature tests |
-| internal/report/overview.go | 66 | Overview report |
-| internal/report/overview_test.go | 273 | Overview tests |
-| internal/report/changes.go | 112 | Changes report |
-| internal/report/changes_test.go | 438 | Changes tests |
-| internal/report/health.go | 119 | Health report |
-| internal/report/health_test.go | 478 | Health tests |
-| internal/cmd/report.go | 270 | Command scaffolding |
-| internal/cmd/report_test.go | 150 | Command tests |
-| **Total** | **~3950** | |
+| internal/report/gather.go | 580 | Data gathering from store |
+| internal/report/gather_test.go | 190 | Data gathering tests |
+| internal/cmd/report.go | (modified) | Connected commands to gatherer |
+| **Total New** | **~770** | |
 
 ---
 
-## Existing Code to Leverage (for R1.2)
+## Data Gathering Implementation Details
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| FTS Search | internal/store/fts.go | SearchEntities for feature reports |
-| Entity Queries | internal/store/entities.go | QueryEntities for overview |
-| Metrics | internal/store/metrics.go | GetMetrics for keystones |
-| Coverage | internal/store/coverage.go | Coverage data |
-| Time Travel | internal/store/timetravel.go | AS OF queries for changes |
-| D2 Generation | internal/graph/d2.go | Existing D2 code generation |
-| Guide Command | internal/cmd/guide.go | Entity stats (can reuse patterns) |
+### Overview Report Data
+- Entity counts by type and language from `store.CountEntities()`
+- Top 20 keystones from `store.GetTopByPageRank()`
+- Module structure from grouping entities by file path
+- Health summary (coverage, untested keystones count)
 
----
+### Feature Report Data
+- FTS search using `store.SearchEntities()` with relevance scoring
+- Dependencies between matched entities from `store.GetDependenciesFrom()`
+- Coverage data from `coverage.GetEntityCoverage()`
+- Test mappings from `coverage.GetTestsForEntity()`
 
-## Session End Checklist
+### Changes Report Data
+- Dolt time-travel queries using `store.QueryEntitiesAt()`
+- Entity comparison (added, modified, deleted) between commits
+- Impact analysis for high-dependency changes
+- **Note**: Requires full Dolt commit hashes (not `HEAD~N`)
 
-```
-[x] 1. git status              (clean)
-[x] 2. git add <files>         (staged)
-[x] 3. bd sync                 (synced - .beads ignored)
-[x] 4. git commit              (2 commits)
-[x] 5. git push                (pushed)
-[x] 6. Update handoff.md       (this file)
-```
+### Health Report Data
+- Untested keystones (PageRank > threshold, coverage = 0)
+- Dead code candidates (in-degree = 0, not exported)
+- Complexity hotspots (high out-degree)
+- Risk score calculation (0-100 scale)
 
 ---
 
@@ -186,7 +190,7 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 │                                                                      │
 │  Claude Code:                                                        │
 │    1. Runs: cx report feature "auth" --data                          │
-│    2. Receives: Structured YAML with entities, D2 code, coverage     │
+│    2. Receives: Structured YAML with entities, coverage, deps        │
 │    3. Writes: Narrative prose explaining the feature                 │
 │    4. Assembles: Final HTML report with embedded diagrams            │
 │                                                                      │
@@ -196,3 +200,18 @@ cortex-dkd (P1 epic) CX 3.0: Report Generation
 ```
 
 No Anthropic API key needed - the AI agent IS the narrative generator.
+
+---
+
+## Session End Checklist
+
+```
+[ ] 1. git status              (check what changed)
+[ ] 2. git add <files>         (stage code changes)
+[ ] 3. bd sync                 (commit beads changes)
+[ ] 4. git commit -m "..."     (commit code)
+[ ] 5. bd sync                 (commit any new beads changes)
+[ ] 6. git push                (push to remote)
+```
+
+**NEVER skip this.** Work is not done until pushed.

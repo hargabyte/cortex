@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/anthropics/cx/internal/output"
 	"github.com/anthropics/cx/internal/report"
@@ -170,11 +169,21 @@ func runReportOverview(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--data flag is required (reports are designed for AI consumption)")
 	}
 
+	// Open store
+	store, err := openStore()
+	if err != nil {
+		return fmt.Errorf("open store: %w", err)
+	}
+	defer store.Close()
+
 	// Create report structure
 	data := report.NewOverviewReport()
 
-	// TODO: Populate with actual data from store
-	// This will be implemented in R1.2: Data Gathering Infrastructure
+	// Gather data from store
+	gatherer := report.NewDataGatherer(store)
+	if err := gatherer.GatherOverviewData(data); err != nil {
+		return fmt.Errorf("gather overview data: %w", err)
+	}
 
 	return outputReportData(data)
 }
@@ -187,11 +196,21 @@ func runReportFeature(cmd *cobra.Command, args []string) error {
 
 	query := args[0]
 
+	// Open store
+	store, err := openStore()
+	if err != nil {
+		return fmt.Errorf("open store: %w", err)
+	}
+	defer store.Close()
+
 	// Create report structure
 	data := report.NewFeatureReport(query)
 
-	// TODO: Populate with actual data from store using hybrid search
-	// This will be implemented in R1.2: Data Gathering Infrastructure
+	// Gather data from store using FTS search
+	gatherer := report.NewDataGatherer(store)
+	if err := gatherer.GatherFeatureData(data, query); err != nil {
+		return fmt.Errorf("gather feature data: %w", err)
+	}
 
 	return outputReportData(data)
 }
@@ -202,11 +221,21 @@ func runReportChanges(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--data flag is required (reports are designed for AI consumption)")
 	}
 
+	// Open store
+	store, err := openStore()
+	if err != nil {
+		return fmt.Errorf("open store: %w", err)
+	}
+	defer store.Close()
+
 	// Create report structure
 	data := report.NewChangesReport(changesSince, changesUntil)
 
-	// TODO: Populate with actual data from Dolt time-travel queries
-	// This will be implemented in R1.2: Data Gathering Infrastructure
+	// Gather data from Dolt time-travel queries
+	gatherer := report.NewDataGatherer(store)
+	if err := gatherer.GatherChangesData(data, changesSince, changesUntil); err != nil {
+		return fmt.Errorf("gather changes data: %w", err)
+	}
 
 	return outputReportData(data)
 }
@@ -217,11 +246,21 @@ func runReportHealth(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--data flag is required (reports are designed for AI consumption)")
 	}
 
+	// Open store
+	store, err := openStore()
+	if err != nil {
+		return fmt.Errorf("open store: %w", err)
+	}
+	defer store.Close()
+
 	// Create report structure
 	data := report.NewHealthReport()
 
-	// TODO: Populate with actual data from store
-	// This will be implemented in R1.2: Data Gathering Infrastructure
+	// Gather health data from store
+	gatherer := report.NewDataGatherer(store)
+	if err := gatherer.GatherHealthData(data); err != nil {
+		return fmt.Errorf("gather health data: %w", err)
+	}
 
 	return outputReportData(data)
 }
@@ -266,7 +305,3 @@ func outputReportData(data interface{}) error {
 	}
 }
 
-// Helper to set report timestamp (used by data gathering)
-func setReportTimestamp(t *time.Time) {
-	*t = time.Now().UTC()
-}
