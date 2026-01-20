@@ -13,11 +13,18 @@ type D2Theme struct {
 }
 
 // D2Themes available for diagram generation.
+// See: d2 themes (CLI) or https://d2lang.com/tour/themes/
 var D2Themes = map[string]D2Theme{
-	"default": {ID: 200, Name: "Mixed Berry Blue", LayoutEngine: "elk"},
-	"light":   {ID: 200, Name: "Mixed Berry Blue", LayoutEngine: "elk"},
-	"dark":    {ID: 201, Name: "Dark Mauve", LayoutEngine: "elk"},
-	"neutral": {ID: 0, Name: "Neutral Default", LayoutEngine: "elk"},
+	"default":          {ID: 8, Name: "Colorblind Clear", LayoutEngine: "elk"},
+	"colorblind-clear": {ID: 8, Name: "Colorblind Clear", LayoutEngine: "elk"},
+	"vanilla-nitro":    {ID: 100, Name: "Vanilla Nitro Cola", LayoutEngine: "elk"},
+	"mixed-berry":      {ID: 5, Name: "Mixed Berry Blue", LayoutEngine: "elk"},
+	"grape-soda":       {ID: 6, Name: "Grape Soda", LayoutEngine: "elk"},
+	"earth-tones":      {ID: 103, Name: "Earth Tones", LayoutEngine: "elk"},
+	"terminal":         {ID: 300, Name: "Terminal", LayoutEngine: "elk"},
+	"dark":             {ID: 200, Name: "Dark Mauve", LayoutEngine: "elk"},
+	"dark-flagship":    {ID: 201, Name: "Dark Flagship Terrastruct", LayoutEngine: "elk"},
+	"neutral":          {ID: 0, Name: "Neutral Default", LayoutEngine: "elk"},
 }
 
 // D2Color represents a color with fill and stroke values.
