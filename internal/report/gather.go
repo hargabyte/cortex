@@ -708,6 +708,21 @@ func (g *DataGatherer) findUntestedKeystones(data *HealthReportData) error {
 	return nil
 }
 
+// DeadCodeEntityTypes defines which entity types can be detected as dead code.
+// These are types tracked in the call graph (have callers/callees relationships).
+// Types NOT in this list (import, variable, constant) are excluded because
+// their usage cannot be tracked via the dependency graph.
+var DeadCodeEntityTypes = map[string]bool{
+	"function":  true,
+	"method":    true,
+	"class":     true,
+	"interface": true,
+	"struct":    true,
+	"type":      true,
+	"trait":     true,
+	"enum":      true,
+}
+
 // findDeadCodeCandidates finds entities with no incoming dependencies.
 func (g *DataGatherer) findDeadCodeCandidates(data *HealthReportData) error {
 	// Get entities with 0 in-degree (no callers)
@@ -719,7 +734,15 @@ func (g *DataGatherer) findDeadCodeCandidates(data *HealthReportData) error {
 		return err
 	}
 
+	// Group candidates by module (directory)
+	moduleGroups := make(map[string][]DeadCodeCandidate)
+
 	for _, e := range entities {
+		// Skip entity types not tracked in call graph
+		if !DeadCodeEntityTypes[e.EntityType] {
+			continue
+		}
+
 		// Skip test files
 		if strings.Contains(e.FilePath, "_test.go") || strings.Contains(e.FilePath, ".test.") {
 			continue
@@ -740,19 +763,62 @@ func (g *DataGatherer) findDeadCodeCandidates(data *HealthReportData) error {
 				continue
 			}
 
-			issue := HealthIssue{
-				Type:           IssueTypeDeadCodeCandidate,
+			// Extract module (directory) from file path
+			module := filepath.Dir(e.FilePath)
+
+			candidate := DeadCodeCandidate{
 				Entity:         e.Name,
+				EntityType:     e.EntityType,
 				File:           e.FilePath,
-				InDegree:       0,
+				Line:           e.LineStart,
 				Recommendation: fmt.Sprintf("Consider removing %s if it's unused", e.Name),
 			}
 
-			data.AddInfoIssue(issue)
+			moduleGroups[module] = append(moduleGroups[module], candidate)
 		}
 	}
 
+	// Convert to sorted slice of groups (most candidates first)
+	var groups []DeadCodeGroup
+	for module, candidates := range moduleGroups {
+		groups = append(groups, DeadCodeGroup{
+			Type:       IssueTypeDeadCodeGroup,
+			Module:     module,
+			Count:      len(candidates),
+			Candidates: candidates,
+		})
+	}
+
+	// Sort by count descending
+	sort.Slice(groups, func(i, j int) bool {
+		return groups[i].Count > groups[j].Count
+	})
+
+	// Add groups as info issues
+	for _, group := range groups {
+		data.AddInfoIssue(HealthIssue{
+			Type:           IssueTypeDeadCodeGroup,
+			Entity:         group.Module,
+			Entities:       groupCandidateNames(group.Candidates),
+			File:           group.Module,
+			InDegree:       group.Count,
+			Recommendation: fmt.Sprintf("%d dead code candidates in %s", group.Count, group.Module),
+		})
+	}
+
+	// Store detailed groups in data for structured output
+	data.DeadCodeGroups = groups
+
 	return nil
+}
+
+// groupCandidateNames extracts entity names from candidates.
+func groupCandidateNames(candidates []DeadCodeCandidate) []string {
+	names := make([]string, len(candidates))
+	for i, c := range candidates {
+		names[i] = c.Entity
+	}
+	return names
 }
 
 // findComplexityHotspots finds entities with high complexity.

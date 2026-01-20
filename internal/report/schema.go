@@ -396,6 +396,39 @@ type HealthIssue struct {
 	Recommendation string `yaml:"recommendation" json:"recommendation"`
 }
 
+// DeadCodeGroup groups dead code candidates by module/directory.
+type DeadCodeGroup struct {
+	// Type is always "dead_code_group" for this issue type.
+	Type string `yaml:"type" json:"type"`
+
+	// Module is the directory path containing the dead code.
+	Module string `yaml:"module" json:"module"`
+
+	// Count is the number of candidates in this module.
+	Count int `yaml:"count" json:"count"`
+
+	// Candidates are the dead code entities in this module.
+	Candidates []DeadCodeCandidate `yaml:"candidates" json:"candidates"`
+}
+
+// DeadCodeCandidate represents a single dead code candidate.
+type DeadCodeCandidate struct {
+	// Entity is the entity name.
+	Entity string `yaml:"entity" json:"entity"`
+
+	// EntityType is the type (function, method, class, etc.).
+	EntityType string `yaml:"entity_type" json:"entity_type"`
+
+	// File is the full file path.
+	File string `yaml:"file" json:"file"`
+
+	// Line is the starting line number.
+	Line int `yaml:"line" json:"line"`
+
+	// Recommendation is the suggested action.
+	Recommendation string `yaml:"recommendation,omitempty" json:"recommendation,omitempty"`
+}
+
 // HealthIssueType constants for health report issues.
 const (
 	IssueTypeUntestedKeystone    = "untested_keystone"
@@ -403,6 +436,7 @@ const (
 	IssueTypeLowCoverageBottle   = "low_coverage_bottleneck"
 	IssueTypeDeadCodeCandidate   = "dead_code_candidate"
 	IssueTypeComplexityHotspot   = "complexity_hotspot"
+	IssueTypeDeadCodeGroup       = "dead_code_group"
 )
 
 // HealthIssues groups health issues by severity.

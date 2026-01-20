@@ -37,6 +37,9 @@ type HealthReportData struct {
 	// Diagrams maps diagram names to D2 diagram definitions for visualization.
 	// Typically includes a risk_map showing risk distribution across the codebase.
 	Diagrams map[string]DiagramData `yaml:"diagrams" json:"diagrams"`
+
+	// DeadCodeGroups contains dead code grouped by module.
+	DeadCodeGroups []DeadCodeGroup `yaml:"dead_code_groups,omitempty" json:"dead_code_groups,omitempty"`
 }
 
 // ComplexityAnalysis contains complexity hotspot information for the codebase.
