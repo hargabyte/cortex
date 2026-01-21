@@ -135,7 +135,24 @@ Your Codebase             Cortex                    Me (AI Agent)
 
 ## Supported Languages
 
-Go, TypeScript, JavaScript, Python, Java, Rust, C, C++, C#, PHP, Kotlin, Ruby
+Cortex uses tree-sitter for parsing. Full support for:
+
+| Language | Entity Types |
+|----------|--------------|
+| **Go** | functions, methods, structs, interfaces, constants |
+| **TypeScript** | functions, classes, methods, interfaces, types, constants |
+| **JavaScript** | functions, classes, methods, constants |
+| **Python** | functions, classes, methods, decorators |
+| **Java** | classes, methods, interfaces, enums, constants |
+| **Rust** | functions, structs, traits, impl blocks, enums |
+| **C** | functions, structs, unions, enums, macros |
+| **C++** | functions, classes, methods, structs, namespaces |
+| **C#** | classes, methods, interfaces, structs, records |
+| **PHP** | classes, methods, interfaces, traits |
+| **Kotlin** | functions, classes, methods, objects, interfaces |
+| **Ruby** | classes, modules, methods |
+
+Cortex extracts entities, tracks call relationships, and builds a dependency graph that I can query.
 
 ---
 
