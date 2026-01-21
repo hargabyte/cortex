@@ -461,13 +461,15 @@ func D2StyleToString(style D2NodeStyle) string {
 }
 
 // D2EdgeStyleToString converts a D2EdgeStyleDef to D2 style syntax.
+// Always includes stroke and stroke-width for consistent styling like command-flow.d2.
 func D2EdgeStyleToString(style D2EdgeStyleDef) string {
 	var parts []string
 
 	if style.StrokeColor != "" {
 		parts = append(parts, "stroke: \""+style.StrokeColor+"\"")
 	}
-	if style.StrokeWidth > 0 && style.StrokeWidth != 1 {
+	// Always include stroke-width for consistent styling (like command-flow.d2)
+	if style.StrokeWidth > 0 {
 		parts = append(parts, "stroke-width: "+itoa(style.StrokeWidth))
 	}
 	if style.StrokeDash > 0 {

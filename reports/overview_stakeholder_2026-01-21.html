@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cortex System Overview - Stakeholder Report</title>
+  <style>
+    :root {
+      --primary: #1565c0;
+      --secondary: #7b1fa2;
+      --success: #2e7d32;
+      --warning: #f57c00;
+      --bg: #fafafa;
+      --card-bg: #ffffff;
+      --text: #333;
+      --text-muted: #666;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      padding: 2rem;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+    }
+    header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    header .subtitle { opacity: 0.9; font-size: 1.1rem; }
+    header .meta { margin-top: 1rem; font-size: 0.9rem; opacity: 0.8; }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card h2 {
+      color: var(--primary);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border);
+    }
+    .card h3 {
+      color: var(--secondary);
+      margin: 1.5rem 0 0.75rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-box {
+      background: linear-gradient(135deg, #f5f5f5 0%, #eeeeee 100%);
+      padding: 1.25rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .stat-box .number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .stat-box .label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .diagram-container {
+      background: #f8f9fa;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1.5rem 0;
+      overflow: auto;
+      max-height: 800px;
+    }
+    .diagram-container svg {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
+    }
+    .diagram-caption {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 0.75rem;
+      font-style: italic;
+    }
+
+    .narrative { line-height: 1.8; }
+    .narrative p { margin-bottom: 1rem; }
+    .narrative strong { color: var(--primary); }
+    .narrative em { color: var(--secondary); }
+
+    .highlight-box {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      border-left: 4px solid var(--primary);
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .module-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .module-item {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+    }
+    .module-item h4 {
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+    .module-item p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .keystone-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+    .keystone-table th, .keystone-table td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .keystone-table th {
+      background: #f5f5f5;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.5px;
+    }
+    .keystone-table tr:hover { background: #fafafa; }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-keystone { background: #fff3e0; color: #e65100; }
+    .badge-type { background: #f3e5f5; color: #7b1fa2; }
+    .badge-function { background: #e3f2fd; color: #1565c0; }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Cortex (cx) System Overview</h1>
+      <p class="subtitle">Codebase Intelligence Tool - Architecture Report for Stakeholders</p>
+      <p class="meta">Generated: January 21, 2026 | Report Type: Overview | Audience: Stakeholders</p>
+    </header>
+
+    <div class="card">
+      <h2>Executive Summary</h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="number">3,809</div>
+          <div class="label">Total Code Entities</div>
+        </div>
+        <div class="stat-box">
+          <div class="number">3,769</div>
+          <div class="label">Active Components</div>
+        </div>
+        <div class="stat-box">
+          <div class="number">95%</div>
+          <div class="label">Go Language</div>
+        </div>
+        <div class="stat-box">
+          <div class="number">6</div>
+          <div class="label">Core Modules</div>
+        </div>
+      </div>
+      <div class="narrative">
+        <p><strong>Cortex</strong> is a codebase intelligence tool that helps development teams and AI agents understand complex software projects. It analyzes source code, builds a knowledge graph of how components relate to each other, and provides insights about code structure, dependencies, and potential risks.</p>
+        <p>The system is primarily written in <strong>Go</strong> (95% of entities), with supporting components in Python (4%) and TypeScript (1%). This language distribution reflects a deliberate architectural choice: Go provides the performance and reliability needed for core analysis operations, while Python and TypeScript handle specialized parsing tasks.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>System Architecture</h2>
+      <p>The diagram below shows the major modules and their key components. Each colored box represents a module, with the most important functions and types shown inside. Arrows indicate how data flows between components.</p>
+
+      <div class="diagram-container">
+        <object data="overview_stakeholder_2026-01-21.svg" type="image/svg+xml" style="width: 100%; height: auto; min-height: 600px;">
+          Architecture diagram not available - please ensure SVG file is present
+        </object>
+      </div>
+      <p class="diagram-caption">Figure 1: Cortex System Architecture - Modules grouped by function with dependency connections</p>
+
+      <h3>Understanding the Diagram</h3>
+      <div class="narrative">
+        <p>The architecture follows a <strong>layered design</strong> where data flows from user commands through processing layers to the underlying data store. Let me walk you through each major component:</p>
+
+        <div class="highlight-box">
+          <strong>Key Insight:</strong> The system is built around a central data store (the "Store" component) that acts as the single source of truth. All other modules interact with this store to read or write information about the codebase.
+        </div>
+
+        <h3>Module-by-Module Overview</h3>
+
+        <div class="module-list">
+          <div class="module-item">
+            <h4>cmd (Command Layer)</h4>
+            <p>The entry point where users interact with Cortex. Commands like <em>find</em>, <em>show</em>, <em>safe</em>, and <em>report</em> all start here. The <strong>Execute</strong> function routes user requests to the appropriate handler.</p>
+          </div>
+
+          <div class="module-item">
+            <h4>parser (Code Analysis)</h4>
+            <p>Transforms source code files into structured data. The <strong>walkNode</strong> function (the most connected component in the system with 118 dependencies) traverses code syntax trees to extract meaningful information.</p>
+          </div>
+
+          <div class="module-item">
+            <h4>extract (Entity Extraction)</h4>
+            <p>Identifies functions, types, and relationships from parsed code. The <strong>nodeText</strong> method (502 connections) is the workhorse that extracts text from code elements.</p>
+          </div>
+
+          <div class="module-item">
+            <h4>store (Data Persistence)</h4>
+            <p>The central database that stores all codebase knowledge. The <strong>Store</strong> type (171 connections) and <strong>Entity</strong> type (280 connections) are the foundation that everything else builds upon.</p>
+          </div>
+
+          <div class="module-item">
+            <h4>output (Formatting)</h4>
+            <p>Handles how information is displayed to users. The <strong>Density</strong> type controls how much detail is shown - from sparse summaries to dense technical output.</p>
+          </div>
+
+          <div class="module-item">
+            <h4>daemon (Performance)</h4>
+            <p>An optional background service that keeps the database connection warm, enabling faster response times for frequently-used commands.</p>
+          </div>
+        </div>
+
+        <h3>Data Flow Through the System</h3>
+        <p>When a user runs a command like <code>cx find LoginUser</code>:</p>
+        <ol style="margin-left: 1.5rem; margin-bottom: 1rem;">
+          <li><strong>cmd</strong> receives the command and parses arguments</li>
+          <li><strong>store</strong> is queried to find matching entities</li>
+          <li><strong>graph</strong> calculates importance and relationships</li>
+          <li><strong>output</strong> formats results based on the requested density</li>
+          <li>Results are displayed to the user</li>
+        </ol>
+
+        <p>For code scanning (<code>cx scan</code>):</p>
+        <ol style="margin-left: 1.5rem; margin-bottom: 1rem;">
+          <li><strong>parser</strong> reads source files and builds syntax trees</li>
+          <li><strong>extract</strong> identifies entities (functions, types, etc.)</li>
+          <li><strong>store</strong> persists the extracted information</li>
+          <li><strong>graph</strong> computes relationships and importance metrics</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Critical Components</h2>
+      <p>These are the most important components in the system, identified by their connectivity and centrality in the codebase:</p>
+
+      <table class="keystone-table">
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>Type</th>
+            <th>Module</th>
+            <th>Connections</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>walkNode</strong></td>
+            <td><span class="badge badge-function">function</span></td>
+            <td>parser</td>
+            <td>118</td>
+            <td>Core AST traversal - foundation of code analysis</td>
+          </tr>
+          <tr>
+            <td><strong>Store</strong></td>
+            <td><span class="badge badge-type">type</span></td>
+            <td>store</td>
+            <td>171</td>
+            <td>Central data store - all queries flow through here</td>
+          </tr>
+          <tr>
+            <td><strong>nodeText</strong></td>
+            <td><span class="badge badge-function">method</span></td>
+            <td>extract</td>
+            <td>502</td>
+            <td>Text extraction - most heavily used utility</td>
+          </tr>
+          <tr>
+            <td><strong>Entity</strong></td>
+            <td><span class="badge badge-type">type</span></td>
+            <td>store</td>
+            <td>280</td>
+            <td>Core data model - represents any code element</td>
+          </tr>
+          <tr>
+            <td><strong>ParseResult</strong></td>
+            <td><span class="badge badge-type">type</span></td>
+            <td>parser</td>
+            <td>53</td>
+            <td>Parsing output container - bridges parser to extract</td>
+          </tr>
+          <tr>
+            <td><strong>Close</strong></td>
+            <td><span class="badge badge-function">method</span></td>
+            <td>store</td>
+            <td>244</td>
+            <td>Resource cleanup - ensures proper shutdown</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="highlight-box">
+        <strong>Why These Matter:</strong> These components are "keystones" - if any of them were changed or broken, it would affect many other parts of the system. They represent both the core functionality and the highest-risk areas for modifications.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>System Health Summary</h2>
+      <div class="narrative">
+        <p>The architecture shows a <strong>well-structured, modular design</strong> with clear separation of concerns:</p>
+        <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+          <li><strong>Clean layering:</strong> Each module has a distinct responsibility</li>
+          <li><strong>Central data store:</strong> Single source of truth prevents data inconsistencies</li>
+          <li><strong>Performance optimization:</strong> Optional daemon for faster responses</li>
+          <li><strong>Language-appropriate tooling:</strong> Tree-sitter (C-based) for parsing, Go for performance-critical operations</li>
+        </ul>
+
+        <p><strong>Notable Patterns:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+          <li>The <strong>nodeText</strong> method's 502 connections suggest it could be a bottleneck - worth monitoring for performance</li>
+          <li>The <strong>Store</strong> type's central role means database operations are critical to overall system performance</li>
+          <li>The daemon module provides an optimization path for high-frequency usage scenarios</li>
+        </ul>
+      </div>
+    </div>
+
+    <footer>
+      <p>Generated by <a href="https://github.com/anthropics/cx">Cortex (cx)</a> | Report Type: Overview | Audience: Stakeholders</p>
+      <p>January 21, 2026</p>
+    </footer>
+  </div>
+</body>
+</html>

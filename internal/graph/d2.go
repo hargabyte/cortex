@@ -111,9 +111,9 @@ func (g *D2Generator) Generate(entities []DiagramEntity, deps []DiagramEdge) str
 	// Write theme configuration
 	g.writeThemeConfig(&sb)
 
-	// Write title if provided
+	// Write title if provided - use command-flow.d2 styling with font-size and bold
 	if g.config.Title != "" {
-		sb.WriteString(fmt.Sprintf("\ntitle: {\n  label: %q\n  near: top-center\n}\n", g.config.Title))
+		sb.WriteString(fmt.Sprintf("\ntitle: {\n  label: %q\n  near: top-center\n  style: {\n    font-size: 24\n    bold: true\n  }\n}\n", g.config.Title))
 	}
 
 	// Write direction
@@ -207,8 +207,8 @@ func (g *D2Generator) generateArchitecture(sb *strings.Builder, entities []Diagr
 	}
 	sort.Strings(moduleNames)
 
-	// Write module containers
-	sb.WriteString("# Modules\n")
+	// Write module containers - each module is a layer like in command-flow.d2
+	sb.WriteString("# Module Layers\n")
 	for _, moduleName := range moduleNames {
 		moduleEntities := modules[moduleName]
 
@@ -237,6 +237,7 @@ func (g *D2Generator) generateArchitecture(sb *strings.Builder, entities []Diagr
 			sb.WriteString("  style: {\n")
 			sb.WriteString(fmt.Sprintf("    fill: %q\n", layerColor.Fill))
 			sb.WriteString(fmt.Sprintf("    stroke: %q\n", layerColor.Stroke))
+			sb.WriteString("    stroke-width: 2\n")
 			sb.WriteString("    border-radius: 8\n")
 			sb.WriteString("  }\n")
 
@@ -250,8 +251,8 @@ func (g *D2Generator) generateArchitecture(sb *strings.Builder, entities []Diagr
 		}
 	}
 
-	// Write edges with module-qualified paths
-	sb.WriteString("# Connections\n")
+	// Write edges with module-qualified paths - styled like command-flow.d2
+	sb.WriteString("\n# Flow Connections\n")
 	for _, dep := range deps {
 		g.writeEdgeArchitecture(sb, dep, entities)
 		sb.WriteString("\n")
@@ -382,7 +383,7 @@ func (g *D2Generator) writeNodeInContainer(sb *strings.Builder, entity DiagramEn
 		sb.WriteString(fmt.Sprintf("%s  icon: %s\n", indent, style.Icon))
 	}
 
-	// Inline style
+	// Inline style - following command-flow.d2 pattern
 	sb.WriteString(fmt.Sprintf("%s  style: {\n", indent))
 	if style.Fill != "" {
 		sb.WriteString(fmt.Sprintf("%s    fill: %q\n", indent, style.Fill))
@@ -402,6 +403,8 @@ func (g *D2Generator) writeNodeInContainer(sb *strings.Builder, entity DiagramEn
 	if style.Shadow {
 		sb.WriteString(fmt.Sprintf("%s    shadow: true\n", indent))
 	}
+	// Add font-size for readability (like command-flow.d2)
+	sb.WriteString(fmt.Sprintf("%s    font-size: 14\n", indent))
 	sb.WriteString(fmt.Sprintf("%s  }\n", indent))
 
 	sb.WriteString(fmt.Sprintf("%s}", indent))

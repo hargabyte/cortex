@@ -28,7 +28,7 @@ func ArchitecturePreset() *DiagramConfig {
 	return &DiagramConfig{
 		Type:       DiagramArchitecture,
 		Theme:      "default",
-		Layout:     "tala", // TALA handles containers best; ELK fallback handled by D2
+		Layout:     "elk", // ELK handles containers well and is bundled with D2
 		Direction:  "right",
 		MaxNodes:   50,     // Architecture diagrams can be larger
 		Collapse:   true,   // Auto-collapse dense modules
@@ -712,7 +712,7 @@ func ChangesDiagramPreset() *DiagramConfig {
 	return &DiagramConfig{
 		Type:       DiagramArchitecture,
 		Theme:      "default",
-		Layout:     "tala",
+		Layout:     "elk",
 		Direction:  "right",
 		MaxNodes:   40,
 		Collapse:   true,

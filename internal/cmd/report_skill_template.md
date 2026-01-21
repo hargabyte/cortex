@@ -251,10 +251,18 @@ echo '<D2 code>' | cx render - -o /tmp/diagram.svg
 The narrative should **explain the diagrams**, not replace them.
 
 **For Overview Reports:**
-1. Start with the architecture diagram
-2. Explain what each module does
-3. Highlight key dependencies shown in the diagram
-4. Reference diagram entities by name
+1. Start with the architecture diagram as the centerpiece
+2. Provide a thorough written walkthrough of the system architecture:
+   - Begin with the entry point and explain the request/data flow direction
+   - For each major module/layer shown in the diagram, explain:
+     - What the module does (in business terms)
+     - Key components within the module and their roles
+     - How it connects to other modules (follow the arrows in the diagram)
+   - Explain the significance of important entities (keystones, bottlenecks) visible in the diagram
+   - Describe the overall data flow path through the system
+3. Highlight key dependencies shown in the diagram and explain why they exist
+4. Reference diagram entities by name throughout the narrative
+5. For stakeholder reports: translate technical terms into business impact
 
 **For Feature Reports:**
 1. Start with the call flow diagram
@@ -469,10 +477,17 @@ Summary:
 - Include metrics trends
 
 ### For Stakeholders
-- Simplify diagram explanation - "This shows how login works"
-- Use percentages and counts
-- Avoid code references
-- Focus on health and progress
+Provide a **thorough written overview** that explains the diagram flow in detail:
+- Walk through the diagram systematically, explaining each major component and how they connect
+- Describe the flow of data/control through the system using the diagram as a visual guide
+- Explain what each module/layer does in business terms (e.g., "The parser module transforms code files into a structured format the system can analyze")
+- Use the diagram to tell a story: "Starting from the entry point, the request flows through..."
+- Highlight key dependencies shown in the diagram and explain why they matter
+- Connect technical components to business value (e.g., "The daemon layer enables faster responses for users")
+- Include metrics and percentages where relevant
+- Avoid raw code references, but do reference diagram elements by name
+- Provide context that helps stakeholders understand architectural decisions
+- End with a summary of the overall system health and any notable patterns visible in the diagram
 
 ### For New Team Members
 - Explain each part of the diagram step-by-step
