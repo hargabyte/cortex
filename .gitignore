@@ -31,3 +31,6 @@ OUTPUT_EXAMPLES.md
 
 # Beads directory
 .beads/
+
+# Internal development docs
+.docs/
