@@ -146,55 +146,37 @@ var D2LayerColors = map[string]D2Color{
 // D2Icon represents an icon URL for D2 diagrams.
 type D2Icon string
 
-// D2EntityIcons maps entity types to icon URLs from icons.terrastruct.com.
+// D2EntityIcons maps entity types to icon URLs.
+// NOTE: icons.terrastruct.com is currently returning 403 errors (as of 2026-01).
+// Icons are disabled until the service is restored. Shapes differentiate types:
+//   - rectangle: functions
+//   - hexagon: types/structs
+//   - oval: constants
 var D2EntityIcons = map[string]D2Icon{
-	"function":  "https://icons.terrastruct.com/essentials%2F142-lightning.svg",
-	"method":    "https://icons.terrastruct.com/essentials%2F009-gear.svg",
-	"type":      "https://icons.terrastruct.com/essentials%2F108-box.svg",
-	"struct":    "https://icons.terrastruct.com/essentials%2F108-box.svg",
-	"class":     "https://icons.terrastruct.com/essentials%2F108-box.svg",
-	"interface": "https://icons.terrastruct.com/essentials%2F092-plug.svg",
-	"constant":  "https://icons.terrastruct.com/essentials%2F078-pin.svg",
-	"variable":  "https://icons.terrastruct.com/essentials%2F078-pin.svg",
-	"enum":      "https://icons.terrastruct.com/essentials%2F113-list.svg",
-	"database":  "https://icons.terrastruct.com/essentials%2F119-database.svg",
-	"storage":   "https://icons.terrastruct.com/essentials%2F119-database.svg",
-	"http":      "https://icons.terrastruct.com/essentials%2F140-earth.svg",
-	"handler":   "https://icons.terrastruct.com/essentials%2F140-earth.svg",
-	"test":      "https://icons.terrastruct.com/essentials%2F134-checkmark.svg",
-	"package":   "https://icons.terrastruct.com/essentials%2F106-archive.svg",
-	"module":    "https://icons.terrastruct.com/essentials%2F106-archive.svg",
+	// Disabled - Terrastruct icon service returning 403
+	// Original icons for reference:
+	// "function":  "https://icons.terrastruct.com/essentials/142-lightning.svg",
+	// "method":    "https://icons.terrastruct.com/essentials/009-gear.svg",
+	// "type":      "https://icons.terrastruct.com/essentials/108-box.svg",
+	// "database":  "https://icons.terrastruct.com/essentials/119-database.svg",
 }
 
 // D2LanguageIcons maps programming languages to icon URLs.
+// NOTE: Disabled - Terrastruct icon service returning 403 (as of 2026-01)
 var D2LanguageIcons = map[string]D2Icon{
-	"go":         "https://icons.terrastruct.com/dev%2Fgo.svg",
-	"typescript": "https://icons.terrastruct.com/dev%2Ftypescript.svg",
-	"javascript": "https://icons.terrastruct.com/dev%2Fjavascript.svg",
-	"python":     "https://icons.terrastruct.com/dev%2Fpython.svg",
-	"java":       "https://icons.terrastruct.com/dev%2Fjava.svg",
-	"rust":       "https://icons.terrastruct.com/dev%2Frustlang.svg",
-	"c":          "https://icons.terrastruct.com/dev%2Fc.svg",
-	"cpp":        "https://icons.terrastruct.com/dev%2Fcplusplus.svg",
-	"csharp":     "https://icons.terrastruct.com/dev%2Fcsharp.svg",
-	"php":        "https://icons.terrastruct.com/dev%2Fphp.svg",
-	"ruby":       "https://icons.terrastruct.com/dev%2Fruby.svg",
-	"kotlin":     "https://icons.terrastruct.com/dev%2Fkotlin.svg",
+	// Original icons for reference:
+	// "go":         "https://icons.terrastruct.com/dev/go.svg",
+	// "typescript": "https://icons.terrastruct.com/dev/typescript.svg",
+	// "python":     "https://icons.terrastruct.com/dev/python.svg",
 }
 
 // D2StatusIcons for various status indicators.
+// NOTE: Disabled - Terrastruct icon service returning 403 (as of 2026-01)
 var D2StatusIcons = map[string]D2Icon{
-	"warning":  "https://icons.terrastruct.com/essentials%2F149-warning-2.svg",
-	"error":    "https://icons.terrastruct.com/essentials%2F150-error-1.svg",
-	"info":     "https://icons.terrastruct.com/essentials%2F152-info-1.svg",
-	"success":  "https://icons.terrastruct.com/essentials%2F134-checkmark.svg",
-	"lock":     "https://icons.terrastruct.com/essentials%2F091-lock.svg",
-	"server":   "https://icons.terrastruct.com/essentials%2F112-server.svg",
-	"cloud":    "https://icons.terrastruct.com/essentials%2F096-cloud.svg",
-	"network":  "https://icons.terrastruct.com/essentials%2F100-network.svg",
-	"search":   "https://icons.terrastruct.com/essentials%2F107-zoom.svg",
-	"display":  "https://icons.terrastruct.com/essentials%2F087-display.svg",
-	"shield":   "https://icons.terrastruct.com/essentials%2F092-shield.svg",
+	// Original icons for reference:
+	// "warning":  "https://icons.terrastruct.com/essentials/149-warning-2.svg",
+	// "error":    "https://icons.terrastruct.com/essentials/150-error-1.svg",
+	// "database": "https://icons.terrastruct.com/essentials/119-database.svg",
 }
 
 // D2EdgeStyleDef defines the visual style for an edge/connection.
@@ -335,16 +317,14 @@ func GetD2NodeStyle(entityType, importance string, coverage float64, language st
 		}
 	}
 
-	// Icon from entity type or language
+	// Icon from entity type - semantic icons are more useful than language icons
+	// for individual entities. Language icons are better suited for module containers
+	// or multi-language codebases where language differentiation adds value.
 	if icon, ok := D2EntityIcons[entityType]; ok {
 		style.Icon = string(icon)
 	}
-	// Language icon can override entity icon for functions
-	if language != "" {
-		if langIcon, ok := D2LanguageIcons[language]; ok {
-			style.Icon = string(langIcon)
-		}
-	}
+	// NOTE: Language icons intentionally NOT used for individual entities.
+	// Use GetD2LanguageIcon() for module containers if needed.
 
 	return style
 }

@@ -16,9 +16,60 @@ If arguments are not provided, the skill will ask interactively.
 
 ## Workflow
 
-### Step 1: Determine Report Type
+**Question Order: Basic → Detailed**
+1. Theme (basic visual choice)
+2. Report type (basic content choice)
+3. Report-specific params (if needed)
+4. Audience (detailed)
+5. Format (detailed)
 
-If type not specified, ask the user:
+### Step 1: Choose Diagram Theme (Basic)
+
+```
+AskUserQuestion:
+  question: "What color theme would you like for the diagrams? (Type 'Other' to see all 20 themes)"
+  header: "Theme"
+  options:
+    - label: "Neutral Default (0) (Recommended)"
+      description: "Clean light theme, works everywhere"
+    - label: "Vanilla Nitro Cola (100)"
+      description: "Warm cream/brown, nostalgic professional feel"
+    - label: "Earth Tones (103)"
+      description: "Natural browns and greens, organic look"
+    - label: "Terminal (300)"
+      description: "Green-on-black retro terminal aesthetic"
+  multiSelect: false
+```
+
+**If user selects "Other" or asks for more themes, show this full list:**
+
+```
+Light Themes:
+  0  - Neutral Default      Clean minimal (recommended)
+  1  - Neutral Grey         Grayscale, professional
+  3  - Flagship Terrastruct Terrastruct branded
+  4  - Cool Classics        Classic blue tones
+  5  - Mixed Berry Blue     Cool blue-purple palette
+  6  - Grape Soda           Vibrant purple/violet
+  7  - Aubergine            Deep purple/eggplant
+  8  - Colorblind Clear     High contrast, accessible
+  100 - Vanilla Nitro Cola  Warm cream/brown nostalgic
+  101 - Orange Creamsicle   Warm orange and cream
+  102 - Shirley Temple      Playful pink and red
+  103 - Earth Tones         Natural browns and greens
+  104 - Everglade Green     Forest greens, nature
+  105 - Buttered Toast      Warm golden tones
+  300 - Terminal            Green-on-black terminal
+  301 - Terminal Grayscale  Gray terminal aesthetic
+  302 - Origami             Paper-fold inspired
+  303 - C4                  C4 architecture style
+
+Dark Themes:
+  200 - Dark Mauve          Dark purple/mauve
+  201 - Dark Flagship       Dark with branded accents
+```
+
+### Step 2: Determine Report Type (Basic)
 
 ```
 AskUserQuestion:
@@ -35,7 +86,7 @@ AskUserQuestion:
       description: "Risk visualization with coverage gaps and complexity hotspots"
 ```
 
-### Step 2: Gather Report-Specific Parameters
+### Step 3: Gather Report-Specific Parameters
 
 **For Feature Reports** (if query not provided):
 ```
@@ -69,62 +120,62 @@ AskUserQuestion:
       description: "I'll specify a commit, tag, or date"
 ```
 
-### Step 3: Gather Preferences
+### Step 4: Gather Audience and Format Preferences (Detailed)
 
 ```
 AskUserQuestion:
-  question: "Who is the primary audience for this report?"
-  header: "Audience"
-  options:
-    - label: "Developers"
-      description: "Technical details, code references, implementation notes"
-    - label: "Tech Leads"
-      description: "Architecture overview, risk assessment, recommendations"
-    - label: "Stakeholders"
-      description: "High-level summary, business impact, progress metrics"
-    - label: "New Team Members"
-      description: "Onboarding context, explanations, learning path"
+  questions:
+    - question: "Who is the primary audience for this report?"
+      header: "Audience"
+      options:
+        - label: "Developers"
+          description: "Technical details, code references, implementation notes"
+        - label: "Tech Leads"
+          description: "Architecture overview, risk assessment, recommendations"
+        - label: "Stakeholders"
+          description: "High-level summary, business impact, progress metrics"
+        - label: "New Team Members"
+          description: "Onboarding context, explanations, learning path"
+      multiSelect: false
+
+    - question: "What output format do you prefer?"
+      header: "Format"
+      options:
+        - label: "HTML with diagrams (Recommended)"
+          description: "Rich formatting with rendered SVG diagrams, best for sharing"
+        - label: "Markdown with D2 code"
+          description: "Plain text with D2 code blocks for later rendering"
+        - label: "Terminal summary"
+          description: "Concise summary with ASCII diagram representation"
+      multiSelect: false
 ```
 
-```
-AskUserQuestion:
-  question: "What output format do you prefer?"
-  header: "Format"
-  options:
-    - label: "HTML with diagrams (Recommended)"
-      description: "Rich formatting with rendered SVG diagrams, best for sharing"
-    - label: "Markdown with D2 code"
-      description: "Plain text with D2 code blocks for later rendering"
-    - label: "Terminal summary"
-      description: "Concise summary with ASCII diagram representation"
-```
+**All available D2 themes** (reference table):
 
-```
-AskUserQuestion:
-  question: "What color theme would you like for the diagrams?"
-  header: "Theme"
-  options:
-    - label: "Default (Recommended)"
-      description: "Colorblind Clear - high contrast, accessibility-focused"
-    - label: "Earth Tones"
-      description: "Natural browns and greens, organic professional feel"
-    - label: "Dark"
-      description: "Dark Mauve - purple/mauve for dark mode environments"
-    - label: "Terminal"
-      description: "Green-on-black retro terminal aesthetic"
-```
+| Theme Name | ID | Description |
+|------------|-----|-------------|
+| Neutral Default | 0 | Clean minimal default |
+| Neutral Grey | 1 | Grayscale, professional |
+| Flagship Terrastruct | 3 | Terrastruct branded |
+| Cool Classics | 4 | Classic blue tones |
+| Mixed Berry Blue | 5 | Cool blue-purple palette |
+| Grape Soda | 6 | Vibrant purple/violet |
+| Aubergine | 7 | Deep purple/eggplant |
+| Colorblind Clear | 8 | High contrast, accessible |
+| Vanilla Nitro Cola | 100 | Warm cream/brown nostalgic |
+| Orange Creamsicle | 101 | Warm orange and cream |
+| Shirley Temple | 102 | Playful pink and red |
+| Earth Tones | 103 | Natural browns and greens |
+| Everglade Green | 104 | Forest greens, nature-inspired |
+| Buttered Toast | 105 | Warm golden tones |
+| Terminal | 300 | Green-on-black terminal |
+| Terminal Grayscale | 301 | Gray terminal aesthetic |
+| Origami | 302 | Paper-fold inspired |
+| C4 | 303 | C4 architecture style |
+| Dark Mauve | 200 | Dark mode purple/mauve |
+| Dark Flagship | 201 | Dark with branded accents |
 
-**More themes available** (user can type any of these in "Other"):
-- `vanilla-nitro` - Warm cream/brown, professional
-- `mixed-berry` - Cool blue-purple palette
-- `grape-soda` - Vibrant purple/violet
-- `orange-creamsicle` - Warm orange and cream
-- `shirley-temple` - Playful pink and red
-- `everglade-green` - Forest greens, nature-inspired
-- `dark-flagship` - Dark with branded accents
-- `neutral` - Minimal grayscale
-
-### Step 4: Collect Data and Extract Diagrams
+### Step 5: Collect Data and Extract Diagrams
 
 Run the appropriate cx report command with the selected theme:
 
@@ -142,12 +193,12 @@ cx report changes --since <ref> --data --theme <selected_theme>
 cx report health --data --theme <selected_theme>
 ```
 
-**Theme mapping from user selection:**
-- "Default (Recommended)" → `--theme default`
-- "Earth Tones" → `--theme earth-tones`
-- "Dark" → `--theme dark`
-- "Terminal" → `--theme terminal`
-- Custom input → use as-is (e.g., `--theme everglade-green`)
+**Theme mapping from user selection (use numeric ID with --theme flag):**
+- "Default (Recommended)" → `--theme 8` (Colorblind Clear)
+- "Earth Tones" → `--theme 103`
+- "Dark" → `--theme 200` (Dark Mauve)
+- "Terminal" → `--theme 300`
+- Custom input → look up ID from theme table (e.g., "Vanilla Nitro Cola" → `--theme 100`)
 
 **IMPORTANT: Parse the YAML output and extract the `diagrams` section:**
 
@@ -174,7 +225,7 @@ diagrams:
 
 **Extract each diagram's D2 code for rendering.**
 
-### Step 5: Render Diagrams to SVG
+### Step 6: Render Diagrams to SVG
 
 **This step is REQUIRED for HTML reports.** Diagrams are the primary visual element.
 
@@ -238,11 +289,15 @@ The narrative should **explain the diagrams**, not replace them.
       border-radius: 8px;
       padding: 1rem;
       margin: 1.5rem 0;
-      overflow-x: auto;
+      overflow: auto;          /* Allow both horizontal and vertical scroll */
+      min-height: 400px;       /* Ensure space for vertical diagrams */
+      max-height: 90vh;        /* Cap at viewport height with scroll */
     }
     .diagram-container svg {
-      max-width: 100%;
-      height: auto;
+      display: block;
+      margin: 0 auto;          /* Center horizontally */
+      max-width: 100%;         /* Don't exceed container width */
+      min-height: 300px;       /* Minimum height for readability */
     }
     .diagram-title {
       font-weight: 600;
@@ -341,18 +396,13 @@ User selects: "Feature"
 [AskUserQuestion: Feature query]
 User types: "authentication"
 
-[AskUserQuestion: Audience]
-User selects: "Tech Leads"
+[AskUserQuestion: Theme, Audience, Format - all 3 questions asked together]
+User selects: Theme="Earth Tones", Audience="Tech Leads", Format="HTML with diagrams"
 
-[AskUserQuestion: Format]
-User selects: "HTML with diagrams (Recommended)"
+Claude: Gathering authentication feature data with Earth Tones theme (ID 103)...
 
-[AskUserQuestion: Theme]
-User selects: "Earth Tones"
-
-Claude: Gathering authentication feature data with earth-tones theme...
-
-[Runs: cx report feature "authentication" --data --theme earth-tones]
+[Runs: cx report feature "authentication" --data]
+[Runs: cx render diagram.d2 -o diagram.svg --theme 103]
 
 Found 12 relevant entities. Extracting call flow diagram...
 
