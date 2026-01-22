@@ -774,7 +774,12 @@ func (e *KotlinExtractor) extractImport(node *sitter.Node) *Entity {
 	alias := ""
 	asNode := findChildByType(node, "import_alias")
 	if asNode != nil {
-		aliasId := findChildByType(asNode, "simple_identifier")
+		// Tree-sitter Kotlin uses type_identifier for the alias name
+		aliasId := findChildByType(asNode, "type_identifier")
+		if aliasId == nil {
+			// Fallback to simple_identifier for compatibility
+			aliasId = findChildByType(asNode, "simple_identifier")
+		}
 		if aliasId != nil {
 			alias = e.nodeText(aliasId)
 		}

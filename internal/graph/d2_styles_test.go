@@ -137,54 +137,44 @@ func TestGetD2EdgeStyle(t *testing.T) {
 }
 
 func TestGetD2Icon(t *testing.T) {
+	// Icons are disabled because Terrastruct icon service returns 403 (as of 2026-01)
+	// All entity types should return empty icons
 	tests := []struct {
 		entityType string
-		wantPrefix string
 	}{
-		{"function", "https://icons.terrastruct.com/"},
-		{"method", "https://icons.terrastruct.com/"},
-		{"database", "https://icons.terrastruct.com/"},
-		{"unknown", ""},
+		{"function"},
+		{"method"},
+		{"database"},
+		{"unknown"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.entityType, func(t *testing.T) {
 			icon := GetD2Icon(tt.entityType)
-			if tt.wantPrefix == "" {
-				if icon != "" {
-					t.Errorf("Expected empty icon for %v, got %v", tt.entityType, icon)
-				}
-			} else {
-				if !strings.HasPrefix(string(icon), tt.wantPrefix) {
-					t.Errorf("Icon for %v = %v, want prefix %v", tt.entityType, icon, tt.wantPrefix)
-				}
+			if icon != "" {
+				t.Errorf("Expected empty icon for %v (icons disabled), got %v", tt.entityType, icon)
 			}
 		})
 	}
 }
 
 func TestGetD2LanguageIcon(t *testing.T) {
+	// Icons are disabled because Terrastruct icon service returns 403 (as of 2026-01)
+	// All languages should return empty icons
 	tests := []struct {
-		language   string
-		wantSuffix string
+		language string
 	}{
-		{"go", "go.svg"},
-		{"typescript", "typescript.svg"},
-		{"python", "python.svg"},
-		{"unknown", ""},
+		{"go"},
+		{"typescript"},
+		{"python"},
+		{"unknown"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.language, func(t *testing.T) {
 			icon := GetD2LanguageIcon(tt.language)
-			if tt.wantSuffix == "" {
-				if icon != "" {
-					t.Errorf("Expected empty icon for %v, got %v", tt.language, icon)
-				}
-			} else {
-				if !strings.HasSuffix(string(icon), tt.wantSuffix) {
-					t.Errorf("Icon for %v = %v, want suffix %v", tt.language, icon, tt.wantSuffix)
-				}
+			if icon != "" {
+				t.Errorf("Expected empty icon for %v (icons disabled), got %v", tt.language, icon)
 			}
 		})
 	}

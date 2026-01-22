@@ -250,6 +250,8 @@ func TestEnsureDaemonResult(t *testing.T) {
 }
 
 func TestEnsureDaemonWithExistingDaemon(t *testing.T) {
+	// Daemon auto-spawn is disabled due to spawn storm bug (see cortex-6uc).
+	// This test verifies that EnsureDaemon returns an error when WithFallback is false.
 	tmpDir, err := os.MkdirTemp("", "cx-client-test-*")
 	if err != nil {
 		t.Fatalf("create temp dir: %v", err)
@@ -258,30 +260,6 @@ func TestEnsureDaemonWithExistingDaemon(t *testing.T) {
 
 	socketPath := filepath.Join(tmpDir, "test.sock")
 
-	// Start a mock daemon
-	handler := func(req *Request) *Response {
-		if req.Type == RequestTypeHealth {
-			return &Response{
-				Success: true,
-				Data: map[string]interface{}{
-					"healthy": true,
-					"pid":     float64(os.Getpid()),
-				},
-			}
-		}
-		return &Response{Success: true}
-	}
-
-	sock, err := NewSocket(socketPath, handler)
-	if err != nil {
-		t.Fatalf("create socket: %v", err)
-	}
-	if err := sock.Start(); err != nil {
-		t.Fatalf("start socket: %v", err)
-	}
-	defer sock.Stop()
-
-	// EnsureDaemon should connect to existing daemon
 	opts := EnsureDaemonOptions{
 		SocketPath:   socketPath,
 		PIDPath:      filepath.Join(tmpDir, "test.pid"),
@@ -289,22 +267,10 @@ func TestEnsureDaemonWithExistingDaemon(t *testing.T) {
 		WithFallback: false,
 	}
 
-	result, err := EnsureDaemon(opts)
-	if err != nil {
-		t.Fatalf("EnsureDaemon: %v", err)
-	}
-
-	if result.Client == nil {
-		t.Error("Client should not be nil")
-	}
-	if result.WasStarted {
-		t.Error("WasStarted should be false for existing daemon")
-	}
-	if result.UsingFallback {
-		t.Error("UsingFallback should be false")
-	}
-	if result.PID != os.Getpid() {
-		t.Errorf("PID expected %d, got %d", os.Getpid(), result.PID)
+	// With daemon disabled, EnsureDaemon should return an error when WithFallback is false
+	_, err = EnsureDaemon(opts)
+	if err == nil {
+		t.Error("EnsureDaemon should return error when daemon is disabled and WithFallback is false")
 	}
 }
 

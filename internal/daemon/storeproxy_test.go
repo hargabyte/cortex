@@ -9,8 +9,9 @@ import (
 func TestDefaultStoreProviderOptions(t *testing.T) {
 	opts := DefaultStoreProviderOptions()
 
-	if !opts.UseDaemon {
-		t.Error("UseDaemon should be true by default")
+	// UseDaemon is disabled due to spawn storm bug (see cortex-6uc)
+	if opts.UseDaemon {
+		t.Error("UseDaemon should be false by default (daemon disabled due to spawn storm bug)")
 	}
 
 	if opts.RequireDaemon {

@@ -172,8 +172,8 @@ func TestD2Generator_Generate_ArchitectureDiagram(t *testing.T) {
 	result := gen.Generate(entities, deps)
 
 	// Check module containers
-	if !strings.Contains(result, "# Modules") {
-		t.Error("expected modules section")
+	if !strings.Contains(result, "# Module Layers") {
+		t.Error("expected module layers section")
 	}
 
 	// Check container styling
@@ -182,8 +182,8 @@ func TestD2Generator_Generate_ArchitectureDiagram(t *testing.T) {
 	}
 
 	// Check connections section
-	if !strings.Contains(result, "# Connections") {
-		t.Error("expected connections section")
+	if !strings.Contains(result, "# Flow Connections") {
+		t.Error("expected flow connections section")
 	}
 }
 
@@ -256,9 +256,10 @@ func TestD2Generator_Generate_CoverageDiagram(t *testing.T) {
 		t.Error("expected coverage percentage in label")
 	}
 
-	// Check important entity with low coverage gets warning icon
-	if !strings.Contains(result, "warning") {
-		t.Error("expected warning icon for keystone with low coverage")
+	// Check important entity gets emphasized styling (stroke-width/shadow)
+	// Note: Warning icons are disabled due to Terrastruct service returning 403
+	if !strings.Contains(result, "stroke-width: 3") {
+		t.Error("expected keystone entity to have emphasized stroke")
 	}
 }
 
@@ -287,9 +288,11 @@ func TestD2Generator_NodeStyling(t *testing.T) {
 			wantInStyle: "shadow: true",
 		},
 		{
-			name:       "with language icon",
+			// Icons are disabled due to Terrastruct service returning 403
+			// Language icon would normally appear here; testing that entity renders without icon
+			name:       "with language (icon disabled)",
 			entity:     DiagramEntity{ID: "fn", Type: "function", Language: "go"},
-			wantInStyle: "icon:",
+			wantInStyle: "fill:", // Still has styling even without icon
 		},
 	}
 
@@ -361,6 +364,10 @@ func TestD2Generator_SanitizeID(t *testing.T) {
 }
 
 func TestD2Generator_WithIcons(t *testing.T) {
+	// Note: Icons are disabled due to Terrastruct service returning 403 (as of 2026-01).
+	// The icon maps are empty, so no icons are generated even when ShowIcons is true.
+	// When icons are re-enabled, update these tests to check for actual icon output.
+
 	t.Run("icons enabled", func(t *testing.T) {
 		gen := NewD2Generator(&DiagramConfig{
 			Type:      DiagramDeps,
@@ -371,8 +378,9 @@ func TestD2Generator_WithIcons(t *testing.T) {
 		}
 		result := gen.Generate(entities, nil)
 
-		if !strings.Contains(result, "icon:") {
-			t.Error("expected icon when ShowIcons is true")
+		// Icons are currently disabled; verify output still renders correctly
+		if !strings.Contains(result, "fn:") {
+			t.Error("expected entity to render")
 		}
 	})
 

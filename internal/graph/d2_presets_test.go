@@ -11,8 +11,9 @@ func TestArchitecturePreset(t *testing.T) {
 	if cfg.Type != DiagramArchitecture {
 		t.Errorf("expected DiagramArchitecture, got %v", cfg.Type)
 	}
-	if cfg.Layout != "tala" {
-		t.Errorf("expected tala layout, got %s", cfg.Layout)
+	// ELK is used instead of TALA (ELK handles containers well and is bundled with D2)
+	if cfg.Layout != "elk" {
+		t.Errorf("expected elk layout, got %s", cfg.Layout)
 	}
 	if cfg.Direction != "right" {
 		t.Errorf("expected right direction, got %s", cfg.Direction)
@@ -244,8 +245,8 @@ func TestArchitecturePresetGeneratesDiagram(t *testing.T) {
 	}
 
 	// Check for connections section
-	if !strings.Contains(result, "# Connections") {
-		t.Error("expected connections section")
+	if !strings.Contains(result, "# Flow Connections") {
+		t.Error("expected flow connections section")
 	}
 }
 
