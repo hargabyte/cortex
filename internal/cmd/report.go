@@ -723,6 +723,13 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
     }
     
     function toggleHeatmap() {
+      // Check if we have real coverage data
+      const hasCoverage = (reportData.keystones || []).some(k => k.coverage >= 0);
+      if (!hasCoverage) {
+        alert('No coverage data available.\\n\\nTo enable the coverage heatmap:\\n1. Run: go test -coverprofile=coverage.out ./...\\n2. Run: cx coverage import coverage.out\\n3. Regenerate this playground');
+        return;
+      }
+      
       state.heatmapEnabled = !state.heatmapEnabled;
       document.getElementById('heatmap-btn').classList.toggle('active', state.heatmapEnabled);
       if (state.heatmapEnabled) applyHeatmap();
@@ -730,26 +737,44 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
     }
     
     function applyHeatmap() {
+      // Build coverage map from keystones
+      const coverageMap = {};
+      (reportData.keystones || []).forEach(k => {
+        if (k.coverage >= 0) coverageMap[k.name] = k.coverage;
+      });
+      
       const container = document.getElementById('svg-' + state.currentPreset);
       if (!container) return;
-      const rects = container.querySelectorAll('rect');
-      rects.forEach(rect => {
-        // Simulate coverage coloring (would use real data in production)
-        const colors = ['#e74c3c', '#f39c12', '#2ecc71'];
-        const color = colors[Math.floor(Math.random() * 3)];
-        rect.dataset.originalFill = rect.getAttribute('fill');
-        rect.setAttribute('fill', color);
+      
+      // Find text elements and color their parent rects
+      const textElems = container.querySelectorAll('text');
+      textElems.forEach(text => {
+        const name = text.textContent?.trim();
+        const coverage = coverageMap[name];
+        if (coverage !== undefined) {
+          const parent = text.closest('g');
+          if (parent) {
+            const rect = parent.querySelector('rect');
+            if (rect) {
+              rect.dataset.originalFill = rect.getAttribute('fill');
+              // Color by coverage: red < 50, yellow 50-80, green 80+
+              let color;
+              if (coverage < 50) color = '#e74c3c';
+              else if (coverage < 80) color = '#f39c12';
+              else color = '#2ecc71';
+              rect.setAttribute('fill', color);
+            }
+          }
+        }
       });
     }
     
     function removeHeatmap() {
       const container = document.getElementById('svg-' + state.currentPreset);
       if (!container) return;
-      const rects = container.querySelectorAll('rect');
+      const rects = container.querySelectorAll('rect[data-original-fill]');
       rects.forEach(rect => {
-        if (rect.dataset.originalFill) {
-          rect.setAttribute('fill', rect.dataset.originalFill);
-        }
+        rect.setAttribute('fill', rect.dataset.originalFill);
       });
     }
     
