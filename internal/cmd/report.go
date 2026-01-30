@@ -394,6 +394,26 @@ func outputReportData(data interface{}) error {
 
 // outputPlaygroundHTML generates a visual HTML playground with embedded diagram
 func outputPlaygroundHTML(data interface{}) error {
+	// Check for coverage data and warn if missing
+	if overviewData, ok := data.(*report.OverviewReportData); ok {
+		hasCoverage := false
+		for _, k := range overviewData.Keystones {
+			if k.Coverage >= 0 {
+				hasCoverage = true
+				break
+			}
+		}
+		if !hasCoverage {
+			fmt.Fprintln(os.Stderr, "")
+			fmt.Fprintln(os.Stderr, "⚠️  No coverage data available for heatmap feature.")
+			fmt.Fprintln(os.Stderr, "   To enable coverage heatmap, run:")
+			fmt.Fprintln(os.Stderr, "     go test -coverprofile=coverage.out ./...")
+			fmt.Fprintln(os.Stderr, "     cx coverage import coverage.out")
+			fmt.Fprintln(os.Stderr, "   Then regenerate this playground. (Tests may take 2-3 minutes)")
+			fmt.Fprintln(os.Stderr, "")
+		}
+	}
+
 	// Convert data to JSON for embedding
 	jsonData, err := json.Marshal(data)
 	if err != nil {
@@ -726,7 +746,14 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
       // Check if we have real coverage data
       const hasCoverage = (reportData.keystones || []).some(k => k.coverage >= 0);
       if (!hasCoverage) {
-        alert('No coverage data available.\\n\\nTo enable the coverage heatmap:\\n1. Run: go test -coverprofile=coverage.out ./...\\n2. Run: cx coverage import coverage.out\\n3. Regenerate this playground');
+        const prompt = 'Please generate coverage data for the Cortex playground. Run the test suite with coverage profiling and import it into the database, then regenerate the playground HTML.';
+        if (confirm('No coverage data available.\\n\\nWould you like to copy a prompt to ask Claude to generate coverage data?\\n\\n(This may take 2-3 minutes to run tests)')) {
+          navigator.clipboard.writeText(prompt).then(() => {
+            alert('Prompt copied! Paste it to Claude to generate coverage data.');
+          }).catch(() => {
+            alert('Copy this prompt to Claude:\\n\\n' + prompt);
+          });
+        }
         return;
       }
       
