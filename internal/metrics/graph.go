@@ -1,76 +1,5 @@
 package metrics
 
-import (
-	"github.com/anthropics/cx/internal/bd"
-)
-
-// BuildDependencyGraph builds a graph from beads dependencies.
-// Returns: map[entityID][]outgoingEntityIDs where an edge from A to B
-// means A depends on B (A calls B, A uses type from B, etc.)
-//
-// This function reads .beads/issues.jsonl directly for O(1) performance
-// instead of making O(N) subprocess calls to `bd dep list`.
-func BuildDependencyGraph(client *bd.Client, entityIDs []string) (map[string][]string, error) {
-	graph := make(map[string][]string)
-
-	// Create a set of entity IDs for fast lookup
-	entitySet := make(map[string]struct{}, len(entityIDs))
-	for _, id := range entityIDs {
-		entitySet[id] = struct{}{}
-		graph[id] = []string{} // Initialize all entities with empty slice
-	}
-
-	// Read all dependencies from JSONL in one pass
-	allDeps, err := client.ReadAllDependenciesFromJSONL()
-	if err != nil {
-		// Fall back to N+1 queries if JSONL read fails
-		return buildDependencyGraphFallback(client, entityIDs)
-	}
-
-	// Build graph from pre-loaded dependencies
-	for _, id := range entityIDs {
-		deps, exists := allDeps[id]
-		if !exists {
-			continue
-		}
-
-		targets := make([]string, 0)
-		for _, dep := range deps {
-			// Include code dependency types
-			if isCodeDependency(dep.DepType) {
-				targets = append(targets, dep.ToID)
-			}
-		}
-		graph[id] = targets
-	}
-
-	return graph, nil
-}
-
-// buildDependencyGraphFallback is the original O(N) implementation
-// used as a fallback if JSONL reading fails.
-func buildDependencyGraphFallback(client *bd.Client, entityIDs []string) (map[string][]string, error) {
-	graph := make(map[string][]string)
-
-	for _, id := range entityIDs {
-		deps, err := client.ListDependencies(id)
-		if err != nil {
-			graph[id] = []string{}
-			continue
-		}
-
-		targets := make([]string, 0)
-		for _, dep := range deps {
-			if isCodeDependency(dep.DepType) {
-				targets = append(targets, dep.ToID)
-			}
-		}
-		graph[id] = targets
-	}
-
-	return graph, nil
-}
-
 // isCodeDependency returns true if the dependency type represents a code relationship
 func isCodeDependency(depType string) bool {
 	switch depType {
@@ -79,31 +8,6 @@ func isCodeDependency(depType string) bool {
 	default:
 		return false
 	}
-}
-
-// BuildDependencyGraphFromDeps builds a graph directly from a list of dependencies.
-// This is useful when you already have the dependencies loaded.
-func BuildDependencyGraphFromDeps(deps []bd.Dependency) map[string][]string {
-	graph := make(map[string][]string)
-
-	for _, dep := range deps {
-		if !isCodeDependency(dep.DepType) {
-			continue
-		}
-
-		// Ensure both nodes exist in the graph
-		if _, exists := graph[dep.FromID]; !exists {
-			graph[dep.FromID] = []string{}
-		}
-		if _, exists := graph[dep.ToID]; !exists {
-			graph[dep.ToID] = []string{}
-		}
-
-		// Add edge from source to target
-		graph[dep.FromID] = append(graph[dep.FromID], dep.ToID)
-	}
-
-	return graph
 }
 
 // ComputeInOutDegree calculates in-degree and out-degree for each node.
@@ -200,14 +104,14 @@ func FindLeaves(graph map[string][]string) []string {
 
 // GraphStats contains statistics about a dependency graph
 type GraphStats struct {
-	NodeCount   int     `json:"node_count"`
-	EdgeCount   int     `json:"edge_count"`
-	AvgInDegree float64 `json:"avg_in_degree"`
-	MaxInDegree int     `json:"max_in_degree"`
-	MaxOutDegree int    `json:"max_out_degree"`
-	RootCount   int     `json:"root_count"`
-	LeafCount   int     `json:"leaf_count"`
-	Density     float64 `json:"density"`
+	NodeCount    int     `json:"node_count"`
+	EdgeCount    int     `json:"edge_count"`
+	AvgInDegree  float64 `json:"avg_in_degree"`
+	MaxInDegree  int     `json:"max_in_degree"`
+	MaxOutDegree int     `json:"max_out_degree"`
+	RootCount    int     `json:"root_count"`
+	LeafCount    int     `json:"leaf_count"`
+	Density      float64 `json:"density"`
 }
 
 // ComputeGraphStats calculates statistics for a dependency graph.
