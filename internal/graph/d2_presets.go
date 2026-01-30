@@ -451,34 +451,40 @@ func inferLanguage(filePath string) string {
 func inferLayer(entityType, module string) string {
 	moduleLower := strings.ToLower(module)
 
-	// Infer from module path
-	if strings.Contains(moduleLower, "/api/") || strings.Contains(moduleLower, "/handler") ||
-		strings.Contains(moduleLower, "/http") || strings.Contains(moduleLower, "/rest") {
+	// Cortex-specific module mapping
+	// Parser layer: parsing, extraction, analysis
+	if strings.Contains(moduleLower, "parser") || strings.Contains(moduleLower, "extract") ||
+		strings.Contains(moduleLower, "resolve") || strings.Contains(moduleLower, "semdiff") {
+		return "parser"
+	}
+	// Store layer: persistence, storage
+	if strings.Contains(moduleLower, "store") || strings.Contains(moduleLower, "cache") ||
+		strings.Contains(moduleLower, "db") || strings.Contains(moduleLower, "dolt") {
+		return "store"
+	}
+	// Graph layer: graph operations, metrics
+	if strings.Contains(moduleLower, "graph") || strings.Contains(moduleLower, "metrics") ||
+		strings.Contains(moduleLower, "embeddings") {
+		return "graph"
+	}
+	// Output layer: reporting, output formatting
+	if strings.Contains(moduleLower, "output") || strings.Contains(moduleLower, "report") ||
+		strings.Contains(moduleLower, "coverage") {
+		return "output"
+	}
+	// API layer: commands, daemon, MCP
+	if strings.Contains(moduleLower, "cmd") || strings.Contains(moduleLower, "daemon") ||
+		strings.Contains(moduleLower, "mcp") || strings.Contains(moduleLower, "bd") {
 		return "api"
 	}
-	if strings.Contains(moduleLower, "/store") || strings.Contains(moduleLower, "/db") ||
-		strings.Contains(moduleLower, "/data") || strings.Contains(moduleLower, "/repo") {
-		return "data"
-	}
-	if strings.Contains(moduleLower, "/model") || strings.Contains(moduleLower, "/domain") ||
-		strings.Contains(moduleLower, "/entity") {
-		return "domain"
-	}
-	if strings.Contains(moduleLower, "/service") || strings.Contains(moduleLower, "/pkg") {
-		return "service"
+	// Core layer: config, context, utilities
+	if strings.Contains(moduleLower, "config") || strings.Contains(moduleLower, "context") ||
+		strings.Contains(moduleLower, "diff") || strings.Contains(moduleLower, "exclude") {
+		return "core"
 	}
 
-	// Infer from entity type
-	switch entityType {
-	case "http", "handler":
-		return "api"
-	case "database", "storage":
-		return "data"
-	case "struct", "type", "interface":
-		return "domain"
-	default:
-		return "service"
-	}
+	// Default to core
+	return "core"
 }
 
 // classifyImportanceFromMetrics classifies importance from store.Metrics.
