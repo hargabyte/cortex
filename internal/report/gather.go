@@ -4,6 +4,7 @@ package report
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/anthropics/cx/internal/coverage"
 	"github.com/anthropics/cx/internal/graph"
+	"github.com/anthropics/cx/internal/metrics"
 	"github.com/anthropics/cx/internal/store"
 )
 
@@ -407,14 +409,29 @@ func (g *DataGatherer) gatherStatistics(stats *StatisticsData, metadata *Metadat
 }
 
 // gatherKeystones collects top entities by PageRank.
+// If no metrics exist, it auto-computes them first.
 func (g *DataGatherer) gatherKeystones(keystones *[]EntityData) error {
 	// Get top 20 by PageRank
-	metrics, err := g.store.GetTopByPageRank(20)
+	storedMetrics, err := g.store.GetTopByPageRank(20)
 	if err != nil {
 		return err
 	}
 
-	for _, m := range metrics {
+	// If no metrics exist, compute them automatically
+	if len(storedMetrics) == 0 {
+		if err := g.computeMetricsIfNeeded(); err != nil {
+			// Log but don't fail - just return empty keystones
+			fmt.Fprintf(os.Stderr, "Warning: could not compute metrics: %v\n", err)
+			return nil
+		}
+		// Retry after computing
+		storedMetrics, err = g.store.GetTopByPageRank(20)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, m := range storedMetrics {
 		entity, err := g.store.GetEntity(m.EntityID)
 		if err != nil {
 			continue // Skip if entity not found
@@ -436,6 +453,65 @@ func (g *DataGatherer) gatherKeystones(keystones *[]EntityData) error {
 		*keystones = append(*keystones, entityData)
 	}
 
+	return nil
+}
+
+// computeMetricsIfNeeded computes and stores PageRank metrics for all entities.
+func (g *DataGatherer) computeMetricsIfNeeded() error {
+	// Get all active entities
+	entities, err := g.store.QueryEntities(store.EntityFilter{Status: "active", Limit: 100000})
+	if err != nil {
+		return fmt.Errorf("query entities: %w", err)
+	}
+
+	if len(entities) == 0 {
+		return nil
+	}
+
+	fmt.Fprintf(os.Stderr, "Computing metrics for %d entities...\n", len(entities))
+
+	// Build graph from store
+	graphData, err := graph.BuildFromStore(g.store)
+	if err != nil {
+		return fmt.Errorf("build graph: %w", err)
+	}
+
+	// Create adjacency map
+	adjacency := graphData.Edges
+
+	// Compute PageRank with default config
+	prConfig := metrics.PageRankConfig{
+		Damping:       0.85,
+		MaxIterations: 100,
+		Tolerance:     0.0001,
+	}
+	pagerank := metrics.ComputePageRank(adjacency, prConfig)
+
+	// Compute betweenness
+	betweenness := metrics.ComputeBetweenness(adjacency)
+
+	// Compute degrees
+	inDegree, outDegree := metrics.ComputeInOutDegree(adjacency)
+
+	// Save to store
+	bulkMetrics := make([]*store.Metrics, 0, len(entities))
+	for _, e := range entities {
+		m := &store.Metrics{
+			EntityID:    e.ID,
+			PageRank:    pagerank[e.ID],
+			Betweenness: betweenness[e.ID],
+			InDegree:    inDegree[e.ID],
+			OutDegree:   outDegree[e.ID],
+			ComputedAt:  time.Now(),
+		}
+		bulkMetrics = append(bulkMetrics, m)
+	}
+
+	if err := g.store.SaveBulkMetrics(bulkMetrics); err != nil {
+		return fmt.Errorf("save metrics: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "Metrics computed and saved.\n")
 	return nil
 }
 
