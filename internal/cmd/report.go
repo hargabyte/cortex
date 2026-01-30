@@ -400,31 +400,45 @@ func outputPlaygroundHTML(data interface{}) error {
 		return fmt.Errorf("failed to marshal data to JSON: %w", err)
 	}
 
-	// Try to find an existing architecture SVG in the reports directory
-	svgContent := ""
-	svgPaths := []string{
-		"reports/architecture.svg",
-		".cx/cortex/reports/architecture.svg",
+	// Load SVGs for each preset
+	presets := []string{"full", "core", "store", "parser"}
+	svgMap := make(map[string]string)
+
+	// Map preset names to SVG file names
+	svgFiles := map[string]string{
+		"full":   "architecture.svg",
+		"core":   "architecture_core.svg",
+		"store":  "architecture_store.svg",
+		"parser": "architecture_parser.svg",
 	}
-	for _, path := range svgPaths {
-		content, err := os.ReadFile(path)
-		if err == nil {
-			svgContent = string(content)
-			break
+
+	placeholder := `<svg viewBox="0 0 800 400" style="background:#f8f8f8">
+		<text x="400" y="180" text-anchor="middle" fill="#666" font-size="16">Diagram not rendered yet.</text>
+		<text x="400" y="210" text-anchor="middle" fill="#999" font-size="14">Run the render command to generate SVGs.</text>
+	</svg>`
+
+	for _, preset := range presets {
+		filename := svgFiles[preset]
+		paths := []string{
+			"reports/" + filename,
+			".cx/cortex/reports/" + filename,
 		}
+		svgContent := ""
+		for _, path := range paths {
+			content, err := os.ReadFile(path)
+			if err == nil {
+				svgContent = string(content)
+				break
+			}
+		}
+		if svgContent == "" {
+			svgContent = placeholder
+		}
+		svgMap[preset] = svgContent
 	}
 
-	// If no SVG, use a placeholder with instructions
-	if svgContent == "" {
-		svgContent = `<svg viewBox="0 0 800 400" style="background:#f8f8f8">
-			<text x="400" y="180" text-anchor="middle" fill="#666" font-size="16">Architecture diagram not rendered yet.</text>
-			<text x="400" y="210" text-anchor="middle" fill="#999" font-size="14">Run: cx report overview --data | cx render - -o reports/architecture.svg</text>
-			<text x="400" y="240" text-anchor="middle" fill="#999" font-size="14">Then regenerate this playground.</text>
-		</svg>`
-	}
-
-	// Generate the HTML
-	html := generatePlaygroundHTML(string(jsonData), svgContent)
+	// Generate the HTML with all SVGs
+	html := generatePlaygroundHTML(string(jsonData), svgMap)
 
 	// Determine output destination
 	var out *os.File
@@ -442,9 +456,19 @@ func outputPlaygroundHTML(data interface{}) error {
 	return err
 }
 
-// generatePlaygroundHTML creates the visual playground HTML
-func generatePlaygroundHTML(jsonData, svgContent string) string {
-	return `<!DOCTYPE html>
+// generatePlaygroundHTML creates the visual playground HTML with multiple SVG presets
+func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
+	// Build SVG containers for each preset
+	svgContainers := ""
+	for _, preset := range []string{"full", "core", "store", "parser"} {
+		display := "none"
+		if preset == "full" {
+			display = "block"
+		}
+		svgContainers += fmt.Sprintf(`<div class="svg-preset" id="svg-%s" style="display:%s">%s</div>`, preset, display, svgMap[preset])
+	}
+
+	return fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -479,17 +503,19 @@ func generatePlaygroundHTML(jsonData, svgContent string) string {
     .comment-item { background: #f8f8f8; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; font-size: 0.85rem; }
     .comment-entity { font-weight: 600; color: var(--accent); margin-bottom: 0.25rem; }
     .prompt-section { padding: 1rem 1.25rem; border-top: 1px solid var(--border); background: #fafafa; }
-    .prompt-section textarea { width: 100%; height: 80px; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; font-family: monospace; font-size: 0.75rem; resize: none; margin-bottom: 0.5rem; }
-    .copy-btn { width: 100%; padding: 0.6rem; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+    .prompt-section textarea { width: 100%%; height: 80px; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; font-family: monospace; font-size: 0.75rem; resize: none; margin-bottom: 0.5rem; }
+    .copy-btn { width: 100%%; padding: 0.6rem; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
     .copy-btn:hover { background: #2980b9; }
     .canvas { flex: 1; position: relative; overflow: hidden; background: white; }
     .canvas-toolbar { position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; z-index: 10; }
     .zoom-btn { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 6px; background: white; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
     .zoom-btn:hover { background: #f0f0f0; }
-    .svg-container { width: 100%; height: 100%; overflow: auto; cursor: grab; }
+    .svg-container { width: 100%%; height: 100%%; overflow: auto; cursor: grab; }
     .svg-container:active { cursor: grabbing; }
-    .svg-container svg { display: block; min-width: 100%; min-height: 100%; }
-    .entity-panel { position: absolute; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); padding: 1.5rem; transform: translateY(100%); transition: transform 0.3s ease; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
+    .svg-container svg { display: block; min-width: 100%%; min-height: 100%%; }
+    .svg-preset { width: 100%%; height: 100%%; }
+    .svg-preset svg { width: 100%%; height: auto; }
+    .entity-panel { position: absolute; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); padding: 1.5rem; transform: translateY(100%%); transition: transform 0.3s ease; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
     .entity-panel.visible { transform: translateY(0); }
     .entity-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
     .entity-panel h2 { font-size: 1.2rem; color: var(--accent); }
@@ -505,127 +531,111 @@ func generatePlaygroundHTML(jsonData, svgContent string) string {
 <body>
   <div class="sidebar">
     <div class="sidebar-header"><h1>Cortex Architecture</h1><p>Interactive Playground</p></div>
-    <div class="info-box">Click on any component to add comments. Your comments become part of the generated prompt.</div>
-    <div class="section"><h3>View Presets</h3><div class="preset-grid" id="presets"><button class="preset-btn active" onclick="applyPreset('full')">Full System</button><button class="preset-btn" onclick="applyPreset('core')">Core Only</button><button class="preset-btn" onclick="applyPreset('store')">Data Flow</button><button class="preset-btn" onclick="applyPreset('parser')">Parser</button></div></div>
-    <div class="section"><h3>Visible Layers</h3><div class="toggle-group" id="layers"></div></div>
+    <div class="info-box">Click presets to switch between filtered views. Click components to add comments.</div>
+    <div class="section"><h3>View Presets</h3><div class="preset-grid" id="presets">
+      <button class="preset-btn active" data-preset="full" onclick="applyPreset('full', this)">Full System</button>
+      <button class="preset-btn" data-preset="core" onclick="applyPreset('core', this)">Core Only</button>
+      <button class="preset-btn" data-preset="store" onclick="applyPreset('store', this)">Data Flow</button>
+      <button class="preset-btn" data-preset="parser" onclick="applyPreset('parser', this)">Parser</button>
+    </div></div>
     <div class="section"><h3>Connection Types</h3><div class="legend"><div class="legend-item"><div class="legend-line solid"></div><span>Data Flow</span></div><div class="legend-item"><div class="legend-line dashed"></div><span>Type Dependencies</span></div><div class="legend-item"><div class="legend-line dotted"></div><span>Implements</span></div></div></div>
     <div class="comments-section"><h3>Comments (<span id="comment-count">0</span>)</h3><div id="comments-list"><p style="font-size:0.8rem;color:#999">Click a component to add comments</p></div></div>
     <div class="prompt-section"><textarea id="prompt-output" readonly placeholder="Your observations will appear here..."></textarea><button class="copy-btn" onclick="copyPrompt()">Copy Prompt</button></div>
   </div>
   <div class="canvas">
     <div class="canvas-toolbar"><button class="zoom-btn" onclick="zoomIn()">+</button><button class="zoom-btn" onclick="zoomOut()">−</button><button class="zoom-btn" onclick="resetZoom()">⟲</button></div>
-    <div class="svg-container" id="svg-container">` + svgContent + `</div>
+    <div class="svg-container" id="svg-container">%s</div>
     <div class="entity-panel" id="entity-panel"><div class="entity-panel-header"><h2 id="panel-title">Component Details</h2><button class="close-btn" onclick="closePanel()">×</button></div><div class="entity-details" id="entity-details"></div><button class="comment-input-btn" onclick="addComment()">💬 Add Comment</button></div>
   </div>
   <script>
-    const reportData = ` + jsonData + `;
-    const state = { layers: {}, zoom: 1, comments: [], selectedNode: null };
-    window.onload = function() { initLayers(); makeSVGInteractive(); generatePrompt(); };
-    function initLayers() {
-      const container = document.getElementById('layers');
-      if (!reportData.playground?.layers) return;
-      reportData.playground.layers.forEach(layer => {
-        state.layers[layer.id] = true;
-        const item = document.createElement('label');
-        item.className = 'toggle-item';
-        item.innerHTML = '<input type="checkbox" checked onchange="toggleLayer(\''+layer.id+'\')"><span class="toggle-color" style="background:'+layer.color+'"></span><span class="toggle-label">'+layer.label+'</span>';
-        container.appendChild(item);
-      });
+    const reportData = %s;
+    const state = { currentPreset: 'full', zoom: 1, comments: [], selectedNode: null };
+    
+    window.onload = function() { 
+      makeSVGInteractive(); 
+      generatePrompt(); 
+    };
+    
+    function applyPreset(preset, btn) {
+      // Update button states
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      // Hide all SVG presets, show selected one
+      document.querySelectorAll('.svg-preset').forEach(div => div.style.display = 'none');
+      const target = document.getElementById('svg-' + preset);
+      if (target) target.style.display = 'block';
+      
+      state.currentPreset = preset;
+      makeSVGInteractive();
+      generatePrompt();
     }
+    
     function makeSVGInteractive() {
-      const svg = document.querySelector('#svg-container svg');
+      const container = document.getElementById('svg-' + state.currentPreset);
+      if (!container) return;
+      const svg = container.querySelector('svg');
       if (!svg) return;
+      
       const groups = svg.querySelectorAll('g');
       groups.forEach(g => {
         const rect = g.querySelector('rect');
         const text = g.querySelector('text');
         if (rect && text) {
           g.style.cursor = 'pointer';
-          g.addEventListener('click', (e) => { e.stopPropagation(); selectNode(text.textContent, g); });
-          g.addEventListener('mouseenter', () => { rect.style.filter = 'brightness(1.1)'; });
-          g.addEventListener('mouseleave', () => { rect.style.filter = ''; });
+          g.onclick = (e) => { e.stopPropagation(); selectNode(text.textContent, g); };
+          g.onmouseenter = () => { rect.style.filter = 'brightness(1.1)'; };
+          g.onmouseleave = () => { rect.style.filter = ''; };
         }
       });
     }
+    
     function selectNode(name, element) {
       state.selectedNode = { name, element };
       document.getElementById('panel-title').textContent = name;
       const entity = reportData.keystones?.find(k => k.name === name) || { name };
-      document.getElementById('entity-details').innerHTML = '<div class="detail-card"><div class="detail-label">Name</div><div class="detail-value">'+(entity.name||name)+'</div></div><div class="detail-card"><div class="detail-label">Type</div><div class="detail-value">'+(entity.entity_type||'component')+'</div></div><div class="detail-card"><div class="detail-label">File</div><div class="detail-value"><code>'+(entity.file||'N/A')+'</code></div></div><div class="detail-card"><div class="detail-label">Importance</div><div class="detail-value">'+(entity.importance||'normal')+'</div></div><div class="detail-card"><div class="detail-label">PageRank</div><div class="detail-value">'+(entity.pagerank?.toFixed(4)||'N/A')+'</div></div><div class="detail-card"><div class="detail-label">Connections</div><div class="detail-value">'+(entity.in_degree||0)+' inbound</div></div>';
+      document.getElementById('entity-details').innerHTML = 
+        '<div class="detail-card"><div class="detail-label">Name</div><div class="detail-value">'+(entity.name||name)+'</div></div>'+
+        '<div class="detail-card"><div class="detail-label">Type</div><div class="detail-value">'+(entity.entity_type||'component')+'</div></div>'+
+        '<div class="detail-card"><div class="detail-label">File</div><div class="detail-value"><code>'+(entity.file||'N/A')+'</code></div></div>'+
+        '<div class="detail-card"><div class="detail-label">PageRank</div><div class="detail-value">'+(entity.pagerank?.toFixed(4)||'N/A')+'</div></div>';
       document.getElementById('entity-panel').classList.add('visible');
     }
+    
     function closePanel() { document.getElementById('entity-panel').classList.remove('visible'); state.selectedNode = null; }
-    function toggleLayer(id) { 
-      state.layers[id] = !state.layers[id]; 
-      applyFilters();
-      generatePrompt(); 
-    }
-    function applyPreset(preset) { 
-      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active')); 
-      event.target.classList.add('active');
-      // Define preset configurations
-      const presets = {
-        'full': ['core', 'api', 'store', 'parser', 'graph', 'output'],
-        'core': ['core', 'parser'],
-        'store': ['store', 'core'],
-        'parser': ['parser', 'core']
-      };
-      const visibleLayers = presets[preset] || presets['full'];
-      // Update layer visibility
-      Object.keys(state.layers).forEach(id => {
-        state.layers[id] = visibleLayers.includes(id);
-      });
-      // Update checkboxes
-      document.querySelectorAll('#layers input[type=checkbox]').forEach((cb, i) => {
-        const layerId = reportData.playground?.layers?.[i]?.id;
-        if (layerId) cb.checked = state.layers[layerId];
-      });
-      applyFilters();
-      generatePrompt();
-    }
-    function applyFilters() {
-      // Try to filter SVG elements by module name
-      const svg = document.querySelector('#svg-container svg');
-      if (!svg) return;
-      const groups = svg.querySelectorAll('g[id]');
-      groups.forEach(g => {
-        const id = g.id || '';
-        // Check if this group matches any visible layer
-        let visible = true;
-        for (const [layer, isVisible] of Object.entries(state.layers)) {
-          if (id.toLowerCase().includes(layer.toLowerCase())) {
-            visible = isVisible;
-            break;
-          }
-        }
-        g.style.opacity = visible ? '1' : '0.15';
-      });
-    }
+    
     function addComment() {
       if (!state.selectedNode) return;
       const text = prompt('Add comment for '+state.selectedNode.name+':');
       if (text) { state.comments.push({ entity: state.selectedNode.name, text }); updateCommentsList(); generatePrompt(); }
     }
+    
     function updateCommentsList() {
       const list = document.getElementById('comments-list');
       document.getElementById('comment-count').textContent = state.comments.length;
       if (state.comments.length === 0) { list.innerHTML = '<p style="font-size:0.8rem;color:#999">Click a component to add comments</p>'; return; }
-      list.innerHTML = state.comments.map((c, i) => '<div class="comment-item"><div class="comment-entity">'+c.entity+'</div><div>'+c.text+'</div></div>').join('');
+      list.innerHTML = state.comments.map(c => '<div class="comment-item"><div class="comment-entity">'+c.entity+'</div><div>'+c.text+'</div></div>').join('');
     }
+    
     function generatePrompt() {
-      const visibleLayers = Object.entries(state.layers).filter(([,v])=>v).map(([k])=>k);
-      let p = '# Cortex Architecture Analysis\\n\\n**Generated:** '+(reportData.report?.generated_at||'Unknown')+'\\n**Visible Layers:** '+visibleLayers.join(', ')+'\\n\\n';
-      if (state.comments.length > 0) { p += '## Observations\\n\\n'; state.comments.forEach(c => { p += '### '+c.entity+'\\n'+c.text+'\\n\\n'; }); }
-      p += '## Top Components\\n'; (reportData.keystones||[]).slice(0,5).forEach(k => { p += '- **'+k.name+'** ('+k.entity_type+') - PR: '+k.pagerank?.toFixed(4)+'\\n'; });
+      let p = '# Cortex Architecture Analysis\n\n**Preset:** '+state.currentPreset+'\n**Generated:** '+(reportData.report?.generated_at||'Unknown')+'\n\n';
+      if (state.comments.length > 0) { p += '## Observations\n\n'; state.comments.forEach(c => { p += '### '+c.entity+'\n'+c.text+'\n\n'; }); }
+      p += '## Top Components\n'; (reportData.keystones||[]).slice(0,5).forEach(k => { p += '- **'+k.name+'** ('+k.entity_type+')\n'; });
       document.getElementById('prompt-output').value = p;
     }
+    
     function copyPrompt() { const t = document.getElementById('prompt-output'); t.select(); document.execCommand('copy'); event.target.textContent = '✓ Copied!'; setTimeout(() => event.target.textContent = 'Copy Prompt', 2000); }
     function zoomIn() { state.zoom *= 1.2; applyZoom(); }
     function zoomOut() { state.zoom /= 1.2; applyZoom(); }
     function resetZoom() { state.zoom = 1; applyZoom(); }
-    function applyZoom() { const svg = document.querySelector('#svg-container svg'); if (svg) svg.style.transform = 'scale('+state.zoom+')'; }
+    function applyZoom() { 
+      const container = document.getElementById('svg-' + state.currentPreset);
+      if (!container) return;
+      const svg = container.querySelector('svg'); 
+      if (svg) svg.style.transform = 'scale('+state.zoom+')'; 
+    }
   </script>
 </body>
-</html>`
+</html>`, svgContainers, jsonData)
 }
 

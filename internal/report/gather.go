@@ -520,12 +520,13 @@ func (g *DataGatherer) gatherHealthSummary(health *HealthSummary) error {
 // gatherArchitectureDiagram generates the architecture diagram for overview reports.
 // It uses the ArchitecturePreset from the graph package to create a D2 diagram
 // showing modules as containers with top entities inside and inter-module edges.
+// When playground mode is enabled, generates multiple filtered diagrams for presets.
 func (g *DataGatherer) gatherArchitectureDiagram(data *OverviewReportData) error {
 	if data.Diagrams == nil {
 		data.Diagrams = make(map[string]DiagramData)
 	}
 
-	// Use the architecture preset to build the diagram with optional theme
+	// Always generate the full architecture diagram
 	d2Code, err := graph.BuildArchitectureDiagram(g.store, "System Architecture", 50, g.theme)
 	if err != nil {
 		return fmt.Errorf("build architecture diagram: %w", err)
@@ -534,6 +535,33 @@ func (g *DataGatherer) gatherArchitectureDiagram(data *OverviewReportData) error
 	data.Diagrams["architecture"] = DiagramData{
 		Title: "System Architecture",
 		D2:    d2Code,
+	}
+
+	// In playground mode, generate additional filtered diagrams for presets
+	if g.playgroundMode {
+		presets := map[string][]string{
+			"architecture_core":   {"core", "parser"},
+			"architecture_store":  {"store", "core"},
+			"architecture_parser": {"parser", "core"},
+		}
+
+		for key, layers := range presets {
+			filteredD2, err := graph.BuildFilteredArchitectureDiagram(
+				g.store,
+				"System Architecture",
+				50,
+				layers,
+				g.theme,
+			)
+			if err != nil {
+				// Skip this preset if it fails, don't fail the whole report
+				continue
+			}
+			data.Diagrams[key] = DiagramData{
+				Title: "System Architecture",
+				D2:    filteredD2,
+			}
+		}
 	}
 
 	return nil

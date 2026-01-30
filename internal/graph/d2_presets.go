@@ -212,6 +212,97 @@ func BuildArchitectureDiagram(s *store.Store, title string, maxEntities int, the
 	return gen.Generate(entities, deps), nil
 }
 
+// BuildFilteredArchitectureDiagram creates a D2 architecture diagram filtered by layers.
+// allowedLayers specifies which layers to include (e.g., ["core", "parser"]).
+// If allowedLayers is empty or nil, all layers are included.
+func BuildFilteredArchitectureDiagram(s *store.Store, title string, maxEntities int, allowedLayers []string, theme ...string) (string, error) {
+	config := ArchitecturePreset()
+	config.Title = title
+	if maxEntities > 0 {
+		config.MaxNodes = maxEntities
+	}
+	if len(theme) > 0 && theme[0] != "" {
+		config.Theme = theme[0]
+	}
+
+	// Build layer filter map
+	layerFilter := make(map[string]bool)
+	for _, l := range allowedLayers {
+		layerFilter[strings.ToLower(l)] = true
+	}
+	filterByLayer := len(layerFilter) > 0
+
+	// Query top entities by PageRank (get more to account for filtering)
+	queryLimit := config.MaxNodes
+	if filterByLayer {
+		queryLimit = config.MaxNodes * 3 // Get more to have enough after filtering
+	}
+	topMetrics, err := s.GetTopByPageRank(queryLimit)
+	if err != nil {
+		return "", err
+	}
+
+	// Build entity map and list
+	entities := make([]DiagramEntity, 0, len(topMetrics))
+	entityIDs := make(map[string]bool)
+
+	for _, m := range topMetrics {
+		if len(entities) >= config.MaxNodes {
+			break
+		}
+
+		entity, err := s.GetEntity(m.EntityID)
+		if err != nil {
+			continue
+		}
+
+		module := extractModuleFromPath(entity.FilePath)
+		layer := inferLayer(entity.EntityType, module)
+
+		// Apply layer filter
+		if filterByLayer && !layerFilter[strings.ToLower(layer)] {
+			continue
+		}
+
+		diagramEntity := DiagramEntity{
+			ID:         entity.ID,
+			Name:       entity.Name,
+			Type:       entity.EntityType,
+			Importance: classifyImportanceFromMetrics(m),
+			Coverage:   -1.0,
+			Language:   inferLanguage(entity.FilePath),
+			Module:     module,
+			Layer:      layer,
+		}
+
+		entities = append(entities, diagramEntity)
+		entityIDs[entity.ID] = true
+	}
+
+	// Get dependencies between these entities
+	deps := make([]DiagramEdge, 0)
+	for _, entity := range entities {
+		fromDeps, err := s.GetDependenciesFrom(entity.ID)
+		if err != nil {
+			continue
+		}
+
+		for _, dep := range fromDeps {
+			if entityIDs[dep.ToID] {
+				deps = append(deps, DiagramEdge{
+					From:  dep.FromID,
+					To:    dep.ToID,
+					Type:  dep.DepType,
+					Label: "",
+				})
+			}
+		}
+	}
+
+	gen := NewD2Generator(config)
+	return gen.Generate(entities, deps), nil
+}
+
 // BuildModuleArchitectureDiagram creates a D2 architecture diagram focused on modules.
 // It collapses entities into their modules and shows inter-module relationships.
 func BuildModuleArchitectureDiagram(s *store.Store, title string) (string, error) {
