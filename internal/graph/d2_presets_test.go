@@ -151,25 +151,38 @@ func TestInferLanguage(t *testing.T) {
 }
 
 func TestInferLayer(t *testing.T) {
+	// Tests for Cortex-specific layer inference
 	tests := []struct {
 		entityType string
 		module     string
 		want       string
 	}{
-		{"function", "internal/api/handlers", "api"},
-		{"function", "internal/handler", "api"},
-		{"function", "internal/http", "api"},
-		{"function", "internal/store", "data"},
-		{"function", "internal/db", "data"},
-		{"function", "internal/repo", "data"},
-		{"struct", "internal/model", "domain"},
-		{"struct", "internal/domain", "domain"},
-		{"function", "internal/service", "service"},
-		{"function", "internal/pkg", "service"},
-		{"http", "internal/foo", "api"},
-		{"database", "internal/foo", "data"},
-		{"struct", "internal/foo", "domain"},
-		{"function", "internal/foo", "service"},
+		// Parser layer
+		{"function", "internal/parser", "parser"},
+		{"function", "internal/extract", "parser"},
+		{"function", "internal/resolve", "parser"},
+		{"function", "internal/semdiff", "parser"},
+		// Store layer
+		{"function", "internal/store", "store"},
+		{"function", "internal/cache", "store"},
+		// Graph layer
+		{"function", "internal/graph", "graph"},
+		{"function", "internal/metrics", "graph"},
+		{"function", "internal/embeddings", "graph"},
+		// Output layer
+		{"function", "internal/output", "output"},
+		{"function", "internal/report", "output"},
+		{"function", "internal/coverage", "output"},
+		// API layer
+		{"function", "internal/cmd", "api"},
+		{"function", "internal/daemon", "api"},
+		{"function", "internal/mcp", "api"},
+		{"function", "internal/bd", "api"},
+		// Core layer (default)
+		{"function", "internal/config", "core"},
+		{"function", "internal/context", "core"},
+		{"function", "internal/diff", "core"},
+		{"function", "internal/foo", "core"},
 	}
 
 	for _, tt := range tests {
