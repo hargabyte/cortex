@@ -540,6 +540,7 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
     /* Selection ring animation */
     @keyframes pulse-ring { 0%% { transform: scale(1); opacity: 0.8; } 100%% { transform: scale(1.5); opacity: 0; } }
     .selection-ring { position: absolute; border: 3px solid var(--accent); border-radius: 50%%; pointer-events: none; animation: pulse-ring 0.6s ease-out forwards; }
+    .node-selected { stroke: var(--accent) !important; stroke-width: 3px !important; filter: drop-shadow(0 0 6px var(--accent)) !important; }
     /* Entity panel */
     .entity-panel { position: absolute; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); padding: 1.25rem; transform: translateY(100%%); transition: transform 0.3s ease; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
     .entity-panel.visible { transform: translateY(0); }
@@ -611,6 +612,8 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
       zoom: 1, 
       feedback: [], 
       selectedNode: null,
+      selectedNodes: [],      // Multi-select support
+      lastSelectedIndex: -1,  // For Shift+click range selection
       heatmapEnabled: false
     };
     
@@ -681,6 +684,47 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
     }
     
     function selectNode(name, element, event) {
+      const allNodes = getAllNodeElements();
+      const nodeIndex = allNodes.findIndex(n => n.name === name);
+      
+      // Multi-select with Ctrl+click
+      if (event.ctrlKey || event.metaKey) {
+        const existingIndex = state.selectedNodes.findIndex(n => n.name === name);
+        if (existingIndex >= 0) {
+          // Deselect if already selected
+          state.selectedNodes.splice(existingIndex, 1);
+          element.querySelector('rect')?.classList.remove('node-selected');
+        } else {
+          // Add to selection
+          state.selectedNodes.push({ name, element });
+          element.querySelector('rect')?.classList.add('node-selected');
+        }
+        state.lastSelectedIndex = nodeIndex;
+      }
+      // Range select with Shift+click
+      else if (event.shiftKey && state.lastSelectedIndex >= 0) {
+        const start = Math.min(state.lastSelectedIndex, nodeIndex);
+        const end = Math.max(state.lastSelectedIndex, nodeIndex);
+        // Clear previous selection
+        clearAllSelections();
+        state.selectedNodes = [];
+        // Select range
+        for (let i = start; i <= end; i++) {
+          if (allNodes[i]) {
+            state.selectedNodes.push(allNodes[i]);
+            allNodes[i].element.querySelector('rect')?.classList.add('node-selected');
+          }
+        }
+      }
+      // Normal click - single select
+      else {
+        clearAllSelections();
+        state.selectedNodes = [{ name, element }];
+        element.querySelector('rect')?.classList.add('node-selected');
+        state.lastSelectedIndex = nodeIndex;
+      }
+      
+      // Always set selectedNode to most recent for feedback
       state.selectedNode = { name, element };
       
       // Show selection ring animation
@@ -694,20 +738,66 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
       document.body.appendChild(ring);
       setTimeout(() => ring.remove(), 600);
       
-      // Update panel
-      document.getElementById('panel-title').textContent = name;
-      const entity = reportData.keystones?.find(k => k.name === name) || { name };
-      document.getElementById('entity-details').innerHTML = 
-        '<div class="detail-item"><span>Type:</span> '+(entity.entity_type||'component')+'</div>'+
-        '<div class="detail-item"><span>File:</span> <code>'+(entity.file||'N/A')+'</code></div>'+
-        '<div class="detail-item"><span>PageRank:</span> '+(entity.pagerank?.toFixed(4)||'N/A')+'</div>'+
-        '<div class="detail-item"><span>In-degree:</span> '+(entity.in_degree||0)+'</div>';
+      // Update panel with selection info
+      updateSelectionPanel();
+    }
+    
+    function getAllNodeElements() {
+      const container = document.getElementById('svg-' + state.currentPreset);
+      if (!container) return [];
+      const svg = container.querySelector('svg');
+      if (!svg) return [];
+      const nodes = [];
+      svg.querySelectorAll('g').forEach(g => {
+        const text = g.querySelector('text');
+        if (text) nodes.push({ name: text.textContent, element: g });
+      });
+      return nodes;
+    }
+    
+    function clearAllSelections() {
+      state.selectedNodes.forEach(n => {
+        n.element.querySelector('rect')?.classList.remove('node-selected');
+      });
+    }
+    
+    function updateSelectionPanel() {
+      const count = state.selectedNodes.length;
+      if (count === 0) {
+        document.getElementById('entity-panel').classList.remove('visible');
+        return;
+      }
+      
+      if (count === 1) {
+        const name = state.selectedNodes[0].name;
+        document.getElementById('panel-title').textContent = name;
+        const entity = reportData.keystones?.find(k => k.name === name) || { name };
+        document.getElementById('entity-details').innerHTML = 
+          '<div class="detail-item"><span>Type:</span> '+(entity.entity_type||'component')+'</div>'+
+          '<div class="detail-item"><span>File:</span> <code>'+(entity.file||'N/A')+'</code></div>'+
+          '<div class="detail-item"><span>PageRank:</span> '+(entity.pagerank?.toFixed(4)||'N/A')+'</div>'+
+          '<div class="detail-item"><span>In-degree:</span> '+(entity.in_degree||0)+'</div>';
+      } else {
+        document.getElementById('panel-title').textContent = count + ' entities selected';
+        const names = state.selectedNodes.map(n => n.name);
+        document.getElementById('entity-details').innerHTML = 
+          '<div class="detail-item"><span>Selected:</span></div>'+
+          '<div style="max-height:150px;overflow-y:auto;font-size:0.85rem;">'+
+          names.map(n => '<div style="padding:2px 0;border-bottom:1px solid #eee;">• '+n+'</div>').join('')+
+          '</div>'+
+          '<div style="margin-top:10px;font-size:0.8rem;color:#666;">'+
+          '<strong>Tip:</strong> Ctrl+click to toggle, Shift+click for range</div>';
+      }
       document.getElementById('entity-panel').classList.add('visible');
+      generatePrompt();
     }
     
     function closePanel() { 
       document.getElementById('entity-panel').classList.remove('visible'); 
-      state.selectedNode = null; 
+      clearAllSelections();
+      state.selectedNode = null;
+      state.selectedNodes = [];
+      generatePrompt();
     }
     
     function addFeedback(type) {
@@ -809,6 +899,22 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
       let p = '# Architecture Analysis Request\n\n';
       p += '**View:** ' + state.currentPreset + '\n';
       p += '**Generated:** ' + (reportData.report?.generated_at || new Date().toISOString()) + '\n\n';
+      
+      // Show selected entities if any
+      if (state.selectedNodes.length > 0) {
+        p += '## 🎯 Selected Entities (' + state.selectedNodes.length + ')\n\n';
+        state.selectedNodes.forEach(n => {
+          const entity = reportData.keystones?.find(k => k.name === n.name);
+          if (entity) {
+            p += '- **' + n.name + '** (' + entity.entity_type + ') - ' + (entity.file || 'N/A');
+            if (entity.pagerank) p += ' [PR: ' + entity.pagerank.toFixed(3) + ']';
+            p += '\n';
+          } else {
+            p += '- **' + n.name + '**\n';
+          }
+        });
+        p += '\n';
+      }
       
       if (state.feedback.length > 0) {
         const grouped = { issue: [], question: [], idea: [], comment: [] };
