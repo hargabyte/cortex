@@ -40,6 +40,10 @@ type HealthReportData struct {
 
 	// DeadCodeGroups contains dead code grouped by module.
 	DeadCodeGroups []DeadCodeGroup `yaml:"dead_code_groups,omitempty" json:"dead_code_groups,omitempty"`
+
+	// Playground contains metadata for interactive playground generation.
+	// Only populated when --playground flag is used.
+	Playground *PlaygroundMetadata `yaml:"playground,omitempty" json:"playground,omitempty"`
 }
 
 // ComplexityAnalysis contains complexity hotspot information for the codebase.

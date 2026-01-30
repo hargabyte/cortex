@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cortex Context Assembly Feature Report</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+            --accent-cyan: #79c0ff;
+            --border-color: #30363d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+        }
+
+        .timestamp {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        section {
+            margin: 3rem 0;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin: 2.5rem 0 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--accent-blue);
+            color: var(--accent-cyan);
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--accent-blue);
+        }
+
+        h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 1rem 0 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .feature-overview {
+            background: linear-gradient(135deg, rgba(88, 166, 255, 0.1), rgba(121, 192, 255, 0.05));
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-overview p {
+            margin: 0.75rem 0;
+            line-height: 1.8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead {
+            background: var(--bg-tertiary);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        tbody tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .entity-name {
+            color: var(--accent-blue);
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .entity-type {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--accent-purple);
+        }
+
+        .relevance-high {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .relevance-medium {
+            color: var(--accent-yellow);
+            font-weight: 600;
+        }
+
+        .relevance-low {
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        .code-block {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .code-block code {
+            color: var(--accent-cyan);
+        }
+
+        .flow-diagram {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .flow-step {
+            display: inline-block;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem 1.5rem;
+            margin: 0.5rem;
+            color: var(--accent-cyan);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .flow-arrow {
+            display: inline-block;
+            color: var(--accent-blue);
+            margin: 0 0.5rem;
+            font-size: 1.5rem;
+        }
+
+        .dependency-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .dependency-list li {
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--accent-blue);
+            border-radius: 4px;
+        }
+
+        .dependency-list code {
+            background: var(--bg-tertiary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: var(--accent-cyan);
+        }
+
+        .recommendation {
+            background: linear-gradient(135deg, rgba(63, 185, 80, 0.1), rgba(58, 166, 255, 0.05));
+            border-left: 4px solid var(--accent-green);
+            border-radius: 4px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .recommendation strong {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .warning {
+            background: linear-gradient(135deg, rgba(210, 153, 34, 0.1), rgba(248, 81, 73, 0.05));
+            border-left: 4px solid var(--accent-red);
+            border-radius: 4px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .warning strong {
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, rgba(88, 166, 255, 0.1), rgba(121, 192, 255, 0.05));
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 4px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .info-box strong {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .metric-row {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        .metric-value {
+            color: var(--text-primary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0.25rem 0.25rem 0 0;
+        }
+
+        .badge-priority {
+            background: var(--accent-red);
+            color: var(--bg-primary);
+        }
+
+        .badge-feature {
+            background: var(--accent-blue);
+            color: var(--bg-primary);
+        }
+
+        .badge-architecture {
+            background: var(--accent-purple);
+            color: var(--bg-primary);
+        }
+
+        footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        @media (max-width: 1024px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .highlight {
+            background: rgba(88, 166, 255, 0.2);
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            color: var(--accent-cyan);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Cortex Context Assembly Feature Report</h1>
+            <p class="subtitle">Smart Context Generation with Token Budgeting</p>
+            <p class="timestamp">Report Generated: 2026-01-20 | Audience: Tech Leads</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">50</div>
+                <div class="stat-label">Relevant Entities</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">10</div>
+                <div class="stat-label">Key Components</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">0.69</div>
+                <div class="stat-label">Max Relevance</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">0%</div>
+                <div class="stat-label">Test Coverage</div>
+            </div>
+        </div>
+
+        <section>
+            <h2>Feature Overview</h2>
+            <div class="feature-overview">
+                <p>
+                    <strong>Context Assembly</strong> is a core Cortex feature that intelligently generates focused,
+                    task-relevant code context within configurable token budgets. Rather than presenting users with
+                    entire codebase snapshots, Context Assembly uses dependency tracing and smart entity prioritization
+                    to deliver only the most relevant code segments needed to complete a specific task.
+                </p>
+                <p>
+                    The feature enables developers and AI agents to quickly understand complex codebases by providing
+                    <span class="highlight">just-in-time context</span> tailored to their immediate needs. It implements
+                    token budgeting strategies to ensure responses remain within language model constraints while
+                    maximizing code relevance.
+                </p>
+            </div>
+
+            <h3>Key Capabilities</h3>
+            <ul class="dependency-list">
+                <li><strong>Smart Context Generation:</strong> Analyzes task descriptions and traces dependencies to identify relevant entities</li>
+                <li><strong>Token Budget Enforcement:</strong> Trims context intelligently when approaching token limits without losing critical information</li>
+                <li><strong>Dependency Tracing:</strong> Follows call graphs, types, and relationships to build context incrementally</li>
+                <li><strong>Session Recovery:</strong> Reconstructs workflow context from git history and recent changes</li>
+                <li><strong>Multiple Context Modes:</strong> Smart context, diff-based context, and session recovery strategies</li>
+                <li><strong>Density Control:</strong> Offers sparse, medium, dense, and smart output density options</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Top 10 Key Entities by Relevance</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Entity Name</th>
+                        <th>Location</th>
+                        <th>Type</th>
+                        <th>Relevance</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td class="entity-name">generateAgentReference</td>
+                        <td>helpagents.go:39-257</td>
+                        <td><span class="entity-type">Function</span></td>
+                        <td class="relevance-high">0.69</td>
+                        <td>Generates agent-optimized reference documentation</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td class="entity-name">runContext</td>
+                        <td>context.go:190-480</td>
+                        <td><span class="entity-type">Function</span></td>
+                        <td class="relevance-high">0.69</td>
+                        <td>Main CLI command router for all context modes</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td class="entity-name">registerContextTool</td>
+                        <td>server.go:221-240</td>
+                        <td><span class="entity-type">Function</span></td>
+                        <td class="relevance-high">0.69</td>
+                        <td>Registers context tool with MCP server</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td class="entity-name">executeContext</td>
+                        <td>server.go:581-618</td>
+                        <td><span class="entity-type">Function</span></td>
+                        <td class="relevance-high">0.69</td>
+                        <td>Executes context requests via MCP protocol</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td class="entity-name">generateSessionRecoveryContent</td>
+                        <td>context.go:954-1043</td>
+                        <td><span class="entity-type">Function</span></td>
+                        <td class="relevance-high">0.68</td>
+                        <td>Reconstructs session context from git history</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td class="entity-name">runSmartContext</td>
+                        <td>context.go:720-774</td>
+                        <td><span class="entity-type">Function</span></td>
+                        <td class="relevance-high">0.68</td>
+                        <td>Implements smart context generation algorithm</td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td class="entity-name">applyTokenBudget</td>
+                        <td>context.go:631-706</td>
+                        <td><span class="entity-type">Function</span></td>
+                        <td class="relevance-high">0.67</td>
+                        <td>Trims context to fit within token limits</td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td class="entity-name">traceFlow</td>
+                        <td>smart.go:490-707</td>
+                        <td><span class="entity-type">Function</span></td>
+                        <td class="relevance-high">0.67</td>
+                        <td>Traces dependencies within token budget constraints</td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td class="entity-name">runDiffContext</td>
+                        <td>context.go:1098-1158</td>
+                        <td><span class="entity-type">Function</span></td>
+                        <td class="relevance-high">0.67</td>
+                        <td>Generates context from file diffs</td>
+                    </tr>
+                    <tr>
+                        <td>10</td>
+                        <td class="entity-name">Assemble</td>
+                        <td>smart.go:144-177</td>
+                        <td><span class="entity-type">Method</span></td>
+                        <td class="relevance-high">0.66</td>
+                        <td>Orchestrates smart context assembly process</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>Core Types</h2>
+            <div class="two-column">
+                <div>
+                    <h3>SmartContextOptions</h3>
+                    <div class="code-block">
+                        <code>// Configuration for smart context generation
+type SmartContextOptions struct {
+    Query      string
+    Budget     int
+    Density    string
+    Entity     string
+    IncludeRel bool
+}</code>
+                    </div>
+                    <p><strong>Location:</strong> smart.go:80-87</p>
+                    <p>Configures smart context generation behavior including query input, token budget, and output density.</p>
+                </div>
+                <div>
+                    <h3>SmartContextResult</h3>
+                    <div class="code-block">
+                        <code>// Result container for smart context
+type SmartContextResult struct {
+    Content  string
+    Tokens   int
+    Entities []string
+    Exceeded bool
+}</code>
+                    </div>
+                    <p><strong>Location:</strong> smart.go:69-77</p>
+                    <p>Contains the generated context, token count, discovered entities, and budget overflow status.</p>
+                </div>
+            </div>
+
+            <h3>Output Types</h3>
+            <div class="two-column">
+                <div>
+                    <h4>SmartContextOutput</h4>
+                    <p><strong>Location:</strong> context.go:777-785</p>
+                    <p>Formatted output structure for smart context results. Handles serialization to YAML, JSON, or human-readable text.</p>
+                </div>
+                <div>
+                    <h4>Density Levels</h4>
+                    <div class="code-block">
+                        <code>// Output density control
+sparse    // 50-100 tokens per entity
+medium    // 200-300 tokens (default)
+dense     // 400-600 tokens
+smart     // Auto-select based on context</code>
+                    </div>
+                    <p><strong>Location:</strong> format.go:71</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Architecture and Call Flow</h2>
+            <div class="flow-diagram">
+                <div class="flow-step">runContext</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">Route Decision</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">Handler</div>
+                <br><br>
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Smart Context Path
+                </div>
+                <div style="margin-top: 1rem;">
+                    <div class="flow-step">runSmartContext</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">NewSmartContext</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">Assemble</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">traceFlow</div>
+                </div>
+                <br>
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                    MCP Server Path
+                </div>
+                <div style="margin-top: 1rem;">
+                    <div class="flow-step">executeContext</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">NewSmartContext</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">Assemble</div>
+                </div>
+            </div>
+
+            <h3>Call Dependencies</h3>
+            <div class="two-column">
+                <div>
+                    <h4>runContext Orchestration</h4>
+                    <ul class="dependency-list">
+                        <li><code>ParseDensity</code> - Parse output density level</li>
+                        <li><code>runDiffContext</code> - Handle diff-based context</li>
+                        <li><code>applyTokenBudget</code> - Apply token constraints</li>
+                        <li><code>runSmartContext</code> - Generate smart context</li>
+                        <li><code>runSessionRecovery</code> - Recover session state</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Smart Context Pipeline</h4>
+                    <ul class="dependency-list">
+                        <li><code>executeContext</code> → <code>NewSmartContext</code></li>
+                        <li><code>executeContext</code> → <code>Assemble</code></li>
+                        <li><code>runSmartContext</code> → <code>NewSmartContext</code></li>
+                        <li><code>runSmartContext</code> → <code>Assemble</code></li>
+                        <li><code>Assemble</code> → <code>traceFlow</code></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <strong>Token Budget Management:</strong> The <code>applyTokenBudget</code> function is the central
+                control point for token constraints. It monitors context size as <code>traceFlow</code> adds entities
+                and intelligently trims lower-relevance items when approaching limits.
+            </div>
+        </section>
+
+        <section>
+            <h2>Key Dependencies and Relationships</h2>
+
+            <h3>External Dependencies</h3>
+            <ul class="dependency-list">
+                <li><strong>Git Integration:</strong> Session recovery uses git history to reconstruct context</li>
+                <li><strong>MCP Server:</strong> Context tool registered and executed via Model Context Protocol</li>
+                <li><strong>Code Graph:</strong> Dependency tracing leverages Cortex's entity database</li>
+                <li><strong>Token Counter:</strong> Accurate token counting for budget enforcement</li>
+                <li><strong>YAML/JSON Serialization:</strong> Output formatting and marshaling</li>
+            </ul>
+
+            <h3>Critical Data Flow</h3>
+            <div class="code-block">
+Input: Task Query
+    ↓
+Parse Query + Options
+    ↓
+Build Dependency Graph
+    ↓
+Trace Relevant Entities
+    ↓
+Apply Token Budget
+    ↓
+Format Output (YAML/JSON)
+    ↓
+Output: Focused Context
+            </div>
+
+            <h3>Integration Points</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Interface</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>CLI (cx)</td>
+                        <td><code>runContext</code></td>
+                        <td>Command-line invocation and flag parsing</td>
+                    </tr>
+                    <tr>
+                        <td>MCP Server</td>
+                        <td><code>executeContext</code></td>
+                        <td>Remote procedure call handler</td>
+                    </tr>
+                    <tr>
+                        <td>Code Graph</td>
+                        <td>Entity lookup APIs</td>
+                        <td>Dependency resolution and tracing</td>
+                    </tr>
+                    <tr>
+                        <td>Output Formatters</td>
+                        <td>YAML/JSON marshalers</td>
+                        <td>Result serialization</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>Configuration and Options</h2>
+
+            <h3>SmartContextOptions Fields</h3>
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem;">
+                <div class="metric-row">
+                    <div class="metric-label">Query</div>
+                    <div class="metric-value">Task description string (e.g., "add rate limiting to API")</div>
+                </div>
+                <div class="metric-row">
+                    <div class="metric-label">Budget</div>
+                    <div class="metric-value">Token limit (typical: 4000-8000 for focused context)</div>
+                </div>
+                <div class="metric-row">
+                    <div class="metric-label">Density</div>
+                    <div class="metric-value">Output detail level: sparse, medium, dense, or smart</div>
+                </div>
+                <div class="metric-row">
+                    <div class="metric-label">Entity</div>
+                    <div class="metric-value">Optional entity to focus on within context</div>
+                </div>
+                <div class="metric-row">
+                    <div class="metric-label">IncludeRel</div>
+                    <div class="metric-value">Boolean flag to include related entities beyond direct dependencies</div>
+                </div>
+            </div>
+
+            <h3>Density Impact on Token Usage</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Density Level</th>
+                        <th>Tokens/Entity</th>
+                        <th>Use Case</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Sparse</strong></td>
+                        <td>50-100</td>
+                        <td>Quick signatures, limited context budgets</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Medium</strong></td>
+                        <td>200-300</td>
+                        <td>Default; balanced detail and efficiency</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Dense</strong></td>
+                        <td>400-600</td>
+                        <td>Full implementation details, large budgets</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Smart</strong></td>
+                        <td>Auto-select</td>
+                        <td>Automatic selection based on context relevance</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>Test Coverage Analysis</h2>
+            <div class="warning">
+                <strong>Critical Finding:</strong> Context Assembly feature has <strong>0% test coverage</strong>.
+                This is a high-priority gap for a critical system component that generates context for downstream tasks.
+            </div>
+
+            <h3>Recommended Test Strategy</h3>
+            <ul class="dependency-list">
+                <li><strong>Unit Tests:</strong> Test token budget logic independently with various entity configurations</li>
+                <li><strong>Integration Tests:</strong> Test end-to-end flows from query → context generation → output</li>
+                <li><strong>Edge Cases:</strong> Empty queries, extremely small budgets, large entity graphs</li>
+                <li><strong>Performance Tests:</strong> Verify token counting accuracy and dependency tracing efficiency</li>
+                <li><strong>Regression Tests:</strong> Ensure output quality with known task queries</li>
+            </ul>
+
+            <h4>Key Test Scenarios</h4>
+            <div class="code-block">
+// Test token budget enforcement
+func TestTokenBudgetEnforcement(t *testing.T) {
+    // Verify context truncated correctly
+    // Verify no data loss of critical entities
+}
+
+// Test dependency tracing within budget
+func TestDependencyTracingWithBudget(t *testing.T) {
+    // Verify relevant entities prioritized
+    // Verify call graph traversal
+}
+
+// Test output formatting
+func TestOutputFormatting(t *testing.T) {
+    // Verify YAML/JSON serialization
+    // Verify density level compliance
+}
+
+// Test session recovery
+func TestSessionRecovery(t *testing.T) {
+    // Verify git history parsing
+    // Verify context reconstruction accuracy
+}
+            </div>
+        </section>
+
+        <section>
+            <h2>Performance Characteristics</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Operation</th>
+                        <th>Complexity</th>
+                        <th>Bottleneck</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Query parsing</td>
+                        <td>O(n) where n = query length</td>
+                        <td>Minimal impact</td>
+                    </tr>
+                    <tr>
+                        <td>Dependency tracing</td>
+                        <td>O(v + e) graph traversal</td>
+                        <td>Large entity graphs</td>
+                    </tr>
+                    <tr>
+                        <td>Token budget application</td>
+                        <td>O(n) entities filtered</td>
+                        <td>Entity count</td>
+                    </tr>
+                    <tr>
+                        <td>Output formatting</td>
+                        <td>O(n) serialization</td>
+                        <td>Large content sizes</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Optimization Opportunities</h3>
+            <ul class="dependency-list">
+                <li>Cache dependency graphs for repeated queries within sessions</li>
+                <li>Lazy-evaluate entity details only when needed</li>
+                <li>Parallelize independent dependency traces in large graphs</li>
+                <li>Pre-compute common query patterns</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Recommendations and Next Steps</h2>
+
+            <div class="recommendation">
+                <strong>Priority 1: Add Test Coverage</strong>
+                Create comprehensive test suite covering all context modes, budget scenarios, and output formats.
+                Current 0% coverage is unacceptable for critical infrastructure.
+            </div>
+
+            <div class="recommendation">
+                <strong>Priority 2: Document Query Best Practices</strong>
+                Create user guide for effective query formulation. Current queries like "add rate limiting to API"
+                perform well; document patterns for users to follow.
+            </div>
+
+            <div class="recommendation">
+                <strong>Priority 3: Optimize Large Graph Performance</strong>
+                Profile traceFlow performance on large codebases. Implement caching and lazy evaluation for graphs
+                with 1000+ entities.
+            </div>
+
+            <div class="recommendation">
+                <strong>Priority 4: Enhance Session Recovery</strong>
+                Extend generateSessionRecoveryContent to track more context signals (recent queries, modified files,
+                branch changes).
+            </div>
+
+            <div class="recommendation">
+                <strong>Priority 5: Monitor Token Estimation Accuracy</strong>
+                Log token count discrepancies between estimates and actual usage. Refine token counting for accuracy.
+            </div>
+
+            <div class="info-box">
+                <strong>Success Metrics:</strong> Track query success rate (users find relevant context on first try),
+                average token budget utilization, and context relevance scores from user feedback.
+            </div>
+        </section>
+
+        <section>
+            <h2>Architecture Strengths</h2>
+
+            <ul class="dependency-list">
+                <li>
+                    <strong>Modular Design:</strong> Clear separation between query parsing, dependency tracing,
+                    budgeting, and output formatting
+                </li>
+                <li>
+                    <strong>Multiple Context Modes:</strong> Smart context, diff-based, and session recovery provide
+                    flexibility for different user workflows
+                </li>
+                <li>
+                    <strong>MCP Integration:</strong> Server registration enables remote context generation for AI agents
+                </li>
+                <li>
+                    <strong>Budget Enforcement:</strong> Proactive token limiting ensures model compatibility
+                </li>
+                <li>
+                    <strong>Density Control:</strong> Output detail customization serves both quick lookups and deep dives
+                </li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Known Limitations and Gaps</h2>
+
+            <div class="warning">
+                <strong>No Test Coverage:</strong> 0% coverage presents maintenance risk and makes refactoring dangerous.
+            </div>
+
+            <div class="warning">
+                <strong>Token Counting Accuracy:</strong> Token estimations may diverge from actual model usage.
+                Needs validation against real Claude token counter.
+            </div>
+
+            <div class="warning">
+                <strong>Query Parsing Robustness:</strong> Current query parsing may not handle complex multi-part queries
+                or implicit context references well.
+            </div>
+
+            <div class="info-box">
+                <strong>Future Enhancement:</strong> Consider ML-based relevance scoring instead of pure dependency tracing
+                to capture semantic relationships.
+            </div>
+        </section>
+
+        <section>
+            <h2>Summary for Tech Leads</h2>
+
+            <h3>What This Feature Does</h3>
+            <p>
+                Context Assembly solves a critical problem: helping developers and AI agents understand large codebases
+                by delivering focused, task-relevant code context within token budgets. Instead of overwhelming users with
+                50-file snapshots, it uses dependency tracing to identify and prioritize only the most relevant entities.
+            </p>
+
+            <h3>Current State</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Core Functionality</td>
+                        <td>✓ Implemented</td>
+                        <td>All context modes working</td>
+                    </tr>
+                    <tr>
+                        <td>MCP Integration</td>
+                        <td>✓ Integrated</td>
+                        <td>Server registration and execution complete</td>
+                    </tr>
+                    <tr>
+                        <td>Test Coverage</td>
+                        <td>✗ Missing</td>
+                        <td>0% - highest priority gap</td>
+                    </tr>
+                    <tr>
+                        <td>Documentation</td>
+                        <td>⚠ Partial</td>
+                        <td>Internal docs present; user guide needed</td>
+                    </tr>
+                    <tr>
+                        <td>Performance</td>
+                        <td>✓ Acceptable</td>
+                        <td>Needs profiling on very large graphs</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Strategic Value</h3>
+            <p>
+                Context Assembly is foundational for agent productivity. The accuracy and relevance of generated context
+                directly impacts agent decision-making quality. Investing in test coverage and documentation strengthens
+                this critical system.
+            </p>
+
+            <div class="badge badge-priority">High Priority</div>
+            <div class="badge badge-feature">Core Feature</div>
+            <div class="badge badge-architecture">System Critical</div>
+        </section>
+
+        <footer>
+            <p>Cortex Context Assembly Feature Report | Generated 2026-01-20</p>
+            <p>For questions or updates, consult the feature implementation in context.go, smart.go, and server.go</p>
+        </footer>
+    </div>
+</body>
+</html>

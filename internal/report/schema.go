@@ -162,6 +162,16 @@ type EntityData struct {
 
 	// InDegree is the number of entities that depend on this one.
 	InDegree int `yaml:"in_degree,omitempty" json:"in_degree,omitempty"`
+
+	// Layer is the logical layer this entity belongs to (for playground filtering).
+	// Examples: "core", "api", "store", "parser", "test"
+	// Only populated when playground mode is enabled.
+	Layer string `yaml:"layer,omitempty" json:"layer,omitempty"`
+
+	// CSSClasses contains space-separated CSS classes for SVG filtering.
+	// Example: "layer-core entity-function importance-keystone"
+	// Only populated when playground mode is enabled.
+	CSSClasses string `yaml:"css_classes,omitempty" json:"css_classes,omitempty"`
 }
 
 // DependencyData represents a dependency relationship between entities.
@@ -516,3 +526,98 @@ type ImpactChange struct {
 	// Risk indicates the risk level of this change.
 	Risk string `yaml:"risk" json:"risk"`
 }
+
+// PlaygroundMetadata contains metadata for interactive playground generation.
+// When playground mode is enabled, reports include this extra data to power
+// interactive features like filtering, zooming, and annotation.
+type PlaygroundMetadata struct {
+	// Enabled indicates whether playground mode is active.
+	Enabled bool `yaml:"enabled" json:"enabled"`
+
+	// Layers defines the available layers for filtering.
+	// Each layer represents a logical grouping (e.g., "core", "api", "test").
+	Layers []LayerInfo `yaml:"layers,omitempty" json:"layers,omitempty"`
+
+	// ConnectionTypes defines the available connection types for filtering.
+	ConnectionTypes []ConnectionTypeInfo `yaml:"connection_types,omitempty" json:"connection_types,omitempty"`
+
+	// ElementMap maps entity IDs to SVG element IDs for interactivity.
+	// Key: entity ID, Value: SVG element ID
+	ElementMap map[string]string `yaml:"element_map,omitempty" json:"element_map,omitempty"`
+
+	// PrerenderedSVG contains the pre-rendered SVG diagram for faster loading.
+	// Optional - only included when SVG pre-rendering is enabled.
+	PrerenderedSVG string `yaml:"prerendered_svg,omitempty" json:"prerendered_svg,omitempty"`
+
+	// ViewPresets defines quick-access view configurations.
+	ViewPresets []ViewPreset `yaml:"view_presets,omitempty" json:"view_presets,omitempty"`
+}
+
+// LayerInfo describes a filterable layer in the playground.
+type LayerInfo struct {
+	// ID is the layer identifier (e.g., "core", "api", "test").
+	ID string `yaml:"id" json:"id"`
+
+	// Label is the human-readable label for the layer.
+	Label string `yaml:"label" json:"label"`
+
+	// Color is the CSS color for this layer (e.g., "#4a90d9").
+	Color string `yaml:"color" json:"color"`
+
+	// EntityCount is the number of entities in this layer.
+	EntityCount int `yaml:"entity_count" json:"entity_count"`
+
+	// DefaultVisible indicates whether this layer is visible by default.
+	DefaultVisible bool `yaml:"default_visible" json:"default_visible"`
+}
+
+// ConnectionTypeInfo describes a filterable connection type.
+type ConnectionTypeInfo struct {
+	// Type is the connection type (e.g., "calls", "uses_type", "implements").
+	Type string `yaml:"type" json:"type"`
+
+	// Label is the human-readable label.
+	Label string `yaml:"label" json:"label"`
+
+	// Color is the CSS color for this connection type.
+	Color string `yaml:"color" json:"color"`
+
+	// Count is the number of connections of this type.
+	Count int `yaml:"count" json:"count"`
+
+	// DefaultVisible indicates whether this type is visible by default.
+	DefaultVisible bool `yaml:"default_visible" json:"default_visible"`
+}
+
+// ViewPreset defines a quick-access view configuration for playgrounds.
+type ViewPreset struct {
+	// ID is the preset identifier.
+	ID string `yaml:"id" json:"id"`
+
+	// Label is the human-readable label.
+	Label string `yaml:"label" json:"label"`
+
+	// Description explains what this preset shows.
+	Description string `yaml:"description" json:"description"`
+
+	// VisibleLayers lists the layer IDs that should be visible.
+	VisibleLayers []string `yaml:"visible_layers" json:"visible_layers"`
+
+	// VisibleConnections lists the connection types that should be visible.
+	VisibleConnections []string `yaml:"visible_connections" json:"visible_connections"`
+
+	// ImportanceFilter limits to entities of certain importance levels.
+	ImportanceFilter []string `yaml:"importance_filter,omitempty" json:"importance_filter,omitempty"`
+}
+
+// Layer constants for common layers derived from module paths.
+const (
+	LayerCore     = "core"
+	LayerAPI      = "api"
+	LayerStore    = "store"
+	LayerParser   = "parser"
+	LayerGraph    = "graph"
+	LayerOutput   = "output"
+	LayerTest     = "test"
+	LayerExternal = "external"
+)

@@ -1,0 +1,2934 @@
+report:
+  type: health
+  generated_at: 2026-01-20T19:28:14.334190876Z
+risk_score: 50
+issues:
+  critical:
+    - type: untested_keystone
+      entity: walkNode
+      file: internal/parser/parser.go
+      pagerank: 0.034345211853781116
+      importance: keystone
+      recommendation: Add tests for walkNode - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Store
+      file: internal/store/db.go
+      pagerank: 0.023398986733187566
+      importance: keystone
+      recommendation: Add tests for Store - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: nodeText
+      file: internal/extract/typescript.go
+      pagerank: 0.02337063183903313
+      importance: keystone
+      recommendation: Add tests for nodeText - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Close
+      file: internal/store/db.go
+      pagerank: 0.02193511462944736
+      importance: keystone
+      recommendation: Add tests for Close - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: ParseResult
+      file: internal/parser/parser.go
+      pagerank: 0.021147124962808145
+      importance: keystone
+      recommendation: Add tests for ParseResult - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Entity
+      file: internal/store/types.go
+      pagerank: 0.01569073510827062
+      importance: keystone
+      recommendation: Add tests for Entity - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: NodeText
+      file: internal/parser/parser.go
+      pagerank: 0.014978434996581632
+      importance: keystone
+      recommendation: Add tests for NodeText - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Density
+      file: internal/output/format.go
+      pagerank: 0.012881480046349106
+      importance: keystone
+      recommendation: Add tests for Density - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: TypeScriptExtractor
+      file: internal/extract/typescript.go
+      pagerank: 0.012681936086457445
+      importance: keystone
+      recommendation: Add tests for TypeScriptExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Client
+      file: internal/daemon/storeproxy.go
+      pagerank: 0.010236277239846558
+      importance: keystone
+      recommendation: Add tests for Client - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: String
+      file: internal/output/format.go
+      pagerank: 0.009898418757687922
+      importance: keystone
+      recommendation: Add tests for String - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Contains
+      file: internal/extract/callgraph.go
+      pagerank: 0.007506090311751593
+      importance: keystone
+      recommendation: Add tests for Contains - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: TypeScriptCallGraphExtractor
+      file: internal/extract/callgraph_typescript.go
+      pagerank: 0.005433073779001616
+      importance: keystone
+      recommendation: Add tests for TypeScriptCallGraphExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: StoreProvider
+      file: internal/daemon/storeproxy.go
+      pagerank: 0.005392453066583038
+      importance: keystone
+      recommendation: Add tests for StoreProvider - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Graph
+      file: internal/graph/graph.go
+      pagerank: 0.005094940831528421
+      importance: keystone
+      recommendation: Add tests for Graph - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: CGFWriter
+      file: internal/output/cgf_writer.go
+      pagerank: 0.004710585753452473
+      importance: keystone
+      recommendation: Add tests for CGFWriter - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: itoa
+      file: internal/extract/callgraph_java.go
+      pagerank: 0.004648414555550264
+      importance: keystone
+      recommendation: Add tests for itoa - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: FindNodesByType
+      file: internal/parser/parser.go
+      pagerank: 0.00462541992700867
+      importance: keystone
+      recommendation: Add tests for FindNodesByType - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Format
+      file: internal/output/formatter.go
+      pagerank: 0.004604577586302156
+      importance: keystone
+      recommendation: Add tests for Format - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Parse
+      file: internal/parser/parser.go
+      pagerank: 0.004191244137674597
+      importance: keystone
+      recommendation: Add tests for Parse - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: CallGraphEntity
+      file: internal/extract/callgraph.go
+      pagerank: 0.0039117484028318725
+      importance: keystone
+      recommendation: Add tests for CallGraphEntity - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: getFilePath
+      file: internal/extract/typescript.go
+      pagerank: 0.003881897234189505
+      importance: keystone
+      recommendation: Add tests for getFilePath - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: findChildByType
+      file: internal/extract/extract.go
+      pagerank: 0.0036869024244384715
+      importance: keystone
+      recommendation: Add tests for findChildByType - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: ComputeHashes
+      file: internal/extract/entity.go
+      pagerank: 0.0035624033640399154
+      importance: keystone
+      recommendation: Add tests for ComputeHashes - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: CppExtractor
+      file: internal/extract/cpp.go
+      pagerank: 0.0034344015238633456
+      importance: keystone
+      recommendation: Add tests for CppExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: execBD
+      file: internal/bd/bd.go
+      pagerank: 0.0034174984893216172
+      importance: keystone
+      recommendation: Add tests for execBD - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: DB
+      file: internal/store/db.go
+      pagerank: 0.003343127652048447
+      importance: keystone
+      recommendation: Add tests for DB - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Query
+      file: internal/daemon/socket.go
+      pagerank: 0.0032954541435912064
+      importance: keystone
+      recommendation: Add tests for Query - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: abbreviateType
+      file: internal/extract/function.go
+      pagerank: 0.003276786288318875
+      importance: keystone
+      recommendation: Add tests for abbreviateType - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Server
+      file: internal/mcp/server.go
+      pagerank: 0.0031803015272138385
+      importance: keystone
+      recommendation: Add tests for Server - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: CGFFormatter
+      file: internal/output/formatter.go
+      pagerank: 0.003137288932754274
+      importance: keystone
+      recommendation: Add tests for CGFFormatter - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Execute
+      file: internal/cmd/root.go
+      pagerank: 0.003065500739702115
+      importance: keystone
+      recommendation: Add tests for Execute - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Daemon
+      file: internal/daemon/daemon.go
+      pagerank: 0.0030608314775550805
+      importance: keystone
+      recommendation: Add tests for Daemon - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Cache
+      file: internal/cache/cache.go
+      pagerank: 0.0030536954042952266
+      importance: keystone
+      recommendation: Add tests for Cache - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Visibility
+      file: internal/extract/entity.go
+      pagerank: 0.0030337281992140214
+      importance: keystone
+      recommendation: Add tests for Visibility - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: NormalizePath
+      file: internal/extract/entity.go
+      pagerank: 0.0029701360959495525
+      importance: keystone
+      recommendation: Add tests for NormalizePath - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: FindNodes
+      file: internal/parser/parser.go
+      pagerank: 0.002872819563417446
+      importance: keystone
+      recommendation: Add tests for FindNodes - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: RustExtractor
+      file: internal/extract/rust.go
+      pagerank: 0.0026718407327589815
+      importance: keystone
+      recommendation: Add tests for RustExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Open
+      file: internal/store/db.go
+      pagerank: 0.0026411732262549585
+      importance: keystone
+      recommendation: Add tests for Open - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: PHPCallGraphExtractor
+      file: internal/extract/callgraph_php.go
+      pagerank: 0.00257795632201867
+      importance: keystone
+      recommendation: Add tests for PHPCallGraphExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: FindConfigDir
+      file: internal/config/config.go
+      pagerank: 0.0024841278728222065
+      importance: keystone
+      recommendation: Add tests for FindConfigDir - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: KotlinExtractor
+      file: internal/extract/kotlin.go
+      pagerank: 0.002442597814389742
+      importance: keystone
+      recommendation: Add tests for KotlinExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: FileReadError
+      file: internal/parser/errors.go
+      pagerank: 0.0024316648138657756
+      importance: keystone
+      recommendation: Add tests for FileReadError - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: FormatToWriter
+      file: internal/output/formatter.go
+      pagerank: 0.0023765506765787096
+      importance: keystone
+      recommendation: Add tests for FormatToWriter - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: PHPExtractor
+      file: internal/extract/php.go
+      pagerank: 0.002373986664152198
+      importance: keystone
+      recommendation: Add tests for PHPExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: phpItoa
+      file: internal/extract/callgraph_php.go
+      pagerank: 0.002361983488214049
+      importance: keystone
+      recommendation: Add tests for phpItoa - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: JavaCallGraphExtractor
+      file: internal/extract/callgraph_java.go
+      pagerank: 0.0023130363041361456
+      importance: keystone
+      recommendation: Add tests for JavaCallGraphExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Error
+      file: internal/parser/errors.go
+      pagerank: 0.0022684740256400174
+      importance: keystone
+      recommendation: Add tests for Error - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: resolveTarget
+      file: internal/extract/callgraph_typescript.go
+      pagerank: 0.0022361225216219346
+      importance: keystone
+      recommendation: Add tests for resolveTarget - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: CSharpCallGraphExtractor
+      file: internal/extract/callgraph_csharp.go
+      pagerank: 0.002217205092898417
+      importance: keystone
+      recommendation: Add tests for CSharpCallGraphExtractor - this is a keystone entity with high importance
+  info:
+    - type: dead_code_candidate
+      entity: cmd
+      file: cmd/cx/main.go
+      recommendation: Consider removing cmd if it's unused
+    - type: dead_code_candidate
+      entity: bytes
+      file: internal/bd/bd.go
+      recommendation: Consider removing bytes if it's unused
+    - type: dead_code_candidate
+      entity: json
+      file: internal/bd/bd.go
+      recommendation: Consider removing json if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/bd/bd.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/bd/bd.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: exec
+      file: internal/bd/bd.go
+      recommendation: Consider removing exec if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/bd/bd.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/bd/bd.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: stderr
+      file: internal/bd/bd.go
+      recommendation: Consider removing stderr if it's unused
+    - type: dead_code_candidate
+      entity: stdout
+      file: internal/bd/bd.go
+      recommendation: Consider removing stdout if it's unused
+    - type: dead_code_candidate
+      entity: entities
+      file: internal/bd/bd.go
+      recommendation: Consider removing entities if it's unused
+    - type: dead_code_candidate
+      entity: beadsDir
+      file: internal/bd/bd.go
+      recommendation: Consider removing beadsDir if it's unused
+    - type: dead_code_candidate
+      entity: bufio
+      file: internal/bd/deps.go
+      recommendation: Consider removing bufio if it's unused
+    - type: dead_code_candidate
+      entity: json
+      file: internal/bd/deps.go
+      recommendation: Consider removing json if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/bd/deps.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/bd/deps.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/bd/deps.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/bd/deps.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: deps
+      file: internal/bd/deps.go
+      recommendation: Consider removing deps if it's unused
+    - type: dead_code_candidate
+      entity: result
+      file: internal/bd/deps.go
+      recommendation: Consider removing result if it's unused
+    - type: dead_code_candidate
+      entity: ids
+      file: internal/bd/deps.go
+      recommendation: Consider removing ids if it's unused
+    - type: dead_code_candidate
+      entity: dependents
+      file: internal/bd/deps.go
+      recommendation: Consider removing dependents if it's unused
+    - type: dead_code_candidate
+      entity: entities
+      file: internal/bd/deps.go
+      recommendation: Consider removing entities if it's unused
+    - type: dead_code_candidate
+      entity: jsonlDependency
+      file: internal/bd/deps.go
+      recommendation: Consider removing jsonlDependency if it's unused
+    - type: dead_code_candidate
+      entity: jsonlPath
+      file: internal/bd/deps.go
+      recommendation: Consider removing jsonlPath if it's unused
+    - type: dead_code_candidate
+      entity: issue
+      file: internal/bd/deps.go
+      recommendation: Consider removing issue if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/bd/entity.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/bd/entity.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: entities
+      file: internal/bd/entity.go
+      recommendation: Consider removing entities if it's unused
+    - type: dead_code_candidate
+      entity: entities
+      file: internal/bd/entity.go
+      recommendation: Consider removing entities if it's unused
+    - type: dead_code_candidate
+      entity: labels
+      file: internal/bd/entity.go
+      recommendation: Consider removing labels if it's unused
+    - type: dead_code_candidate
+      entity: entities
+      file: internal/bd/entity.go
+      recommendation: Consider removing entities if it's unused
+    - type: dead_code_candidate
+      entity: sql
+      file: internal/cache/cache.go
+      recommendation: Consider removing sql if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cache/cache.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cache/cache.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: sqlite
+      file: internal/cache/cache.go
+      recommendation: Consider removing sqlite if it's unused
+    - type: dead_code_candidate
+      entity: stats
+      file: internal/cache/cache.go
+      recommendation: Consider removing stats if it's unused
+    - type: dead_code_candidate
+      entity: sql
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing sql if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: time
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing time if it's unused
+    - type: dead_code_candidate
+      entity: hash
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing hash if it's unused
+    - type: dead_code_candidate
+      entity: entry
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing entry if it's unused
+    - type: dead_code_candidate
+      entity: scannedAt
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing scannedAt if it's unused
+    - type: dead_code_candidate
+      entity: entries
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing entries if it's unused
+    - type: dead_code_candidate
+      entity: entry
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing entry if it's unused
+    - type: dead_code_candidate
+      entity: scannedAt
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing scannedAt if it's unused
+    - type: dead_code_candidate
+      entity: changed
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing changed if it's unused
+    - type: dead_code_candidate
+      entity: pruned
+      file: internal/cache/fileindex.go
+      recommendation: Consider removing pruned if it's unused
+    - type: dead_code_candidate
+      entity: sql
+      file: internal/cache/metrics.go
+      recommendation: Consider removing sql if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cache/metrics.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: time
+      file: internal/cache/metrics.go
+      recommendation: Consider removing time if it's unused
+    - type: dead_code_candidate
+      entity: scanMetrics
+      file: internal/cache/metrics.go
+      recommendation: Consider removing scanMetrics if it's unused
+    - type: dead_code_candidate
+      entity: m
+      file: internal/cache/metrics.go
+      recommendation: Consider removing m if it's unused
+    - type: dead_code_candidate
+      entity: computedAt
+      file: internal/cache/metrics.go
+      recommendation: Consider removing computedAt if it's unused
+    - type: dead_code_candidate
+      entity: scanMetricsRows
+      file: internal/cache/metrics.go
+      recommendation: Consider removing scanMetricsRows if it's unused
+    - type: dead_code_candidate
+      entity: results
+      file: internal/cache/metrics.go
+      recommendation: Consider removing results if it's unused
+    - type: dead_code_candidate
+      entity: m
+      file: internal/cache/metrics.go
+      recommendation: Consider removing m if it's unused
+    - type: dead_code_candidate
+      entity: computedAt
+      file: internal/cache/metrics.go
+      recommendation: Consider removing computedAt if it's unused
+    - type: dead_code_candidate
+      entity: schemaSQL
+      file: internal/cache/schema.go
+      recommendation: Consider removing schemaSQL if it's unused
+    - type: dead_code_candidate
+      entity: initSchema
+      file: internal/cache/schema.go
+      recommendation: Consider removing initSchema if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/context.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/context.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cmd/context.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: sort
+      file: internal/cmd/context.go
+      recommendation: Consider removing sort if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/context.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/context.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: context
+      file: internal/cmd/context.go
+      recommendation: Consider removing context if it's unused
+    - type: dead_code_candidate
+      entity: coverage
+      file: internal/cmd/context.go
+      recommendation: Consider removing coverage if it's unused
+    - type: dead_code_candidate
+      entity: diff
+      file: internal/cmd/context.go
+      recommendation: Consider removing diff if it's unused
+    - type: dead_code_candidate
+      entity: graph
+      file: internal/cmd/context.go
+      recommendation: Consider removing graph if it's unused
+    - type: dead_code_candidate
+      entity: integration
+      file: internal/cmd/context.go
+      recommendation: Consider removing integration if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/context.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/context.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/context.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: contextCmd
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextCmd if it's unused
+    - type: dead_code_candidate
+      entity: contextHops
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextHops if it's unused
+    - type: dead_code_candidate
+      entity: contextMaxTokens
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextMaxTokens if it's unused
+    - type: dead_code_candidate
+      entity: contextBudget
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextBudget if it's unused
+    - type: dead_code_candidate
+      entity: contextDensity
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextDensity if it's unused
+    - type: dead_code_candidate
+      entity: contextInclude
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextInclude if it's unused
+    - type: dead_code_candidate
+      entity: contextExclude
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextExclude if it's unused
+    - type: dead_code_candidate
+      entity: contextForTask
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextForTask if it's unused
+    - type: dead_code_candidate
+      entity: contextSmart
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextSmart if it's unused
+    - type: dead_code_candidate
+      entity: contextDepth
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextDepth if it's unused
+    - type: dead_code_candidate
+      entity: contextWithCoverage
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextWithCoverage if it's unused
+    - type: dead_code_candidate
+      entity: contextFull
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextFull if it's unused
+    - type: dead_code_candidate
+      entity: contextDiff
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextDiff if it's unused
+    - type: dead_code_candidate
+      entity: contextStaged
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextStaged if it's unused
+    - type: dead_code_candidate
+      entity: contextCommitRange
+      file: internal/cmd/context.go
+      recommendation: Consider removing contextCommitRange if it's unused
+    - type: dead_code_candidate
+      entity: runContext
+      file: internal/cmd/context.go
+      recommendation: Consider removing runContext if it's unused
+    - type: dead_code_candidate
+      entity: taskEntry
+      file: internal/cmd/context.go
+      recommendation: Consider removing taskEntry if it's unused
+    - type: dead_code_candidate
+      entity: budgetWarnings
+      file: internal/cmd/context.go
+      recommendation: Consider removing budgetWarnings if it's unused
+    - type: dead_code_candidate
+      entity: ids
+      file: internal/cmd/context.go
+      recommendation: Consider removing ids if it's unused
+    - type: dead_code_candidate
+      entity: warnings
+      file: internal/cmd/context.go
+      recommendation: Consider removing warnings if it's unused
+    - type: dead_code_candidate
+      entity: result
+      file: internal/cmd/context.go
+      recommendation: Consider removing result if it's unused
+    - type: dead_code_candidate
+      entity: parts
+      file: internal/cmd/context.go
+      recommendation: Consider removing parts if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: coverage
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing coverage if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: coverageCmd
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing coverageCmd if it's unused
+    - type: dead_code_candidate
+      entity: importCmd
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing importCmd if it's unused
+    - type: dead_code_candidate
+      entity: statusCmd
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing statusCmd if it's unused
+    - type: dead_code_candidate
+      entity: coverageBasePath
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing coverageBasePath if it's unused
+    - type: dead_code_candidate
+      entity: runImport
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing runImport if it's unused
+    - type: dead_code_candidate
+      entity: testMappings
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing testMappings if it's unused
+    - type: dead_code_candidate
+      entity: totalCovered
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing totalCovered if it's unused
+    - type: dead_code_candidate
+      entity: totalUncovered
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing totalUncovered if it's unused
+    - type: dead_code_candidate
+      entity: overallPercent
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing overallPercent if it's unused
+    - type: dead_code_candidate
+      entity: runStatus
+      file: internal/cmd/coverage.go
+      recommendation: Consider removing runStatus if it's unused
+    - type: dead_code_candidate
+      entity: context
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing context if it's unused
+    - type: dead_code_candidate
+      entity: json
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing json if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: signal
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing signal if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: strconv
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing strconv if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: syscall
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing syscall if it's unused
+    - type: dead_code_candidate
+      entity: time
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing time if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: daemon
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemon if it's unused
+    - type: dead_code_candidate
+      entity: mcp
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing mcp if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: yaml.v3
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing yaml.v3 if it's unused
+    - type: dead_code_candidate
+      entity: daemonControlCmd
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonControlCmd if it's unused
+    - type: dead_code_candidate
+      entity: daemonControlStatusCmd
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonControlStatusCmd if it's unused
+    - type: dead_code_candidate
+      entity: daemonControlStopCmd
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonControlStopCmd if it's unused
+    - type: dead_code_candidate
+      entity: daemonControlStartCmd
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonControlStartCmd if it's unused
+    - type: dead_code_candidate
+      entity: daemonMCPCmd
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonMCPCmd if it's unused
+    - type: dead_code_candidate
+      entity: daemonStartBackground
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonStartBackground if it's unused
+    - type: dead_code_candidate
+      entity: daemonStartForegroundChild
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonStartForegroundChild if it's unused
+    - type: dead_code_candidate
+      entity: daemonStartIdleTimeout
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonStartIdleTimeout if it's unused
+    - type: dead_code_candidate
+      entity: daemonStartProject
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonStartProject if it's unused
+    - type: dead_code_candidate
+      entity: daemonStartCXDir
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonStartCXDir if it's unused
+    - type: dead_code_candidate
+      entity: daemonMCPTools
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonMCPTools if it's unused
+    - type: dead_code_candidate
+      entity: daemonMCPTimeout
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonMCPTimeout if it's unused
+    - type: dead_code_candidate
+      entity: daemonMCPStatus
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonMCPStatus if it's unused
+    - type: dead_code_candidate
+      entity: daemonMCPStop
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonMCPStop if it's unused
+    - type: dead_code_candidate
+      entity: daemonMCPListTools
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonMCPListTools if it's unused
+    - type: dead_code_candidate
+      entity: daemonMCPWatch
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing daemonMCPWatch if it's unused
+    - type: dead_code_candidate
+      entity: runDaemonControlStatus
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing runDaemonControlStatus if it's unused
+    - type: dead_code_candidate
+      entity: runDaemonControlStop
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing runDaemonControlStop if it's unused
+    - type: dead_code_candidate
+      entity: runDaemonControlStart
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing runDaemonControlStart if it's unused
+    - type: dead_code_candidate
+      entity: runDaemonMCP
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing runDaemonMCP if it's unused
+    - type: dead_code_candidate
+      entity: tools
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing tools if it's unused
+    - type: dead_code_candidate
+      entity: debounceTimer
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing debounceTimer if it's unused
+    - type: dead_code_candidate
+      entity: pendingRescan
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing pendingRescan if it's unused
+    - type: dead_code_candidate
+      entity: changedFiles
+      file: internal/cmd/daemon.go
+      recommendation: Consider removing changedFiles if it's unused
+    - type: dead_code_candidate
+      entity: daemon
+      file: internal/cmd/daemon_client.go
+      recommendation: Consider removing daemon if it's unused
+    - type: dead_code_candidate
+      entity: globalDaemonClient
+      file: internal/cmd/daemon_client.go
+      recommendation: Consider removing globalDaemonClient if it's unused
+    - type: dead_code_candidate
+      entity: useDaemon
+      file: internal/cmd/daemon_client.go
+      recommendation: Consider removing useDaemon if it's unused
+    - type: dead_code_candidate
+      entity: resetDaemonClient
+      file: internal/cmd/daemon_client.go
+      recommendation: Consider removing resetDaemonClient if it's unused
+    - type: dead_code_candidate
+      entity: json
+      file: internal/cmd/db.go
+      recommendation: Consider removing json if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/db.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/db.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/db.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/db.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: dbCmd
+      file: internal/cmd/db.go
+      recommendation: Consider removing dbCmd if it's unused
+    - type: dead_code_candidate
+      entity: dbInfoCmd
+      file: internal/cmd/db.go
+      recommendation: Consider removing dbInfoCmd if it's unused
+    - type: dead_code_candidate
+      entity: dbCompactCmd
+      file: internal/cmd/db.go
+      recommendation: Consider removing dbCompactCmd if it's unused
+    - type: dead_code_candidate
+      entity: dbExportCmd
+      file: internal/cmd/db.go
+      recommendation: Consider removing dbExportCmd if it's unused
+    - type: dead_code_candidate
+      entity: dbStatusCmd
+      file: internal/cmd/db.go
+      recommendation: Consider removing dbStatusCmd if it's unused
+    - type: dead_code_candidate
+      entity: compactRemoveArchived
+      file: internal/cmd/db.go
+      recommendation: Consider removing compactRemoveArchived if it's unused
+    - type: dead_code_candidate
+      entity: compactDryRun
+      file: internal/cmd/db.go
+      recommendation: Consider removing compactDryRun if it's unused
+    - type: dead_code_candidate
+      entity: exportOutput
+      file: internal/cmd/db.go
+      recommendation: Consider removing exportOutput if it's unused
+    - type: dead_code_candidate
+      entity: dbDoctorCmd
+      file: internal/cmd/db.go
+      recommendation: Consider removing dbDoctorCmd if it's unused
+    - type: dead_code_candidate
+      entity: runDbInfo
+      file: internal/cmd/db.go
+      recommendation: Consider removing runDbInfo if it's unused
+    - type: dead_code_candidate
+      entity: runDbCompact
+      file: internal/cmd/db.go
+      recommendation: Consider removing runDbCompact if it's unused
+    - type: dead_code_candidate
+      entity: runDbExport
+      file: internal/cmd/db.go
+      recommendation: Consider removing runDbExport if it's unused
+    - type: dead_code_candidate
+      entity: out
+      file: internal/cmd/db.go
+      recommendation: Consider removing out if it's unused
+    - type: dead_code_candidate
+      entity: unit
+      file: internal/cmd/db.go
+      recommendation: Consider removing unit if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/dead.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/dead.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: sort
+      file: internal/cmd/dead.go
+      recommendation: Consider removing sort if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/dead.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/dead.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/dead.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/dead.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: deadCmd
+      file: internal/cmd/dead.go
+      recommendation: Consider removing deadCmd if it's unused
+    - type: dead_code_candidate
+      entity: deadIncludeExports
+      file: internal/cmd/dead.go
+      recommendation: Consider removing deadIncludeExports if it's unused
+    - type: dead_code_candidate
+      entity: deadByFile
+      file: internal/cmd/dead.go
+      recommendation: Consider removing deadByFile if it's unused
+    - type: dead_code_candidate
+      entity: deadCreateTask
+      file: internal/cmd/dead.go
+      recommendation: Consider removing deadCreateTask if it's unused
+    - type: dead_code_candidate
+      entity: deadTypeFilter
+      file: internal/cmd/dead.go
+      recommendation: Consider removing deadTypeFilter if it's unused
+    - type: dead_code_candidate
+      entity: runDead
+      file: internal/cmd/dead.go
+      recommendation: Consider removing runDead if it's unused
+    - type: dead_code_candidate
+      entity: deadItems
+      file: internal/cmd/dead.go
+      recommendation: Consider removing deadItems if it's unused
+    - type: dead_code_candidate
+      entity: reason
+      file: internal/cmd/dead.go
+      recommendation: Consider removing reason if it's unused
+    - type: dead_code_candidate
+      entity: results
+      file: internal/cmd/dead.go
+      recommendation: Consider removing results if it's unused
+    - type: dead_code_candidate
+      entity: symbols
+      file: internal/cmd/dead.go
+      recommendation: Consider removing symbols if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/diff.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/diff.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/diff.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/diff.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/diff.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: diffCmd
+      file: internal/cmd/diff.go
+      recommendation: Consider removing diffCmd if it's unused
+    - type: dead_code_candidate
+      entity: diffTable
+      file: internal/cmd/diff.go
+      recommendation: Consider removing diffTable if it's unused
+    - type: dead_code_candidate
+      entity: diffEntity
+      file: internal/cmd/diff.go
+      recommendation: Consider removing diffEntity if it's unused
+    - type: dead_code_candidate
+      entity: diffSummary
+      file: internal/cmd/diff.go
+      recommendation: Consider removing diffSummary if it's unused
+    - type: dead_code_candidate
+      entity: runDiff
+      file: internal/cmd/diff.go
+      recommendation: Consider removing runDiff if it's unused
+    - type: dead_code_candidate
+      entity: sql
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing sql if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: doctorCmd
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing doctorCmd if it's unused
+    - type: dead_code_candidate
+      entity: doctorFix
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing doctorFix if it's unused
+    - type: dead_code_candidate
+      entity: doctorDeep
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing doctorDeep if it's unused
+    - type: dead_code_candidate
+      entity: doctorYes
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing doctorYes if it's unused
+    - type: dead_code_candidate
+      entity: runDoctor
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing runDoctor if it's unused
+    - type: dead_code_candidate
+      entity: issues
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing issues if it's unused
+    - type: dead_code_candidate
+      entity: count
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing count if it's unused
+    - type: dead_code_candidate
+      entity: orphans
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing orphans if it's unused
+    - type: dead_code_candidate
+      entity: depType
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing depType if it's unused
+    - type: dead_code_candidate
+      entity: fromID
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing fromID if it's unused
+    - type: dead_code_candidate
+      entity: toID
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing toID if it's unused
+    - type: dead_code_candidate
+      entity: details
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing details if it's unused
+    - type: dead_code_candidate
+      entity: staleEntities
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing staleEntities if it's unused
+    - type: dead_code_candidate
+      entity: details
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing details if it's unused
+    - type: dead_code_candidate
+      entity: response
+      file: internal/cmd/doctor.go
+      recommendation: Consider removing response if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/find.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/find.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: sort
+      file: internal/cmd/find.go
+      recommendation: Consider removing sort if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/find.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: time
+      file: internal/cmd/find.go
+      recommendation: Consider removing time if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/find.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: graph
+      file: internal/cmd/find.go
+      recommendation: Consider removing graph if it's unused
+    - type: dead_code_candidate
+      entity: metrics
+      file: internal/cmd/find.go
+      recommendation: Consider removing metrics if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/find.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/find.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/find.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: findCmd
+      file: internal/cmd/find.go
+      recommendation: Consider removing findCmd if it's unused
+    - type: dead_code_candidate
+      entity: findType
+      file: internal/cmd/find.go
+      recommendation: Consider removing findType if it's unused
+    - type: dead_code_candidate
+      entity: findFile
+      file: internal/cmd/find.go
+      recommendation: Consider removing findFile if it's unused
+    - type: dead_code_candidate
+      entity: findLang
+      file: internal/cmd/find.go
+      recommendation: Consider removing findLang if it's unused
+    - type: dead_code_candidate
+      entity: findExact
+      file: internal/cmd/find.go
+      recommendation: Consider removing findExact if it's unused
+    - type: dead_code_candidate
+      entity: findQualified
+      file: internal/cmd/find.go
+      recommendation: Consider removing findQualified if it's unused
+    - type: dead_code_candidate
+      entity: findLimit
+      file: internal/cmd/find.go
+      recommendation: Consider removing findLimit if it's unused
+    - type: dead_code_candidate
+      entity: findImportant
+      file: internal/cmd/find.go
+      recommendation: Consider removing findImportant if it's unused
+    - type: dead_code_candidate
+      entity: findKeystones
+      file: internal/cmd/find.go
+      recommendation: Consider removing findKeystones if it's unused
+    - type: dead_code_candidate
+      entity: findBottlenecks
+      file: internal/cmd/find.go
+      recommendation: Consider removing findBottlenecks if it's unused
+    - type: dead_code_candidate
+      entity: findTop
+      file: internal/cmd/find.go
+      recommendation: Consider removing findTop if it's unused
+    - type: dead_code_candidate
+      entity: findRecompute
+      file: internal/cmd/find.go
+      recommendation: Consider removing findRecompute if it's unused
+    - type: dead_code_candidate
+      entity: findTags
+      file: internal/cmd/find.go
+      recommendation: Consider removing findTags if it's unused
+    - type: dead_code_candidate
+      entity: findTagAny
+      file: internal/cmd/find.go
+      recommendation: Consider removing findTagAny if it's unused
+    - type: dead_code_candidate
+      entity: runFind
+      file: internal/cmd/find.go
+      recommendation: Consider removing runFind if it's unused
+    - type: dead_code_candidate
+      entity: filteredResults
+      file: internal/cmd/find.go
+      recommendation: Consider removing filteredResults if it's unused
+    - type: dead_code_candidate
+      entity: candidateEntities
+      file: internal/cmd/find.go
+      recommendation: Consider removing candidateEntities if it's unused
+    - type: dead_code_candidate
+      entity: matches
+      file: internal/cmd/find.go
+      recommendation: Consider removing matches if it's unused
+    - type: dead_code_candidate
+      entity: filtered
+      file: internal/cmd/find.go
+      recommendation: Consider removing filtered if it's unused
+    - type: dead_code_candidate
+      entity: mapEntityTypeToCGF
+      file: internal/cmd/find.go
+      recommendation: Consider removing mapEntityTypeToCGF if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/guard.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/guard.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: exec
+      file: internal/cmd/guard.go
+      recommendation: Consider removing exec if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cmd/guard.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: sort
+      file: internal/cmd/guard.go
+      recommendation: Consider removing sort if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/guard.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/guard.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: coverage
+      file: internal/cmd/guard.go
+      recommendation: Consider removing coverage if it's unused
+    - type: dead_code_candidate
+      entity: extract
+      file: internal/cmd/guard.go
+      recommendation: Consider removing extract if it's unused
+    - type: dead_code_candidate
+      entity: graph
+      file: internal/cmd/guard.go
+      recommendation: Consider removing graph if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/guard.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: parser
+      file: internal/cmd/guard.go
+      recommendation: Consider removing parser if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/guard.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/guard.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: guardCmd
+      file: internal/cmd/guard.go
+      recommendation: Consider removing guardCmd if it's unused
+    - type: dead_code_candidate
+      entity: guardStaged
+      file: internal/cmd/guard.go
+      recommendation: Consider removing guardStaged if it's unused
+    - type: dead_code_candidate
+      entity: guardAll
+      file: internal/cmd/guard.go
+      recommendation: Consider removing guardAll if it's unused
+    - type: dead_code_candidate
+      entity: guardFailOnWarnings
+      file: internal/cmd/guard.go
+      recommendation: Consider removing guardFailOnWarnings if it's unused
+    - type: dead_code_candidate
+      entity: guardMinCoverage
+      file: internal/cmd/guard.go
+      recommendation: Consider removing guardMinCoverage if it's unused
+    - type: dead_code_candidate
+      entity: runGuard
+      file: internal/cmd/guard.go
+      recommendation: Consider removing runGuard if it's unused
+    - type: dead_code_candidate
+      entity: files
+      file: internal/cmd/guard.go
+      recommendation: Consider removing files if it's unused
+    - type: dead_code_candidate
+      entity: files
+      file: internal/cmd/guard.go
+      recommendation: Consider removing files if it's unused
+    - type: dead_code_candidate
+      entity: files
+      file: internal/cmd/guard.go
+      recommendation: Consider removing files if it's unused
+    - type: dead_code_candidate
+      entity: result
+      file: internal/cmd/guard.go
+      recommendation: Consider removing result if it's unused
+    - type: dead_code_candidate
+      entity: pageranks
+      file: internal/cmd/guard.go
+      recommendation: Consider removing pageranks if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/guide.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/guide.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: sort
+      file: internal/cmd/guide.go
+      recommendation: Consider removing sort if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/guide.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/guide.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: graph
+      file: internal/cmd/guide.go
+      recommendation: Consider removing graph if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/guide.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/guide.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: guideCmd
+      file: internal/cmd/guide.go
+      recommendation: Consider removing guideCmd if it's unused
+    - type: dead_code_candidate
+      entity: guideOverviewCmd
+      file: internal/cmd/guide.go
+      recommendation: Consider removing guideOverviewCmd if it's unused
+    - type: dead_code_candidate
+      entity: guideHotspotsCmd
+      file: internal/cmd/guide.go
+      recommendation: Consider removing guideHotspotsCmd if it's unused
+    - type: dead_code_candidate
+      entity: guideModulesCmd
+      file: internal/cmd/guide.go
+      recommendation: Consider removing guideModulesCmd if it's unused
+    - type: dead_code_candidate
+      entity: guideDepsCmd
+      file: internal/cmd/guide.go
+      recommendation: Consider removing guideDepsCmd if it's unused
+    - type: dead_code_candidate
+      entity: guideFormat
+      file: internal/cmd/guide.go
+      recommendation: Consider removing guideFormat if it's unused
+    - type: dead_code_candidate
+      entity: guideOutput
+      file: internal/cmd/guide.go
+      recommendation: Consider removing guideOutput if it's unused
+    - type: dead_code_candidate
+      entity: guideMaxNodes
+      file: internal/cmd/guide.go
+      recommendation: Consider removing guideMaxNodes if it's unused
+    - type: dead_code_candidate
+      entity: runGuideOverview
+      file: internal/cmd/guide.go
+      recommendation: Consider removing runGuideOverview if it's unused
+    - type: dead_code_candidate
+      entity: sb
+      file: internal/cmd/guide.go
+      recommendation: Consider removing sb if it's unused
+    - type: dead_code_candidate
+      entity: runGuideHotspots
+      file: internal/cmd/guide.go
+      recommendation: Consider removing runGuideHotspots if it's unused
+    - type: dead_code_candidate
+      entity: sb
+      file: internal/cmd/guide.go
+      recommendation: Consider removing sb if it's unused
+    - type: dead_code_candidate
+      entity: runGuideModules
+      file: internal/cmd/guide.go
+      recommendation: Consider removing runGuideModules if it's unused
+    - type: dead_code_candidate
+      entity: sb
+      file: internal/cmd/guide.go
+      recommendation: Consider removing sb if it's unused
+    - type: dead_code_candidate
+      entity: runGuideDeps
+      file: internal/cmd/guide.go
+      recommendation: Consider removing runGuideDeps if it's unused
+    - type: dead_code_candidate
+      entity: sb
+      file: internal/cmd/guide.go
+      recommendation: Consider removing sb if it's unused
+    - type: dead_code_candidate
+      entity: moduleEdges
+      file: internal/cmd/guide.go
+      recommendation: Consider removing moduleEdges if it's unused
+    - type: dead_code_candidate
+      entity: sb
+      file: internal/cmd/guide.go
+      recommendation: Consider removing sb if it's unused
+    - type: dead_code_candidate
+      entity: sb
+      file: internal/cmd/guide.go
+      recommendation: Consider removing sb if it's unused
+    - type: dead_code_candidate
+      entity: sb
+      file: internal/cmd/guide.go
+      recommendation: Consider removing sb if it's unused
+    - type: dead_code_candidate
+      entity: sb
+      file: internal/cmd/guide.go
+      recommendation: Consider removing sb if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/helpagents.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/helpagents.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: helpAgentsCmd
+      file: internal/cmd/helpagents.go
+      recommendation: Consider removing helpAgentsCmd if it's unused
+    - type: dead_code_candidate
+      entity: runHelpAgents
+      file: internal/cmd/helpagents.go
+      recommendation: Consider removing runHelpAgents if it's unused
+    - type: dead_code_candidate
+      entity: sql
+      file: internal/cmd/link.go
+      recommendation: Consider removing sql if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/link.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/link.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/link.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/link.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: linkCmd
+      file: internal/cmd/link.go
+      recommendation: Consider removing linkCmd if it's unused
+    - type: dead_code_candidate
+      entity: linkList
+      file: internal/cmd/link.go
+      recommendation: Consider removing linkList if it's unused
+    - type: dead_code_candidate
+      entity: linkRemove
+      file: internal/cmd/link.go
+      recommendation: Consider removing linkRemove if it's unused
+    - type: dead_code_candidate
+      entity: linkSystem
+      file: internal/cmd/link.go
+      recommendation: Consider removing linkSystem if it's unused
+    - type: dead_code_candidate
+      entity: linkType
+      file: internal/cmd/link.go
+      recommendation: Consider removing linkType if it's unused
+    - type: dead_code_candidate
+      entity: runLink
+      file: internal/cmd/link.go
+      recommendation: Consider removing runLink if it's unused
+    - type: dead_code_candidate
+      entity: foundLink
+      file: internal/cmd/link.go
+      recommendation: Consider removing foundLink if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/map.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: sort
+      file: internal/cmd/map.go
+      recommendation: Consider removing sort if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/map.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/map.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/map.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/map.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/map.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: mapCmd
+      file: internal/cmd/map.go
+      recommendation: Consider removing mapCmd if it's unused
+    - type: dead_code_candidate
+      entity: mapFilter
+      file: internal/cmd/map.go
+      recommendation: Consider removing mapFilter if it's unused
+    - type: dead_code_candidate
+      entity: mapLang
+      file: internal/cmd/map.go
+      recommendation: Consider removing mapLang if it's unused
+    - type: dead_code_candidate
+      entity: mapDepth
+      file: internal/cmd/map.go
+      recommendation: Consider removing mapDepth if it's unused
+    - type: dead_code_candidate
+      entity: runMap
+      file: internal/cmd/map.go
+      recommendation: Consider removing runMap if it's unused
+    - type: dead_code_candidate
+      entity: filePaths
+      file: internal/cmd/map.go
+      recommendation: Consider removing filePaths if it's unused
+    - type: dead_code_candidate
+      entity: sb
+      file: internal/cmd/map.go
+      recommendation: Consider removing sb if it's unused
+    - type: dead_code_candidate
+      entity: bufio
+      file: internal/cmd/reset.go
+      recommendation: Consider removing bufio if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/reset.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/reset.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cmd/reset.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/reset.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: time
+      file: internal/cmd/reset.go
+      recommendation: Consider removing time if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/reset.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/reset.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/reset.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: resetCmd
+      file: internal/cmd/reset.go
+      recommendation: Consider removing resetCmd if it's unused
+    - type: dead_code_candidate
+      entity: resetForce
+      file: internal/cmd/reset.go
+      recommendation: Consider removing resetForce if it's unused
+    - type: dead_code_candidate
+      entity: resetHard
+      file: internal/cmd/reset.go
+      recommendation: Consider removing resetHard if it's unused
+    - type: dead_code_candidate
+      entity: resetScanOnly
+      file: internal/cmd/reset.go
+      recommendation: Consider removing resetScanOnly if it's unused
+    - type: dead_code_candidate
+      entity: resetNoBackup
+      file: internal/cmd/reset.go
+      recommendation: Consider removing resetNoBackup if it's unused
+    - type: dead_code_candidate
+      entity: resetDryRun
+      file: internal/cmd/reset.go
+      recommendation: Consider removing resetDryRun if it's unused
+    - type: dead_code_candidate
+      entity: runReset
+      file: internal/cmd/reset.go
+      recommendation: Consider removing runReset if it's unused
+    - type: dead_code_candidate
+      entity: size
+      file: internal/cmd/reset.go
+      recommendation: Consider removing size if it's unused
+    - type: dead_code_candidate
+      entity: json
+      file: internal/cmd/root.go
+      recommendation: Consider removing json if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/root.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/root.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/root.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/root.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: pflag
+      file: internal/cmd/root.go
+      recommendation: Consider removing pflag if it's unused
+    - type: dead_code_candidate
+      entity: verbose
+      file: internal/cmd/root.go
+      recommendation: Consider removing verbose if it's unused
+    - type: dead_code_candidate
+      entity: quiet
+      file: internal/cmd/root.go
+      recommendation: Consider removing quiet if it's unused
+    - type: dead_code_candidate
+      entity: configPath
+      file: internal/cmd/root.go
+      recommendation: Consider removing configPath if it's unused
+    - type: dead_code_candidate
+      entity: forAgents
+      file: internal/cmd/root.go
+      recommendation: Consider removing forAgents if it's unused
+    - type: dead_code_candidate
+      entity: outputFormat
+      file: internal/cmd/root.go
+      recommendation: Consider removing outputFormat if it's unused
+    - type: dead_code_candidate
+      entity: outputDensity
+      file: internal/cmd/root.go
+      recommendation: Consider removing outputDensity if it's unused
+    - type: dead_code_candidate
+      entity: rootCmd
+      file: internal/cmd/root.go
+      recommendation: Consider removing rootCmd if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/safe.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/safe.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cmd/safe.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: sort
+      file: internal/cmd/safe.go
+      recommendation: Consider removing sort if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/safe.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: time
+      file: internal/cmd/safe.go
+      recommendation: Consider removing time if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/safe.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: coverage
+      file: internal/cmd/safe.go
+      recommendation: Consider removing coverage if it's unused
+    - type: dead_code_candidate
+      entity: diff
+      file: internal/cmd/safe.go
+      recommendation: Consider removing diff if it's unused
+    - type: dead_code_candidate
+      entity: extract
+      file: internal/cmd/safe.go
+      recommendation: Consider removing extract if it's unused
+    - type: dead_code_candidate
+      entity: graph
+      file: internal/cmd/safe.go
+      recommendation: Consider removing graph if it's unused
+    - type: dead_code_candidate
+      entity: integration
+      file: internal/cmd/safe.go
+      recommendation: Consider removing integration if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/safe.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: parser
+      file: internal/cmd/safe.go
+      recommendation: Consider removing parser if it's unused
+    - type: dead_code_candidate
+      entity: semdiff
+      file: internal/cmd/safe.go
+      recommendation: Consider removing semdiff if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/safe.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/safe.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: safeCmd
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeCmd if it's unused
+    - type: dead_code_candidate
+      entity: safeDepth
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeDepth if it's unused
+    - type: dead_code_candidate
+      entity: safeCreateTask
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeCreateTask if it's unused
+    - type: dead_code_candidate
+      entity: safeQuick
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeQuick if it's unused
+    - type: dead_code_candidate
+      entity: safeCoverage
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeCoverage if it's unused
+    - type: dead_code_candidate
+      entity: safeDrift
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeDrift if it's unused
+    - type: dead_code_candidate
+      entity: safeChanges
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeChanges if it's unused
+    - type: dead_code_candidate
+      entity: safeKeystonesOnly
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeKeystonesOnly if it's unused
+    - type: dead_code_candidate
+      entity: safeThreshold
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeThreshold if it's unused
+    - type: dead_code_candidate
+      entity: safeStrict
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeStrict if it's unused
+    - type: dead_code_candidate
+      entity: safeFix
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeFix if it's unused
+    - type: dead_code_candidate
+      entity: safeDryRun
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeDryRun if it's unused
+    - type: dead_code_candidate
+      entity: safeFile
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeFile if it's unused
+    - type: dead_code_candidate
+      entity: safeDetailed
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeDetailed if it's unused
+    - type: dead_code_candidate
+      entity: safeSemantic
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeSemantic if it's unused
+    - type: dead_code_candidate
+      entity: safeImpactThreshold
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeImpactThreshold if it's unused
+    - type: dead_code_candidate
+      entity: safeInline
+      file: internal/cmd/safe.go
+      recommendation: Consider removing safeInline if it's unused
+    - type: dead_code_candidate
+      entity: runSafe
+      file: internal/cmd/safe.go
+      recommendation: Consider removing runSafe if it's unused
+    - type: dead_code_candidate
+      entity: directEntries
+      file: internal/cmd/safe.go
+      recommendation: Consider removing directEntries if it's unused
+    - type: dead_code_candidate
+      entity: entities
+      file: internal/cmd/safe.go
+      recommendation: Consider removing entities if it's unused
+    - type: dead_code_candidate
+      entity: pr
+      file: internal/cmd/safe.go
+      recommendation: Consider removing pr if it's unused
+    - type: dead_code_candidate
+      entity: deps
+      file: internal/cmd/safe.go
+      recommendation: Consider removing deps if it's unused
+    - type: dead_code_candidate
+      entity: pr
+      file: internal/cmd/safe.go
+      recommendation: Consider removing pr if it's unused
+    - type: dead_code_candidate
+      entity: deps
+      file: internal/cmd/safe.go
+      recommendation: Consider removing deps if it's unused
+    - type: dead_code_candidate
+      entity: gaps
+      file: internal/cmd/safe.go
+      recommendation: Consider removing gaps if it's unused
+    - type: dead_code_candidate
+      entity: desc
+      file: internal/cmd/safe.go
+      recommendation: Consider removing desc if it's unused
+    - type: dead_code_candidate
+      entity: lastScanTime
+      file: internal/cmd/safe.go
+      recommendation: Consider removing lastScanTime if it's unused
+    - type: dead_code_candidate
+      entity: added
+      file: internal/cmd/safe.go
+      recommendation: Consider removing added if it's unused
+    - type: dead_code_candidate
+      entity: modified
+      file: internal/cmd/safe.go
+      recommendation: Consider removing modified if it's unused
+    - type: dead_code_candidate
+      entity: removed
+      file: internal/cmd/safe.go
+      recommendation: Consider removing removed if it's unused
+    - type: dead_code_candidate
+      entity: results
+      file: internal/cmd/safe.go
+      recommendation: Consider removing results if it's unused
+    - type: dead_code_candidate
+      entity: warningTagsSafe
+      file: internal/cmd/safe.go
+      recommendation: Consider removing warningTagsSafe if it's unused
+    - type: dead_code_candidate
+      entity: keystones
+      file: internal/cmd/safe.go
+      recommendation: Consider removing keystones if it's unused
+    - type: dead_code_candidate
+      entity: warnings
+      file: internal/cmd/safe.go
+      recommendation: Consider removing warnings if it's unused
+    - type: dead_code_candidate
+      entity: pageranks
+      file: internal/cmd/safe.go
+      recommendation: Consider removing pageranks if it's unused
+    - type: dead_code_candidate
+      entity: recs
+      file: internal/cmd/safe.go
+      recommendation: Consider removing recs if it's unused
+    - type: dead_code_candidate
+      entity: desc
+      file: internal/cmd/safe.go
+      recommendation: Consider removing desc if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/scan.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/scan.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: exec
+      file: internal/cmd/scan.go
+      recommendation: Consider removing exec if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cmd/scan.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/scan.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: time
+      file: internal/cmd/scan.go
+      recommendation: Consider removing time if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/scan.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: exclude
+      file: internal/cmd/scan.go
+      recommendation: Consider removing exclude if it's unused
+    - type: dead_code_candidate
+      entity: extract
+      file: internal/cmd/scan.go
+      recommendation: Consider removing extract if it's unused
+    - type: dead_code_candidate
+      entity: graph
+      file: internal/cmd/scan.go
+      recommendation: Consider removing graph if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/scan.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: parser
+      file: internal/cmd/scan.go
+      recommendation: Consider removing parser if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/scan.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/scan.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: scanCmd
+      file: internal/cmd/scan.go
+      recommendation: Consider removing scanCmd if it's unused
+    - type: dead_code_candidate
+      entity: scanLang
+      file: internal/cmd/scan.go
+      recommendation: Consider removing scanLang if it's unused
+    - type: dead_code_candidate
+      entity: scanExclude
+      file: internal/cmd/scan.go
+      recommendation: Consider removing scanExclude if it's unused
+    - type: dead_code_candidate
+      entity: scanDryRun
+      file: internal/cmd/scan.go
+      recommendation: Consider removing scanDryRun if it's unused
+    - type: dead_code_candidate
+      entity: scanForce
+      file: internal/cmd/scan.go
+      recommendation: Consider removing scanForce if it's unused
+    - type: dead_code_candidate
+      entity: scanOverview
+      file: internal/cmd/scan.go
+      recommendation: Consider removing scanOverview if it's unused
+    - type: dead_code_candidate
+      entity: scanNoAutoExclude
+      file: internal/cmd/scan.go
+      recommendation: Consider removing scanNoAutoExclude if it's unused
+    - type: dead_code_candidate
+      entity: scanDiff
+      file: internal/cmd/scan.go
+      recommendation: Consider removing scanDiff if it's unused
+    - type: dead_code_candidate
+      entity: runScan
+      file: internal/cmd/scan.go
+      recommendation: Consider removing runScan if it's unused
+    - type: dead_code_candidate
+      entity: autoExcludeResult
+      file: internal/cmd/scan.go
+      recommendation: Consider removing autoExcludeResult if it's unused
+    - type: dead_code_candidate
+      entity: languages
+      file: internal/cmd/scan.go
+      recommendation: Consider removing languages if it's unused
+    - type: dead_code_candidate
+      entity: cxDir
+      file: internal/cmd/scan.go
+      recommendation: Consider removing cxDir if it's unused
+    - type: dead_code_candidate
+      entity: projectRoot
+      file: internal/cmd/scan.go
+      recommendation: Consider removing projectRoot if it's unused
+    - type: dead_code_candidate
+      entity: fileResults
+      file: internal/cmd/scan.go
+      recommendation: Consider removing fileResults if it's unused
+    - type: dead_code_candidate
+      entity: filePaths
+      file: internal/cmd/scan.go
+      recommendation: Consider removing filePaths if it's unused
+    - type: dead_code_candidate
+      entity: entitiesToCreate
+      file: internal/cmd/scan.go
+      recommendation: Consider removing entitiesToCreate if it's unused
+    - type: dead_code_candidate
+      entity: entitiesToUpdate
+      file: internal/cmd/scan.go
+      recommendation: Consider removing entitiesToUpdate if it's unused
+    - type: dead_code_candidate
+      entity: allEntities
+      file: internal/cmd/scan.go
+      recommendation: Consider removing allEntities if it's unused
+    - type: dead_code_candidate
+      entity: fileEntities
+      file: internal/cmd/scan.go
+      recommendation: Consider removing fileEntities if it's unused
+    - type: dead_code_candidate
+      entity: deps
+      file: internal/cmd/scan.go
+      recommendation: Consider removing deps if it's unused
+    - type: dead_code_candidate
+      entity: extractErr
+      file: internal/cmd/scan.go
+      recommendation: Consider removing extractErr if it's unused
+    - type: dead_code_candidate
+      entity: depsToCreate
+      file: internal/cmd/scan.go
+      recommendation: Consider removing depsToCreate if it's unused
+    - type: dead_code_candidate
+      entity: entitiesWithNodes
+      file: internal/cmd/scan.go
+      recommendation: Consider removing entitiesWithNodes if it's unused
+    - type: dead_code_candidate
+      entity: line
+      file: internal/cmd/scan.go
+      recommendation: Consider removing line if it's unused
+    - type: dead_code_candidate
+      entity: isFileChanged
+      file: internal/cmd/scan.go
+      recommendation: Consider removing isFileChanged if it's unused
+    - type: dead_code_candidate
+      entity: counts
+      file: internal/cmd/scan.go
+      recommendation: Consider removing counts if it's unused
+    - type: dead_code_candidate
+      entity: languages
+      file: internal/cmd/scan.go
+      recommendation: Consider removing languages if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/show.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/show.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: exec
+      file: internal/cmd/show.go
+      recommendation: Consider removing exec if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cmd/show.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: strconv
+      file: internal/cmd/show.go
+      recommendation: Consider removing strconv if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/show.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/show.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: coverage
+      file: internal/cmd/show.go
+      recommendation: Consider removing coverage if it's unused
+    - type: dead_code_candidate
+      entity: graph
+      file: internal/cmd/show.go
+      recommendation: Consider removing graph if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/show.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/show.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/show.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: showCmd
+      file: internal/cmd/show.go
+      recommendation: Consider removing showCmd if it's unused
+    - type: dead_code_candidate
+      entity: showIncludeMetrics
+      file: internal/cmd/show.go
+      recommendation: Consider removing showIncludeMetrics if it's unused
+    - type: dead_code_candidate
+      entity: showCoverage
+      file: internal/cmd/show.go
+      recommendation: Consider removing showCoverage if it's unused
+    - type: dead_code_candidate
+      entity: showRelated
+      file: internal/cmd/show.go
+      recommendation: Consider removing showRelated if it's unused
+    - type: dead_code_candidate
+      entity: showGraph
+      file: internal/cmd/show.go
+      recommendation: Consider removing showGraph if it's unused
+    - type: dead_code_candidate
+      entity: showDepth
+      file: internal/cmd/show.go
+      recommendation: Consider removing showDepth if it's unused
+    - type: dead_code_candidate
+      entity: showHops
+      file: internal/cmd/show.go
+      recommendation: Consider removing showHops if it's unused
+    - type: dead_code_candidate
+      entity: showDirection
+      file: internal/cmd/show.go
+      recommendation: Consider removing showDirection if it's unused
+    - type: dead_code_candidate
+      entity: showEdgeType
+      file: internal/cmd/show.go
+      recommendation: Consider removing showEdgeType if it's unused
+    - type: dead_code_candidate
+      entity: graphFormat
+      file: internal/cmd/show.go
+      recommendation: Consider removing graphFormat if it's unused
+    - type: dead_code_candidate
+      entity: graphOutput
+      file: internal/cmd/show.go
+      recommendation: Consider removing graphOutput if it's unused
+    - type: dead_code_candidate
+      entity: graphMaxNodes
+      file: internal/cmd/show.go
+      recommendation: Consider removing graphMaxNodes if it's unused
+    - type: dead_code_candidate
+      entity: graphRender
+      file: internal/cmd/show.go
+      recommendation: Consider removing graphRender if it's unused
+    - type: dead_code_candidate
+      entity: graphAscii
+      file: internal/cmd/show.go
+      recommendation: Consider removing graphAscii if it's unused
+    - type: dead_code_candidate
+      entity: runShow
+      file: internal/cmd/show.go
+      recommendation: Consider removing runShow if it's unused
+    - type: dead_code_candidate
+      entity: bestMatch
+      file: internal/cmd/show.go
+      recommendation: Consider removing bestMatch if it's unused
+    - type: dead_code_candidate
+      entity: closest
+      file: internal/cmd/show.go
+      recommendation: Consider removing closest if it's unused
+    - type: dead_code_candidate
+      entity: nextLevel
+      file: internal/cmd/show.go
+      recommendation: Consider removing nextLevel if it's unused
+    - type: dead_code_candidate
+      entity: outputStr
+      file: internal/cmd/show.go
+      recommendation: Consider removing outputStr if it's unused
+    - type: dead_code_candidate
+      entity: ranges
+      file: internal/cmd/show.go
+      recommendation: Consider removing ranges if it's unused
+    - type: dead_code_candidate
+      entity: json
+      file: internal/cmd/status.go
+      recommendation: Consider removing json if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/status.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/status.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: time
+      file: internal/cmd/status.go
+      recommendation: Consider removing time if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/status.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: daemon
+      file: internal/cmd/status.go
+      recommendation: Consider removing daemon if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/status.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/status.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: daemonStatusCmd
+      file: internal/cmd/status.go
+      recommendation: Consider removing daemonStatusCmd if it's unused
+    - type: dead_code_candidate
+      entity: statusJSON
+      file: internal/cmd/status.go
+      recommendation: Consider removing statusJSON if it's unused
+    - type: dead_code_candidate
+      entity: statusWatch
+      file: internal/cmd/status.go
+      recommendation: Consider removing statusWatch if it's unused
+    - type: dead_code_candidate
+      entity: runDaemonStatus
+      file: internal/cmd/status.go
+      recommendation: Consider removing runDaemonStatus if it's unused
+    - type: dead_code_candidate
+      entity: lastScan
+      file: internal/cmd/status.go
+      recommendation: Consider removing lastScan if it's unused
+    - type: dead_code_candidate
+      entity: sql
+      file: internal/cmd/tag.go
+      recommendation: Consider removing sql if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/tag.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/tag.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cmd/tag.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: sort
+      file: internal/cmd/tag.go
+      recommendation: Consider removing sort if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/tag.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/tag.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/tag.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/tag.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/tag.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: yaml.v3
+      file: internal/cmd/tag.go
+      recommendation: Consider removing yaml.v3 if it's unused
+    - type: dead_code_candidate
+      entity: tagCmd
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagCmd if it's unused
+    - type: dead_code_candidate
+      entity: tagAddCmd
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagAddCmd if it's unused
+    - type: dead_code_candidate
+      entity: tagRemoveCmd
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagRemoveCmd if it's unused
+    - type: dead_code_candidate
+      entity: tagListCmd
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagListCmd if it's unused
+    - type: dead_code_candidate
+      entity: tagFindCmd
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagFindCmd if it's unused
+    - type: dead_code_candidate
+      entity: tagExportCmd
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagExportCmd if it's unused
+    - type: dead_code_candidate
+      entity: tagImportCmd
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagImportCmd if it's unused
+    - type: dead_code_candidate
+      entity: tagNote
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagNote if it's unused
+    - type: dead_code_candidate
+      entity: tagCreatedBy
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagCreatedBy if it's unused
+    - type: dead_code_candidate
+      entity: tagMatchAll
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagMatchAll if it's unused
+    - type: dead_code_candidate
+      entity: tagsExportOutput
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagsExportOutput if it's unused
+    - type: dead_code_candidate
+      entity: tagsImportOverwrite
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagsImportOverwrite if it's unused
+    - type: dead_code_candidate
+      entity: tagsImportDryRun
+      file: internal/cmd/tag.go
+      recommendation: Consider removing tagsImportDryRun if it's unused
+    - type: dead_code_candidate
+      entity: runTagShortcut
+      file: internal/cmd/tag.go
+      recommendation: Consider removing runTagShortcut if it's unused
+    - type: dead_code_candidate
+      entity: runTagRemove
+      file: internal/cmd/tag.go
+      recommendation: Consider removing runTagRemove if it's unused
+    - type: dead_code_candidate
+      entity: runTagsList
+      file: internal/cmd/tag.go
+      recommendation: Consider removing runTagsList if it's unused
+    - type: dead_code_candidate
+      entity: runTagFind
+      file: internal/cmd/tag.go
+      recommendation: Consider removing runTagFind if it's unused
+    - type: dead_code_candidate
+      entity: sorted
+      file: internal/cmd/tag.go
+      recommendation: Consider removing sorted if it's unused
+    - type: dead_code_candidate
+      entity: runTagsExport
+      file: internal/cmd/tag.go
+      recommendation: Consider removing runTagsExport if it's unused
+    - type: dead_code_candidate
+      entity: outputPath
+      file: internal/cmd/tag.go
+      recommendation: Consider removing outputPath if it's unused
+    - type: dead_code_candidate
+      entity: runTagsImport
+      file: internal/cmd/tag.go
+      recommendation: Consider removing runTagsImport if it's unused
+    - type: dead_code_candidate
+      entity: importData
+      file: internal/cmd/tag.go
+      recommendation: Consider removing importData if it's unused
+    - type: dead_code_candidate
+      entity: bytes
+      file: internal/cmd/test.go
+      recommendation: Consider removing bytes if it's unused
+    - type: dead_code_candidate
+      entity: sql
+      file: internal/cmd/test.go
+      recommendation: Consider removing sql if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/test.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: os
+      file: internal/cmd/test.go
+      recommendation: Consider removing os if it's unused
+    - type: dead_code_candidate
+      entity: exec
+      file: internal/cmd/test.go
+      recommendation: Consider removing exec if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cmd/test.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: sort
+      file: internal/cmd/test.go
+      recommendation: Consider removing sort if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/test.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/test.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: coverage
+      file: internal/cmd/test.go
+      recommendation: Consider removing coverage if it's unused
+    - type: dead_code_candidate
+      entity: graph
+      file: internal/cmd/test.go
+      recommendation: Consider removing graph if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/test.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/test.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/test.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: testCmd
+      file: internal/cmd/test.go
+      recommendation: Consider removing testCmd if it's unused
+    - type: dead_code_candidate
+      entity: testCoverageCmd
+      file: internal/cmd/test.go
+      recommendation: Consider removing testCoverageCmd if it's unused
+    - type: dead_code_candidate
+      entity: testDiscoverCmd
+      file: internal/cmd/test.go
+      recommendation: Consider removing testDiscoverCmd if it's unused
+    - type: dead_code_candidate
+      entity: testListCmd
+      file: internal/cmd/test.go
+      recommendation: Consider removing testListCmd if it's unused
+    - type: dead_code_candidate
+      entity: testCoverageImportCmd
+      file: internal/cmd/test.go
+      recommendation: Consider removing testCoverageImportCmd if it's unused
+    - type: dead_code_candidate
+      entity: testImpactCmd
+      file: internal/cmd/test.go
+      recommendation: Consider removing testImpactCmd if it's unused
+    - type: dead_code_candidate
+      entity: testDiff
+      file: internal/cmd/test.go
+      recommendation: Consider removing testDiff if it's unused
+    - type: dead_code_candidate
+      entity: testCommit
+      file: internal/cmd/test.go
+      recommendation: Consider removing testCommit if it's unused
+    - type: dead_code_candidate
+      entity: testFile
+      file: internal/cmd/test.go
+      recommendation: Consider removing testFile if it's unused
+    - type: dead_code_candidate
+      entity: testAffected
+      file: internal/cmd/test.go
+      recommendation: Consider removing testAffected if it's unused
+    - type: dead_code_candidate
+      entity: testDepth
+      file: internal/cmd/test.go
+      recommendation: Consider removing testDepth if it's unused
+    - type: dead_code_candidate
+      entity: testOutputCommand
+      file: internal/cmd/test.go
+      recommendation: Consider removing testOutputCommand if it's unused
+    - type: dead_code_candidate
+      entity: testRun
+      file: internal/cmd/test.go
+      recommendation: Consider removing testRun if it's unused
+    - type: dead_code_candidate
+      entity: testShowGaps
+      file: internal/cmd/test.go
+      recommendation: Consider removing testShowGaps if it's unused
+    - type: dead_code_candidate
+      entity: testShowCoverage
+      file: internal/cmd/test.go
+      recommendation: Consider removing testShowCoverage if it's unused
+    - type: dead_code_candidate
+      entity: testKeystonesOnly
+      file: internal/cmd/test.go
+      recommendation: Consider removing testKeystonesOnly if it's unused
+    - type: dead_code_candidate
+      entity: testThreshold
+      file: internal/cmd/test.go
+      recommendation: Consider removing testThreshold if it's unused
+    - type: dead_code_candidate
+      entity: testByPriority
+      file: internal/cmd/test.go
+      recommendation: Consider removing testByPriority if it's unused
+    - type: dead_code_candidate
+      entity: testCoverageBasePath
+      file: internal/cmd/test.go
+      recommendation: Consider removing testCoverageBasePath if it's unused
+    - type: dead_code_candidate
+      entity: testDiscoverLanguage
+      file: internal/cmd/test.go
+      recommendation: Consider removing testDiscoverLanguage if it's unused
+    - type: dead_code_candidate
+      entity: testListLanguage
+      file: internal/cmd/test.go
+      recommendation: Consider removing testListLanguage if it's unused
+    - type: dead_code_candidate
+      entity: testListForEntity
+      file: internal/cmd/test.go
+      recommendation: Consider removing testListForEntity if it's unused
+    - type: dead_code_candidate
+      entity: testImpactUncovered
+      file: internal/cmd/test.go
+      recommendation: Consider removing testImpactUncovered if it's unused
+    - type: dead_code_candidate
+      entity: runTest
+      file: internal/cmd/test.go
+      recommendation: Consider removing runTest if it's unused
+    - type: dead_code_candidate
+      entity: gaps
+      file: internal/cmd/test.go
+      recommendation: Consider removing gaps if it's unused
+    - type: dead_code_candidate
+      entity: changedFiles
+      file: internal/cmd/test.go
+      recommendation: Consider removing changedFiles if it's unused
+    - type: dead_code_candidate
+      entity: changedFileMap
+      file: internal/cmd/test.go
+      recommendation: Consider removing changedFileMap if it's unused
+    - type: dead_code_candidate
+      entity: runTestCoverageImport
+      file: internal/cmd/test.go
+      recommendation: Consider removing runTestCoverageImport if it's unused
+    - type: dead_code_candidate
+      entity: testMappings
+      file: internal/cmd/test.go
+      recommendation: Consider removing testMappings if it's unused
+    - type: dead_code_candidate
+      entity: totalCovered
+      file: internal/cmd/test.go
+      recommendation: Consider removing totalCovered if it's unused
+    - type: dead_code_candidate
+      entity: totalUncovered
+      file: internal/cmd/test.go
+      recommendation: Consider removing totalUncovered if it's unused
+    - type: dead_code_candidate
+      entity: overallPercent
+      file: internal/cmd/test.go
+      recommendation: Consider removing overallPercent if it's unused
+    - type: dead_code_candidate
+      entity: files
+      file: internal/cmd/test.go
+      recommendation: Consider removing files if it's unused
+    - type: dead_code_candidate
+      entity: files
+      file: internal/cmd/test.go
+      recommendation: Consider removing files if it's unused
+    - type: dead_code_candidate
+      entity: lines
+      file: internal/cmd/test.go
+      recommendation: Consider removing lines if it's unused
+    - type: dead_code_candidate
+      entity: count
+      file: internal/cmd/test.go
+      recommendation: Consider removing count if it's unused
+    - type: dead_code_candidate
+      entity: start
+      file: internal/cmd/test.go
+      recommendation: Consider removing start if it's unused
+    - type: dead_code_candidate
+      entity: lineNum
+      file: internal/cmd/test.go
+      recommendation: Consider removing lineNum if it's unused
+    - type: dead_code_candidate
+      entity: tests
+      file: internal/cmd/test.go
+      recommendation: Consider removing tests if it's unused
+    - type: dead_code_candidate
+      entity: t
+      file: internal/cmd/test.go
+      recommendation: Consider removing t if it's unused
+    - type: dead_code_candidate
+      entity: tests
+      file: internal/cmd/test.go
+      recommendation: Consider removing tests if it's unused
+    - type: dead_code_candidate
+      entity: t
+      file: internal/cmd/test.go
+      recommendation: Consider removing t if it's unused
+    - type: dead_code_candidate
+      entity: files
+      file: internal/cmd/test.go
+      recommendation: Consider removing files if it's unused
+    - type: dead_code_candidate
+      entity: file
+      file: internal/cmd/test.go
+      recommendation: Consider removing file if it's unused
+    - type: dead_code_candidate
+      entity: count
+      file: internal/cmd/test.go
+      recommendation: Consider removing count if it's unused
+    - type: dead_code_candidate
+      entity: buf
+      file: internal/cmd/test.go
+      recommendation: Consider removing buf if it's unused
+    - type: dead_code_candidate
+      entity: avgTestTimeSeconds
+      file: internal/cmd/test.go
+      recommendation: Consider removing avgTestTimeSeconds if it's unused
+    - type: dead_code_candidate
+      entity: runTestDiscover
+      file: internal/cmd/test.go
+      recommendation: Consider removing runTestDiscover if it's unused
+    - type: dead_code_candidate
+      entity: filtered
+      file: internal/cmd/test.go
+      recommendation: Consider removing filtered if it's unused
+    - type: dead_code_candidate
+      entity: runTestList
+      file: internal/cmd/test.go
+      recommendation: Consider removing runTestList if it's unused
+    - type: dead_code_candidate
+      entity: runTestImpact
+      file: internal/cmd/test.go
+      recommendation: Consider removing runTestImpact if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/trace.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/trace.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: graph
+      file: internal/cmd/trace.go
+      recommendation: Consider removing graph if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/trace.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/trace.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: cobra
+      file: internal/cmd/trace.go
+      recommendation: Consider removing cobra if it's unused
+    - type: dead_code_candidate
+      entity: traceCmd
+      file: internal/cmd/trace.go
+      recommendation: Consider removing traceCmd if it's unused
+    - type: dead_code_candidate
+      entity: traceCallers
+      file: internal/cmd/trace.go
+      recommendation: Consider removing traceCallers if it's unused
+    - type: dead_code_candidate
+      entity: traceCallees
+      file: internal/cmd/trace.go
+      recommendation: Consider removing traceCallees if it's unused
+    - type: dead_code_candidate
+      entity: traceAll
+      file: internal/cmd/trace.go
+      recommendation: Consider removing traceAll if it's unused
+    - type: dead_code_candidate
+      entity: traceDepth
+      file: internal/cmd/trace.go
+      recommendation: Consider removing traceDepth if it's unused
+    - type: dead_code_candidate
+      entity: runTrace
+      file: internal/cmd/trace.go
+      recommendation: Consider removing runTrace if it's unused
+    - type: dead_code_candidate
+      entity: traceOutput
+      file: internal/cmd/trace.go
+      recommendation: Consider removing traceOutput if it's unused
+    - type: dead_code_candidate
+      entity: fmt
+      file: internal/cmd/utils.go
+      recommendation: Consider removing fmt if it's unused
+    - type: dead_code_candidate
+      entity: filepath
+      file: internal/cmd/utils.go
+      recommendation: Consider removing filepath if it's unused
+    - type: dead_code_candidate
+      entity: regexp
+      file: internal/cmd/utils.go
+      recommendation: Consider removing regexp if it's unused
+    - type: dead_code_candidate
+      entity: sort
+      file: internal/cmd/utils.go
+      recommendation: Consider removing sort if it's unused
+    - type: dead_code_candidate
+      entity: strings
+      file: internal/cmd/utils.go
+      recommendation: Consider removing strings if it's unused
+    - type: dead_code_candidate
+      entity: config
+      file: internal/cmd/utils.go
+      recommendation: Consider removing config if it's unused
+    - type: dead_code_candidate
+      entity: coverage
+      file: internal/cmd/utils.go
+      recommendation: Consider removing coverage if it's unused
+    - type: dead_code_candidate
+      entity: extract
+      file: internal/cmd/utils.go
+      recommendation: Consider removing extract if it's unused
+    - type: dead_code_candidate
+      entity: output
+      file: internal/cmd/utils.go
+      recommendation: Consider removing output if it's unused
+    - type: dead_code_candidate
+      entity: store
+      file: internal/cmd/utils.go
+      recommendation: Consider removing store if it's unused
+    - type: dead_code_candidate
+      entity: queryTypeSimple
+      file: internal/cmd/utils.go
+      recommendation: Consider removing queryTypeSimple if it's unused
+    - type: dead_code_candidate
+      entity: queryTypeQualified
+      file: internal/cmd/utils.go
+      recommendation: Consider removing queryTypeQualified if it's unused
+    - type: dead_code_candidate
+      entity: queryTypePathQualified
+      file: internal/cmd/utils.go
+      recommendation: Consider removing queryTypePathQualified if it's unused
+    - type: dead_code_candidate
+      entity: queryTypeDirect
+      file: internal/cmd/utils.go
+      recommendation: Consider removing queryTypeDirect if it's unused
+    - type: dead_code_candidate
+      entity: fileHint
+      file: internal/cmd/utils.go
+      recommendation: Consider removing fileHint if it's unused
+    - type: dead_code_candidate
+      entity: exactMatches
+      file: internal/cmd/utils.go
+      recommendation: Consider removing exactMatches if it's unused
+    - type: dead_code_candidate
+      entity: prefixMatches
+      file: internal/cmd/utils.go
+      recommendation: Consider removing prefixMatches if it's unused
+    - type: dead_code_candidate
+      entity: pagerank
+      file: internal/cmd/utils.go
+      recommendation: Consider removing pagerank if it's unused
+    - type: dead_code_candidate
+      entity: suggestions
+      file: internal/cmd/utils.go
+      recommendation: Consider removing suggestions if it's unused
+    - type: dead_code_candidate
+      entity: formatStoreLocation
+      file: internal/cmd/utils.go
+      recommendation: Consider removing formatStoreLocation if it's unused
+    - type: dead_code_candidate
+      entity: normalizeFilePath
+      file: internal/cmd/utils.go
+      recommendation: Consider removing normalizeFilePath if it's unused
+    - type: dead_code_candidate
+      entity: isFilePath
+      file: internal/cmd/utils.go
+      recommendation: Consider removing isFilePath if it's unused
+    - type: dead_code_candidate
+      entity: impactType
+      file: internal/cmd/utils.go
+      recommendation: Consider removing impactType if it's unused
+complexity:
+  hotspots:
+    - entity: runContext
+      out_degree: 56
+      lines: 291
+    - entity: runFindWithRanking
+      out_degree: 45
+      lines: 231
+    - entity: runShowDefault
+      out_degree: 44
+      lines: 113
+    - entity: runSafeDrift
+      out_degree: 40
+      lines: 336
+    - entity: extractEntitiesFromContent
+      out_degree: 38
+      lines: 73
+    - entity: ParseWithoutStore
+      out_degree: 38
+      lines: 95
+    - entity: runTestSelection
+      out_degree: 38
+      lines: 288
+    - entity: extractCurrentEntities
+      out_degree: 37
+      lines: 75
+    - entity: runSafeChanges
+      out_degree: 36
+      lines: 184
+    - entity: runShowGraph
+      out_degree: 35
+      lines: 192
+    - entity: runSafeQuick
+      out_degree: 34
+      lines: 198
+    - entity: analyzeFiles
+      out_degree: 33
+      lines: 234
+    - entity: discoverTestsInFile
+      out_degree: 32
+      lines: 131
+    - entity: runReset
+      out_degree: 29
+      lines: 186
+    - entity: runSafeFull
+      out_degree: 28
+      lines: 84
+    - entity: storeEntityToOutput
+      out_degree: 27
+      lines: 69
+    - entity: extractFunctionDefinition
+      out_degree: 26
+      lines: 121
+    - entity: ExtractAllWithNodes
+      out_degree: 26
+      lines: 98
+    - entity: runDiffContext
+      out_degree: 26
+      lines: 61
+    - entity: runGuideDeps
+      out_degree: 26
+      lines: 121
+diagrams: {}

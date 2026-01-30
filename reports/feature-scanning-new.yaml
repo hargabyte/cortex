@@ -1,0 +1,460 @@
+report:
+  type: feature
+  generated_at: 2026-01-20T21:25:16.647393343Z
+  query: scanning
+metadata:
+  entity_count: 15
+  total_entities_searched: 3769
+  matches_found: 15
+  language_breakdown:
+    go: 15
+  coverage_available: true
+  search_method: fts
+entities:
+  - id: sa-fn-088d13e1-47-SearchEntities
+    name: SearchEntities
+    entity_type: method
+    file: internal/store/fts.go
+    lines:
+      - 47
+      - 142
+    signature: '(opts: SearchOptions) -> ([]*SearchResult, error)'
+    importance: normal
+    pagerank: 0.00035404015427860803
+    coverage: -1
+    doc_comment: |-
+      // SearchEntities performs full-text search on entities using MySQL FULLTEXT.
+      // Returns entities sorted by combined relevance score (FTS + PageRank).
+      // Note: Dolt only supports NATURAL LANGUAGE MODE (no boolean operators).
+    relevance_score: 0.6385155974704951
+    in_degree: 6
+  - id: sa-fn-099450a0-641-scanFilePass1
+    name: scanFilePass1
+    entity_type: function
+    file: internal/cmd/scan.go
+    lines:
+      - 641
+      - 734
+    signature: '(path: string, basePath: string, p: *parser.Parser, storeDB: *store.Store, stats: *scanStats) -> *fileScanResult'
+    importance: normal
+    pagerank: 0.000267873152515493
+    coverage: -1
+    doc_comment: |-
+      // scanFilePass1 handles the first pass of scanning: parse file and extract entities with AST nodes.
+      // Returns nil if file should be skipped (unchanged or error).
+    relevance_score: 0.6368224188265742
+    in_degree: 1
+  - id: sa-fn-099450a0-1033-showScanOverview
+    name: showScanOverview
+    entity_type: function
+    file: internal/cmd/scan.go
+    lines:
+      - 1033
+      - 1105
+    signature: '(s: *store.Store, projectRoot: string, cfg: *config.Config) -> error'
+    importance: normal
+    pagerank: 0.000267873152515493
+    coverage: -1
+    doc_comment: |-
+      // showScanOverview displays a project overview after scanning (--overview flag).
+      // This consolidates the quickstart functionality into scan.
+    relevance_score: 0.6363925849039245
+    in_degree: 1
+  - id: sa-fn-0edeeeb1-53-DiscoverTests
+    name: DiscoverTests
+    entity_type: method
+    file: internal/coverage/testdiscovery.go
+    lines:
+      - 53
+      - 100
+    signature: () -> ([]DiscoveredTest, error)
+    importance: normal
+    pagerank: 0.00027280557814518536
+    coverage: -1
+    doc_comment: |-
+      // DiscoverTests scans the codebase for test files and returns discovered tests.
+      // It extracts test function entities from all test files.
+    relevance_score: 0.6354206212058395
+    in_degree: 2
+  - id: sa-fn-836fe4f1-547-ToCallGraphEntity
+    name: ToCallGraphEntity
+    entity_type: method
+    file: internal/extract/entity.go
+    lines:
+      - 547
+      - 583
+    signature: () -> CallGraphEntity
+    importance: normal
+    pagerank: 0.00026123494644568544
+    coverage: -1
+    doc_comment: |-
+      // ToCallGraphEntity converts an Entity to a CallGraphEntity for use with CallGraphExtractor.
+      // The Node field will be nil and must be set separately if AST traversal is needed.
+    relevance_score: 0.6349748529148379
+    in_degree: 2
+  - id: sa-fn-910bbbb6-375-extractTraitImpl
+    name: extractTraitImpl
+    entity_type: method
+    file: internal/extract/callgraph_rust.go
+    lines:
+      - 375
+      - 407
+    signature: '(entity: *CallGraphEntity) -> []Dependency'
+    importance: normal
+    pagerank: 0.000281965797171757
+    coverage: -1
+    doc_comment: // extractTraitImpl extracts impl Trait for Type dependencies
+    relevance_score: 0.6346839132420281
+    in_degree: 2
+  - id: sa-fn-59dd6a2f-476-GetStatus
+    name: GetStatus
+    entity_type: method
+    file: internal/daemon/daemon.go
+    lines:
+      - 476
+      - 513
+    signature: () -> Status
+    importance: normal
+    pagerank: 0.00037227782664847023
+    coverage: -1
+    doc_comment: // GetStatus returns the current daemon status.
+    relevance_score: 0.6327089012692773
+    in_degree: 2
+  - id: sa-fn-099450a0-930-shouldExcludeFile
+    name: shouldExcludeFile
+    entity_type: function
+    file: internal/cmd/scan.go
+    lines:
+      - 930
+      - 968
+    signature: '(path: string, basePath: string, patterns: []string) -> bool'
+    importance: normal
+    pagerank: 0.00034377825747392227
+    coverage: -1
+    doc_comment: // shouldExcludeFile checks if a file should be excluded from scanning
+    relevance_score: 0.63195423209984
+    in_degree: 2
+  - id: sa-fn-099450a0-894-shouldExcludeDir
+    name: shouldExcludeDir
+    entity_type: function
+    file: internal/cmd/scan.go
+    lines:
+      - 894
+      - 927
+    signature: '(path: string, basePath: string, patterns: []string) -> bool'
+    importance: normal
+    pagerank: 0.00034377825747392227
+    coverage: -1
+    doc_comment: // shouldExcludeDir checks if a directory should be excluded from scanning
+    relevance_score: 0.6302964922888029
+    in_degree: 2
+  - id: sa-const-db7284c8-7-schemaSQL
+    name: schemaSQL
+    entity_type: constant
+    file: internal/cache/schema.go
+    lines:
+      - 7
+      - 7
+    signature: ()
+    importance: leaf
+    coverage: -1
+    doc_comment: |-
+      // schemaSQL defines the SQLite schema for the cache database.
+      // Tables:
+      //   - metrics: stores computed graph metrics per entity (PageRank, betweenness, degrees)
+      //   - file_index: tracks file scan state for incremental scanning
+    relevance_score: 0.6236118749923611
+  - id: sa-fn-6abe08fe-46-ComputeFileHash
+    name: ComputeFileHash
+    entity_type: function
+    file: internal/extract/hash.go
+    lines:
+      - 46
+      - 48
+    signature: '(content: []byte) -> string'
+    importance: normal
+    pagerank: 0.00030591884022127696
+    coverage: -1
+    doc_comment: |-
+      // ComputeFileHash computes a hash of file content for change detection.
+      // This is used at the file level to skip unchanged files during scanning.
+    relevance_score: 0.6194002967091302
+    in_degree: 6
+  - id: sa-type-099450a0-102-fileScanResult
+    name: fileScanResult
+    entity_type: type
+    file: internal/cmd/scan.go
+    lines:
+      - 102
+      - 110
+    signature: ()
+    importance: normal
+    pagerank: 0.00034377825747392227
+    coverage: -1
+    doc_comment: |-
+      // fileScanResult holds the results from scanning a single file.
+      // Used in the two-pass architecture to keep parse results alive for call graph extraction.
+    relevance_score: 0.6182901617641005
+    in_degree: 2
+  - id: sa-type-0edeeeb1-18-TestDiscovery
+    name: TestDiscovery
+    entity_type: type
+    file: internal/coverage/testdiscovery.go
+    lines:
+      - 18
+      - 21
+    signature: ()
+    importance: normal
+    pagerank: 0.0004379437949028148
+    coverage: -1
+    doc_comment: // TestDiscovery handles scanning and discovering test functions in a codebase.
+    relevance_score: 0.5891581043625606
+    in_degree: 4
+  - id: sa-type-0edeeeb1-32-DiscoveredTest
+    name: DiscoveredTest
+    entity_type: type
+    file: internal/coverage/testdiscovery.go
+    lines:
+      - 32
+      - 49
+    signature: ()
+    importance: normal
+    pagerank: 0.0003558673666397326
+    coverage: -1
+    doc_comment: // DiscoveredTest represents a test function discovered during scanning.
+    relevance_score: 0.5824037578418074
+    in_degree: 5
+  - id: sa-type-54c7c1af-40-ScanConfig
+    name: ScanConfig
+    entity_type: type
+    file: internal/config/config.go
+    lines:
+      - 40
+      - 43
+    signature: ()
+    importance: normal
+    pagerank: 0.0005403873092415205
+    coverage: -1
+    doc_comment: // ScanConfig holds configuration for code scanning
+    relevance_score: 0.5737498245260984
+    in_degree: 2
+dependencies:
+  - from: scanFilePass1
+    to: fileScanResult
+    type: uses_type
+  - from: DiscoverTests
+    to: TestDiscovery
+    type: method_of
+  - from: DiscoverTests
+    to: TestDiscovery
+    type: uses_type
+  - from: DiscoverTests
+    to: DiscoveredTest
+    type: uses_type
+diagrams:
+  call_flow:
+    title: 'Call Flow: SearchEntities'
+    d2: |
+      vars: {
+        d2-config: {
+          theme-id: 8
+          layout-engine: elk
+        }
+      }
+
+      title: {
+        label: "Call Flow: SearchEntities"
+        near: top-center
+      }
+
+      direction: down
+
+      # Call Flow
+      sa-fn-088d13e1-47-SearchEntities: {
+        label: "SearchEntities"
+        shape: rectangle
+        style: {
+          fill: "#fff3e0"
+          stroke: "#e65100"
+          stroke-width: 3
+          border-radius: 4
+          shadow: true
+        }
+      }
+      sa-fn-088d13e1-197-buildFTSQuery: {
+        label: "buildFTSQuery"
+        shape: rectangle
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1976d2"
+          stroke-width: 1
+          border-radius: 4
+        }
+      }
+      sa-fn-088d13e1-245-cleanFTSWord: {
+        label: "cleanFTSWord"
+        shape: rectangle
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1976d2"
+          stroke-width: 1
+          border-radius: 4
+        }
+      }
+      sa-fn-088d13e1-265-scanSearchResult: {
+        label: "scanSearchResult"
+        shape: rectangle
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1976d2"
+          stroke-width: 1
+          border-radius: 4
+        }
+      }
+      sa-fn-088d13e1-321-normalizeBM25Score: {
+        label: "normalizeBM25Score"
+        shape: rectangle
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1976d2"
+          stroke-width: 1
+          border-radius: 4
+        }
+      }
+      sa-fn-088d13e1-343-parseTimeOrNow: {
+        label: "parseTimeOrNow"
+        shape: rectangle
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1976d2"
+          stroke-width: 1
+          border-radius: 4
+        }
+      }
+      sa-fn-d1655fd7-113-Parse: {
+        label: "Parse"
+        shape: rectangle
+        style: {
+          fill: "#fff8e1"
+          stroke: "#ff8f00"
+          stroke-width: 2
+          border-radius: 4
+        }
+      }
+      sa-fn-088d13e1-331-sortSearchResults: {
+        label: "sortSearchResults"
+        shape: rectangle
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1976d2"
+          stroke-width: 1
+          border-radius: 4
+        }
+      }
+      sa-fn-1ae3e12f-300-Query: {
+        label: "Query"
+        shape: rectangle
+        style: {
+          fill: "#fff8e1"
+          stroke: "#ff8f00"
+          stroke-width: 2
+          border-radius: 4
+        }
+      }
+      sa-fn-1ae3e12f-261-Send: {
+        label: "Send"
+        shape: rectangle
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1976d2"
+          stroke-width: 1
+          border-radius: 4
+        }
+      }
+      sa-fn-54bbffe9-84-Close: {
+        label: "Close"
+        shape: rectangle
+        style: {
+          fill: "#fff3e0"
+          stroke: "#e65100"
+          stroke-width: 3
+          border-radius: 4
+          shadow: true
+        }
+      }
+
+      # Flow
+      sa-fn-088d13e1-47-SearchEntities -> sa-fn-088d13e1-197-buildFTSQuery {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-088d13e1-47-SearchEntities -> sa-fn-088d13e1-265-scanSearchResult {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-088d13e1-47-SearchEntities -> sa-fn-088d13e1-331-sortSearchResults {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-088d13e1-47-SearchEntities -> sa-fn-1ae3e12f-300-Query {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-088d13e1-47-SearchEntities -> sa-fn-54bbffe9-84-Close {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-088d13e1-197-buildFTSQuery -> sa-fn-088d13e1-245-cleanFTSWord {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-088d13e1-265-scanSearchResult -> sa-fn-088d13e1-321-normalizeBM25Score {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-088d13e1-265-scanSearchResult -> sa-fn-088d13e1-343-parseTimeOrNow {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-1ae3e12f-300-Query -> sa-fn-1ae3e12f-261-Send {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-54bbffe9-84-Close -> sa-fn-54bbffe9-84-Close {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-088d13e1-343-parseTimeOrNow -> sa-fn-d1655fd7-113-Parse {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      sa-fn-1ae3e12f-261-Send -> sa-fn-54bbffe9-84-Close {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+coverage:
+  overall: 0

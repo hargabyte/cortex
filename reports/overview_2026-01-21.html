@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cortex System Overview - CX Report</title>
+  <style>
+    :root {
+      --bg-primary: #faf8f5;
+      --bg-secondary: #f5f0e8;
+      --bg-card: #ffffff;
+      --text-primary: #3d3229;
+      --text-secondary: #6b5c4d;
+      --accent-warm: #c4956a;
+      --accent-brown: #8b6914;
+      --accent-cream: #e8dcc8;
+      --border-color: #d4c4a8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      color: var(--accent-brown);
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+    }
+
+    .meta {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .executive-summary {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--accent-warm);
+    }
+
+    .executive-summary h2 {
+      color: var(--accent-brown);
+      margin-bottom: 1rem;
+    }
+
+    .executive-summary p {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--accent-brown);
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+
+    .diagram-section {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .diagram-section h2 {
+      color: var(--accent-brown);
+      margin-bottom: 1rem;
+    }
+
+    .diagram-container {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 1rem;
+      overflow: auto;
+      max-height: 80vh;
+      border: 1px solid var(--border-color);
+    }
+
+    .diagram-container svg {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .card h3 {
+      color: var(--accent-brown);
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+
+    .card ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .card li {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .card li:last-child {
+      border-bottom: none;
+    }
+
+    .highlight-box {
+      background: var(--accent-cream);
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: var(--border-color);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-warm);
+      border-radius: 4px;
+    }
+
+    .module-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .module-item {
+      background: var(--bg-secondary);
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .module-name {
+      font-weight: 600;
+      color: var(--accent-brown);
+    }
+
+    .module-stats {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-top: 2rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .recommendation {
+      background: var(--bg-secondary);
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 0.5rem 0;
+      border-left: 3px solid var(--accent-warm);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Cortex System Overview</h1>
+      <p class="subtitle">Codebase Analysis Tool - Architecture Report</p>
+      <p class="meta">Generated: January 21, 2026 | Theme: Vanilla Nitro Cola</p>
+    </header>
+
+    <section class="executive-summary">
+      <h2>Executive Summary</h2>
+      <p>
+        Cortex (cx) is a <strong>codebase analysis tool</strong> that helps developers and AI agents understand code structure.
+        It scans source files, builds a dependency graph, and provides commands to explore and query the codebase.
+      </p>
+      <p>
+        The system is <strong>production-ready</strong> with 3,769 active code entities tracked across 16 internal modules.
+        The architecture follows a clean layered design with clear separation between CLI commands, core processing, and data storage.
+      </p>
+      <div class="highlight-box">
+        <strong>Key Capabilities:</strong> Code scanning, dependency analysis, smart context assembly, test coverage mapping, and AI-optimized output formatting.
+      </div>
+    </section>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">3,769</div>
+        <div class="stat-label">Active Entities</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">16</div>
+        <div class="stat-label">Core Modules</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">95%</div>
+        <div class="stat-label">Go Codebase</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">30+</div>
+        <div class="stat-label">CLI Commands</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">20</div>
+        <div class="stat-label">Keystones</div>
+      </div>
+    </div>
+
+    <section class="diagram-section">
+      <h2>System Architecture</h2>
+      <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+        This diagram shows the major modules and their key components. Modules are grouped by function,
+        with connections showing dependencies between components.
+      </p>
+      <div class="diagram-container">
+        <object type="image/svg+xml" data="overview_2026-01-21.svg" style="width: 100%; min-height: 600px;">
+          Architecture diagram
+        </object>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <div class="card">
+        <h3>Core Modules by Size</h3>
+        <div class="module-list">
+          <div class="module-item">
+            <div class="module-name">extract</div>
+            <div class="module-stats">1,251 entities</div>
+          </div>
+          <div class="module-item">
+            <div class="module-name">cmd</div>
+            <div class="module-stats">881 entities</div>
+          </div>
+          <div class="module-item">
+            <div class="module-name">store</div>
+            <div class="module-stats">238 entities</div>
+          </div>
+          <div class="module-item">
+            <div class="module-name">coverage</div>
+            <div class="module-stats">217 entities</div>
+          </div>
+          <div class="module-item">
+            <div class="module-name">output</div>
+            <div class="module-stats">206 entities</div>
+          </div>
+          <div class="module-item">
+            <div class="module-name">parser</div>
+            <div class="module-stats">122 entities</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Language Distribution</h3>
+        <ul>
+          <li>
+            <strong>Go</strong> - 3,608 entities (95%)
+            <div class="progress-bar"><div class="progress-fill" style="width: 95%"></div></div>
+          </li>
+          <li>
+            <strong>Python</strong> - 151 entities (4%)
+            <div class="progress-bar"><div class="progress-fill" style="width: 4%"></div></div>
+          </li>
+          <li>
+            <strong>TypeScript</strong> - 10 entities (1%)
+            <div class="progress-bar"><div class="progress-fill" style="width: 1%"></div></div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div class="card">
+        <h3>Critical Components (Keystones)</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+          These are the most important entities - changes here have the widest impact.
+        </p>
+        <ul>
+          <li><strong>Store</strong> - Database access (171 dependents)</li>
+          <li><strong>Entity</strong> - Core data type (280 dependents)</li>
+          <li><strong>walkNode</strong> - AST traversal (118 dependents)</li>
+          <li><strong>Close</strong> - Resource cleanup (244 dependents)</li>
+          <li><strong>ParseResult</strong> - Parse output (53 dependents)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Entity Type Breakdown</h3>
+        <ul>
+          <li><strong>Variables</strong> - 1,029 (27%)</li>
+          <li><strong>Methods</strong> - 945 (25%)</li>
+          <li><strong>Functions</strong> - 746 (20%)</li>
+          <li><strong>Types</strong> - 297 (8%)</li>
+          <li><strong>Constants</strong> - 132 (3%)</li>
+        </ul>
+      </div>
+    </div>
+
+    <section class="card" style="margin-bottom: 2rem;">
+      <h3>Key Takeaways</h3>
+      <div class="recommendation">
+        <strong>Architecture Quality:</strong> The codebase follows a clean modular architecture with clear separation of concerns.
+        The <code>extract</code> module handles language-specific parsing, <code>store</code> manages persistence, and <code>cmd</code> provides the CLI interface.
+      </div>
+      <div class="recommendation">
+        <strong>Scalability:</strong> The system supports multiple programming languages (Go, Python, TypeScript, Java, Rust)
+        through a pluggable extractor architecture.
+      </div>
+      <div class="recommendation">
+        <strong>Maintainability:</strong> 20 keystone entities are identified as high-impact. These should be prioritized
+        for code review and test coverage.
+      </div>
+    </section>
+
+    <footer>
+      <p>Generated by Cortex <code>cx report overview</code> | Theme: Vanilla Nitro Cola (100)</p>
+      <p style="margin-top: 0.5rem;">Report audience: Stakeholders</p>
+    </footer>
+  </div>
+</body>
+</html>

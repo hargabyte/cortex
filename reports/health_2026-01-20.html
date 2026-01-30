@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CX Health Report - Cortex</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+            --border-color: #30363d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 { font-size: 2.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-secondary); font-size: 1.1rem; }
+        .timestamp { color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem; }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--accent-blue);
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .risk-score {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            padding: 2rem;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .risk-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: conic-gradient(var(--accent-yellow) 0deg 180deg, var(--bg-tertiary) 180deg 360deg);
+        }
+
+        .risk-circle-inner {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .risk-details { text-align: left; }
+        .risk-label { font-size: 1.2rem; color: var(--text-secondary); }
+        .risk-value { font-size: 2rem; font-weight: 600; color: var(--accent-yellow); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .stat-value.critical { color: var(--accent-red); }
+        .stat-value.warning { color: var(--accent-yellow); }
+        .stat-value.success { color: var(--accent-green); }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .issue-list { list-style: none; }
+
+        .issue-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .issue-number {
+            font-weight: 600;
+            color: var(--accent-yellow);
+            min-width: 24px;
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        .issue-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .issue-icon.critical { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+        .issue-icon.warning { background: rgba(210, 153, 34, 0.2); color: var(--accent-yellow); }
+        .issue-icon.info { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); }
+
+        .issue-content { flex: 1; }
+        .issue-title { font-weight: 600; margin-bottom: 0.25rem; }
+        .issue-meta { font-size: 0.875rem; color: var(--text-secondary); }
+        .issue-recommendation { font-size: 0.875rem; color: var(--accent-purple); margin-top: 0.5rem; }
+
+        .file-path {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.8rem;
+            color: var(--accent-blue);
+            background: var(--bg-tertiary);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-critical { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+        .badge-warning { background: rgba(210, 153, 34, 0.2); color: var(--accent-yellow); }
+        .badge-info { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); }
+        .badge-success { background: rgba(63, 185, 80, 0.2); color: var(--accent-green); }
+
+        .pagerank-bar {
+            display: inline-block;
+            height: 8px;
+            background: linear-gradient(90deg, var(--accent-red), var(--accent-yellow), var(--accent-green));
+            border-radius: 4px;
+            width: 60px;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(210, 153, 34, 0.1), rgba(248, 81, 73, 0.1));
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .highlight-box h3 {
+            color: var(--accent-red);
+            margin-top: 0;
+        }
+
+        .coverage-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .coverage-metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .coverage-metric:last-child { border-bottom: none; }
+
+        .coverage-name { color: var(--text-primary); }
+        .coverage-value { font-weight: 600; color: var(--accent-red); }
+
+        .recommendations-list {
+            list-style: none;
+        }
+
+        .recommendations-list li {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .recommendations-list li strong { color: var(--accent-blue); }
+        .recommendations-list li em { color: var(--text-secondary); }
+
+        .section-description {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+        }
+
+        .issues-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .issues-table thead {
+            background: var(--bg-tertiary);
+        }
+
+        .issues-table th,
+        .issues-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .issues-table th {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .issues-table tbody tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .pagerank-value {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.85rem;
+            color: var(--accent-yellow);
+        }
+
+        .entity-name {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .module-file {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CX Health Report</h1>
+            <p class="subtitle">Cortex Codebase Analysis</p>
+            <p class="timestamp">Generated: January 20, 2026</p>
+        </header>
+
+        <!-- Risk Score -->
+        <div class="risk-score">
+            <div class="risk-circle">
+                <div class="risk-circle-inner">50</div>
+            </div>
+            <div class="risk-details">
+                <div class="risk-label">Overall Risk Score</div>
+                <div class="risk-value">Moderate Risk</div>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                    Primary concerns: 50 untested keystones with high impact on codebase health. Zero test coverage across all modules requires immediate attention.
+                </p>
+            </div>
+        </div>
+
+        <!-- Critical Alert -->
+        <div class="highlight-box">
+            <h3>Critical: Zero Test Coverage</h3>
+            <p>The Cortex codebase currently has 0% test coverage. This represents a significant risk as all critical entities are untested, including core AST traversal, database management, and text extraction functions. Immediate action is required to establish baseline test coverage for keystones.</p>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value critical">50</div>
+                <div class="stat-label">Untested Keystones</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value success">0</div>
+                <div class="stat-label">Circular Dependencies</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value success">0</div>
+                <div class="stat-label">Dead Code Candidates</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value critical">0%</div>
+                <div class="stat-label">Coverage Overall</div>
+            </div>
+        </div>
+
+        <!-- Coverage Analysis -->
+        <h2>Coverage Analysis <span class="badge badge-critical">0%</span></h2>
+        <p class="section-description">Current test coverage metrics across the Cortex codebase.</p>
+
+        <div class="coverage-section">
+            <div class="coverage-metric">
+                <span class="coverage-name">Overall Test Coverage</span>
+                <span class="coverage-value">0%</span>
+            </div>
+            <div class="coverage-metric">
+                <span class="coverage-name">Keystones Covered</span>
+                <span class="coverage-value">0/50</span>
+            </div>
+            <div class="coverage-metric">
+                <span class="coverage-name">Critical Path Tested</span>
+                <span class="coverage-value">No</span>
+            </div>
+            <div class="coverage-metric">
+                <span class="coverage-name">Parser Module Coverage</span>
+                <span class="coverage-value">0%</span>
+            </div>
+            <div class="coverage-metric">
+                <span class="coverage-name">Database Module Coverage</span>
+                <span class="coverage-value">0%</span>
+            </div>
+        </div>
+
+        <!-- Critical Issues -->
+        <h2>Critical Issues <span class="badge badge-critical">50</span></h2>
+        <p class="section-description">Untested keystone entities sorted by importance (PageRank). These are high-impact functions that form the core of Cortex functionality and must be prioritized for test coverage.</p>
+
+        <div class="table-wrapper">
+            <table class="issues-table">
+                <thead>
+                    <tr>
+                        <th style="width: 5%">#</th>
+                        <th style="width: 25%">Entity</th>
+                        <th style="width: 25%">Location</th>
+                        <th style="width: 15%">PageRank</th>
+                        <th style="width: 30%">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>1</strong></td>
+                        <td><span class="entity-name">walkNode</span></td>
+                        <td><span class="module-file">parser.go</span></td>
+                        <td><span class="pagerank-value">0.034</span></td>
+                        <td>AST traversal keystone - recursively walks syntax tree</td>
+                    </tr>
+                    <tr>
+                        <td><strong>2</strong></td>
+                        <td><span class="entity-name">Store</span></td>
+                        <td><span class="module-file">db.go</span></td>
+                        <td><span class="pagerank-value">0.023</span></td>
+                        <td>Database manager keystone - central persistence layer</td>
+                    </tr>
+                    <tr>
+                        <td><strong>3</strong></td>
+                        <td><span class="entity-name">nodeText</span></td>
+                        <td><span class="module-file">typescript.go</span></td>
+                        <td><span class="pagerank-value">0.023</span></td>
+                        <td>Source text keystone - text extraction from AST nodes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>4</strong></td>
+                        <td><span class="entity-name">Close</span></td>
+                        <td><span class="module-file">db.go</span></td>
+                        <td><span class="pagerank-value">0.022</span></td>
+                        <td>Close method keystone - resource cleanup</td>
+                    </tr>
+                    <tr>
+                        <td><strong>5</strong></td>
+                        <td><span class="entity-name">ParseResult</span></td>
+                        <td><span class="module-file">parser.go</span></td>
+                        <td><span class="pagerank-value">0.021</span></td>
+                        <td>Parse result keystone - result type definition</td>
+                    </tr>
+                    <tr>
+                        <td><strong>6</strong></td>
+                        <td><span class="entity-name">Entity</span></td>
+                        <td><span class="module-file">types.go</span></td>
+                        <td><span class="pagerank-value">0.016</span></td>
+                        <td>Entity type keystone - core data structure</td>
+                    </tr>
+                    <tr>
+                        <td><strong>7</strong></td>
+                        <td><span class="entity-name">NodeText</span></td>
+                        <td><span class="module-file">parser.go</span></td>
+                        <td><span class="pagerank-value">0.015</span></td>
+                        <td>Node text keystone - exported text extraction</td>
+                    </tr>
+                    <tr>
+                        <td><strong>8</strong></td>
+                        <td><span class="entity-name">Density</span></td>
+                        <td><span class="module-file">format.go</span></td>
+                        <td><span class="pagerank-value">0.013</span></td>
+                        <td>Output density keystone - formatting options</td>
+                    </tr>
+                    <tr>
+                        <td><strong>9</strong></td>
+                        <td><span class="entity-name">TypeScriptExtractor</span></td>
+                        <td><span class="module-file">typescript.go</span></td>
+                        <td><span class="pagerank-value">0.013</span></td>
+                        <td>TS extractor keystone - TypeScript language support</td>
+                    </tr>
+                    <tr>
+                        <td><strong>10</strong></td>
+                        <td><span class="entity-name">Client</span></td>
+                        <td><span class="module-file">storeproxy.go</span></td>
+                        <td><span class="pagerank-value">0.010</span></td>
+                        <td>Daemon client keystone - IPC communication layer</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p style="color: var(--text-secondary); margin-top: 1rem; font-size: 0.9rem;">
+            Showing top 10 of 50 critical untested keystones. All critical issues are type: "untested_keystone"
+        </p>
+
+        <!-- Health Metrics -->
+        <h2>Health Metrics</h2>
+        <p class="section-description">Detailed health assessment of the Cortex codebase.</p>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">50</div>
+                <div class="stat-label">Untested Keystones</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value success">0</div>
+                <div class="stat-label">Circular Dependencies</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value success">0</div>
+                <div class="stat-label">Dead Code Candidates</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value critical">0%</div>
+                <div class="stat-label">Test Coverage</div>
+            </div>
+        </div>
+
+        <!-- Module Analysis -->
+        <h2>Module Analysis <span class="badge badge-info">5 modules</span></h2>
+        <p class="section-description">Keystone concentration by module. Higher PageRank density indicates modules with the most critical untested code.</p>
+
+        <div style="display: grid; gap: 1rem; margin-bottom: 2rem;">
+            <div class="card">
+                <h3 style="margin-top: 0; color: var(--accent-blue);">Parser Module <span class="badge badge-critical">4 keystones</span></h3>
+                <p style="color: var(--text-secondary); margin-bottom: 0.75rem;">Critical AST and source code analysis functions</p>
+                <ul style="list-style: none; padding-left: 0;">
+                    <li style="padding: 0.5rem 0;">walkNode (0.034) - 118 callers</li>
+                    <li style="padding: 0.5rem 0;">ParseResult (0.021) - Result type</li>
+                    <li style="padding: 0.5rem 0;">NodeText (0.015) - Text extraction</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0; color: var(--accent-blue);">Database Module <span class="badge badge-critical">2 keystones</span></h3>
+                <p style="color: var(--text-secondary); margin-bottom: 0.75rem;">Core persistence and data management</p>
+                <ul style="list-style: none; padding-left: 0;">
+                    <li style="padding: 0.5rem 0;">Store (0.023) - 171 references</li>
+                    <li style="padding: 0.5rem 0;">Close (0.022) - Resource cleanup</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0; color: var(--accent-blue);">TypeScript Module <span class="badge badge-critical">2 keystones</span></h3>
+                <p style="color: var(--text-secondary); margin-bottom: 0.75rem;">Language-specific extraction and analysis</p>
+                <ul style="list-style: none; padding-left: 0;">
+                    <li style="padding: 0.5rem 0;">nodeText (0.023) - 502 callers</li>
+                    <li style="padding: 0.5rem 0;">TypeScriptExtractor (0.013) - Language support</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <h2>Prioritized Recommendations <span class="badge badge-critical">5 actions</span></h2>
+        <p class="section-description">Actionable items prioritized by impact and implementation effort for tech leads.</p>
+
+        <ul class="recommendations-list">
+            <li>
+                <strong>1. Add tests for walkNode (CRITICAL)</strong><br>
+                <em>Highest priority: Critical AST traversal function with 118 callers</em><br>
+                Impact: Prevents cascading failures across all AST analysis. Estimated effort: 6-8 hours. Test recursive node traversal, edge cases (null nodes, circular refs), and performance under large trees.
+            </li>
+
+            <li>
+                <strong>2. Add tests for Store (HIGH)</strong><br>
+                <em>Database manager type with 171 references throughout codebase</em><br>
+                Impact: Core persistence layer - untested Store type affects all data operations. Estimated effort: 8-10 hours. Cover CRUD operations, concurrency, transaction handling, and error scenarios.
+            </li>
+
+            <li>
+                <strong>3. Add tests for nodeText (HIGH)</strong><br>
+                <em>Heavily used text extraction with 502 callers - highest dependency count</em><br>
+                Impact: Text extraction is core to Cortex's parsing pipeline. Estimated effort: 4-6 hours. Test character ranges, encoding handling, edge cases (empty nodes, whitespace).
+            </li>
+
+            <li>
+                <strong>4. Implement Coverage Tracking (MEDIUM)</strong><br>
+                <em>Currently 0% coverage - cannot measure progress without baseline metrics</em><br>
+                Impact: Enables data-driven prioritization of remaining 47 keystones. Estimated effort: 2-3 hours. Set up go test -cover integration, establish baseline, and configure CI/CD.
+            </li>
+
+            <li>
+                <strong>5. Focus on Parser and Store Modules First (STRATEGIC)</strong><br>
+                <em>Combined 6 keystones with highest PageRank density</em><br>
+                Impact: These two modules form the foundation. Testing them first provides maximum benefit. Recommended order: parser → store → typescript → types → format/storeproxy.
+            </li>
+        </ul>
+
+        <!-- Next Steps -->
+        <div class="card" style="background: linear-gradient(135deg, rgba(88, 166, 255, 0.1), rgba(63, 185, 80, 0.1)); border: 1px solid var(--accent-blue);">
+            <h3 style="color: var(--accent-blue); margin-top: 0;">Immediate Next Steps</h3>
+            <ol style="padding-left: 1.5rem; color: var(--text-primary);">
+                <li style="margin-bottom: 0.75rem;"><strong>Week 1:</strong> Add unit tests for walkNode and Store (top 2 keystones, ~14 hours combined)</li>
+                <li style="margin-bottom: 0.75rem;"><strong>Week 2:</strong> Add tests for nodeText and implement coverage tracking</li>
+                <li style="margin-bottom: 0.75rem;"><strong>Week 3+:</strong> Systematically test remaining 46 keystones in PageRank priority order</li>
+                <li style="margin-bottom: 0;"><strong>Ongoing:</strong> Monitor coverage trends and update this report weekly</li>
+            </ol>
+        </div>
+
+        <!-- Risk Assessment Summary -->
+        <h2>Risk Assessment Summary</h2>
+        <p class="section-description">Executive summary for tech leads and stakeholders.</p>
+
+        <div style="display: grid; gap: 1rem;">
+            <div class="card">
+                <h3 style="margin-top: 0; color: var(--accent-yellow);">Risk Level: MODERATE (50/100)</h3>
+                <p>While the codebase shows good structural health (zero circular dependencies, zero dead code), the complete absence of test coverage represents significant risk. 50 untested keystones form the critical path through Cortex's core functionality.</p>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0; color: var(--accent-red);">Critical Path Risk</h3>
+                <p>The parser and database modules (6 keystones) have the highest impact. Undetected regressions in these areas could compromise the entire codebase. Estimated risk: <strong>HIGH</strong> until walkNode and Store are tested.</p>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0; color: var(--accent-blue);">Opportunity</h3>
+                <p>Clean codebase with zero circular dependencies and dead code. High-quality structure makes testing straightforward. Implementing focused unit tests for 5-10 top keystones would immediately reduce risk to LOW within 2-3 weeks.</p>
+            </div>
+        </div>
+
+        <footer style="text-align: center; color: var(--text-secondary); margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color); font-size: 0.85rem;">
+            <p>Report generated by Cortex Health Analysis System</p>
+            <p style="margin-top: 0.5rem;">For tech leads and stakeholders assessing Cortex codebase quality</p>
+        </footer>
+    </div>
+</body>
+</html>

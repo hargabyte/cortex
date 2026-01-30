@@ -1,0 +1,711 @@
+report:
+  type: health
+  generated_at: 2026-01-20T21:14:19.355849106Z
+risk_score: 50
+issues:
+  critical:
+    - type: untested_keystone
+      entity: walkNode
+      file: internal/parser/parser.go
+      pagerank: 0.034345211853781116
+      importance: keystone
+      recommendation: Add tests for walkNode - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Store
+      file: internal/store/db.go
+      pagerank: 0.023398986733187566
+      importance: keystone
+      recommendation: Add tests for Store - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: nodeText
+      file: internal/extract/typescript.go
+      pagerank: 0.02337063183903313
+      importance: keystone
+      recommendation: Add tests for nodeText - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Close
+      file: internal/store/db.go
+      pagerank: 0.02193511462944736
+      importance: keystone
+      recommendation: Add tests for Close - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: ParseResult
+      file: internal/parser/parser.go
+      pagerank: 0.021147124962808145
+      importance: keystone
+      recommendation: Add tests for ParseResult - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Entity
+      file: internal/store/types.go
+      pagerank: 0.01569073510827062
+      importance: keystone
+      recommendation: Add tests for Entity - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: NodeText
+      file: internal/parser/parser.go
+      pagerank: 0.014978434996581632
+      importance: keystone
+      recommendation: Add tests for NodeText - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Density
+      file: internal/output/format.go
+      pagerank: 0.012881480046349106
+      importance: keystone
+      recommendation: Add tests for Density - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: TypeScriptExtractor
+      file: internal/extract/typescript.go
+      pagerank: 0.012681936086457445
+      importance: keystone
+      recommendation: Add tests for TypeScriptExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Client
+      file: internal/daemon/storeproxy.go
+      pagerank: 0.010236277239846558
+      importance: keystone
+      recommendation: Add tests for Client - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: String
+      file: internal/output/format.go
+      pagerank: 0.009898418757687922
+      importance: keystone
+      recommendation: Add tests for String - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Contains
+      file: internal/extract/callgraph.go
+      pagerank: 0.007506090311751593
+      importance: keystone
+      recommendation: Add tests for Contains - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: TypeScriptCallGraphExtractor
+      file: internal/extract/callgraph_typescript.go
+      pagerank: 0.005433073779001616
+      importance: keystone
+      recommendation: Add tests for TypeScriptCallGraphExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: StoreProvider
+      file: internal/daemon/storeproxy.go
+      pagerank: 0.005392453066583038
+      importance: keystone
+      recommendation: Add tests for StoreProvider - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Graph
+      file: internal/graph/graph.go
+      pagerank: 0.005094940831528421
+      importance: keystone
+      recommendation: Add tests for Graph - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: CGFWriter
+      file: internal/output/cgf_writer.go
+      pagerank: 0.004710585753452473
+      importance: keystone
+      recommendation: Add tests for CGFWriter - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: itoa
+      file: internal/extract/callgraph_java.go
+      pagerank: 0.004648414555550264
+      importance: keystone
+      recommendation: Add tests for itoa - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: FindNodesByType
+      file: internal/parser/parser.go
+      pagerank: 0.00462541992700867
+      importance: keystone
+      recommendation: Add tests for FindNodesByType - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Format
+      file: internal/output/formatter.go
+      pagerank: 0.004604577586302156
+      importance: keystone
+      recommendation: Add tests for Format - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Parse
+      file: internal/parser/parser.go
+      pagerank: 0.004191244137674597
+      importance: keystone
+      recommendation: Add tests for Parse - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: CallGraphEntity
+      file: internal/extract/callgraph.go
+      pagerank: 0.0039117484028318725
+      importance: keystone
+      recommendation: Add tests for CallGraphEntity - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: getFilePath
+      file: internal/extract/typescript.go
+      pagerank: 0.003881897234189505
+      importance: keystone
+      recommendation: Add tests for getFilePath - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: findChildByType
+      file: internal/extract/extract.go
+      pagerank: 0.0036869024244384715
+      importance: keystone
+      recommendation: Add tests for findChildByType - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: ComputeHashes
+      file: internal/extract/entity.go
+      pagerank: 0.0035624033640399154
+      importance: keystone
+      recommendation: Add tests for ComputeHashes - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: CppExtractor
+      file: internal/extract/cpp.go
+      pagerank: 0.0034344015238633456
+      importance: keystone
+      recommendation: Add tests for CppExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: execBD
+      file: internal/bd/bd.go
+      pagerank: 0.0034174984893216172
+      importance: keystone
+      recommendation: Add tests for execBD - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: DB
+      file: internal/store/db.go
+      pagerank: 0.003343127652048447
+      importance: keystone
+      recommendation: Add tests for DB - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Query
+      file: internal/daemon/socket.go
+      pagerank: 0.0032954541435912064
+      importance: keystone
+      recommendation: Add tests for Query - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: abbreviateType
+      file: internal/extract/function.go
+      pagerank: 0.003276786288318875
+      importance: keystone
+      recommendation: Add tests for abbreviateType - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Server
+      file: internal/mcp/server.go
+      pagerank: 0.0031803015272138385
+      importance: keystone
+      recommendation: Add tests for Server - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: CGFFormatter
+      file: internal/output/formatter.go
+      pagerank: 0.003137288932754274
+      importance: keystone
+      recommendation: Add tests for CGFFormatter - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Execute
+      file: internal/cmd/root.go
+      pagerank: 0.003065500739702115
+      importance: keystone
+      recommendation: Add tests for Execute - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Daemon
+      file: internal/daemon/daemon.go
+      pagerank: 0.0030608314775550805
+      importance: keystone
+      recommendation: Add tests for Daemon - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Cache
+      file: internal/cache/cache.go
+      pagerank: 0.0030536954042952266
+      importance: keystone
+      recommendation: Add tests for Cache - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Visibility
+      file: internal/extract/entity.go
+      pagerank: 0.0030337281992140214
+      importance: keystone
+      recommendation: Add tests for Visibility - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: NormalizePath
+      file: internal/extract/entity.go
+      pagerank: 0.0029701360959495525
+      importance: keystone
+      recommendation: Add tests for NormalizePath - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: FindNodes
+      file: internal/parser/parser.go
+      pagerank: 0.002872819563417446
+      importance: keystone
+      recommendation: Add tests for FindNodes - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: RustExtractor
+      file: internal/extract/rust.go
+      pagerank: 0.0026718407327589815
+      importance: keystone
+      recommendation: Add tests for RustExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Open
+      file: internal/store/db.go
+      pagerank: 0.0026411732262549585
+      importance: keystone
+      recommendation: Add tests for Open - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: PHPCallGraphExtractor
+      file: internal/extract/callgraph_php.go
+      pagerank: 0.00257795632201867
+      importance: keystone
+      recommendation: Add tests for PHPCallGraphExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: FindConfigDir
+      file: internal/config/config.go
+      pagerank: 0.0024841278728222065
+      importance: keystone
+      recommendation: Add tests for FindConfigDir - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: KotlinExtractor
+      file: internal/extract/kotlin.go
+      pagerank: 0.002442597814389742
+      importance: keystone
+      recommendation: Add tests for KotlinExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: FileReadError
+      file: internal/parser/errors.go
+      pagerank: 0.0024316648138657756
+      importance: keystone
+      recommendation: Add tests for FileReadError - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: FormatToWriter
+      file: internal/output/formatter.go
+      pagerank: 0.0023765506765787096
+      importance: keystone
+      recommendation: Add tests for FormatToWriter - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: PHPExtractor
+      file: internal/extract/php.go
+      pagerank: 0.002373986664152198
+      importance: keystone
+      recommendation: Add tests for PHPExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: phpItoa
+      file: internal/extract/callgraph_php.go
+      pagerank: 0.002361983488214049
+      importance: keystone
+      recommendation: Add tests for phpItoa - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: JavaCallGraphExtractor
+      file: internal/extract/callgraph_java.go
+      pagerank: 0.0023130363041361456
+      importance: keystone
+      recommendation: Add tests for JavaCallGraphExtractor - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: Error
+      file: internal/parser/errors.go
+      pagerank: 0.0022684740256400174
+      importance: keystone
+      recommendation: Add tests for Error - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: resolveTarget
+      file: internal/extract/callgraph_typescript.go
+      pagerank: 0.0022361225216219346
+      importance: keystone
+      recommendation: Add tests for resolveTarget - this is a keystone entity with high importance
+    - type: untested_keystone
+      entity: CSharpCallGraphExtractor
+      file: internal/extract/callgraph_csharp.go
+      pagerank: 0.002217205092898417
+      importance: keystone
+      recommendation: Add tests for CSharpCallGraphExtractor - this is a keystone entity with high importance
+  info:
+    - type: dead_code_group
+      entity: internal/cmd
+      entities:
+        - runContext
+        - runImport
+        - runStatus
+        - runDaemonControlStatus
+        - runDaemonControlStop
+        - runDaemonControlStart
+        - runDaemonMCP
+        - useDaemon
+        - resetDaemonClient
+        - runDbInfo
+        - runDbCompact
+        - runDbExport
+        - runDead
+        - runDiff
+        - runDoctor
+        - runFind
+        - mapEntityTypeToCGF
+        - runGuard
+        - runGuideOverview
+        - runGuideHotspots
+        - runGuideModules
+        - runGuideDeps
+        - runHelpAgents
+        - runLink
+        - runMap
+        - runReset
+        - runSafe
+        - runScan
+        - isFileChanged
+        - runShow
+        - runDaemonStatus
+        - runTagShortcut
+        - runTagRemove
+        - runTagsList
+        - runTagFind
+        - runTagsExport
+        - runTagsImport
+      file: internal/cmd
+      in_degree: 37
+      recommendation: 37 dead code candidates in internal/cmd
+    - type: dead_code_group
+      entity: ../../../tmp/py-test-repo/ch10-primer-on-oop
+      entities:
+        - __init__
+        - __str__
+        - __init__
+        - __init__
+        - __init__
+        - __str__
+        - __init__
+        - __init__
+        - __init__
+      file: ../../../tmp/py-test-repo/ch10-primer-on-oop
+      in_degree: 9
+      recommendation: 9 dead code candidates in ../../../tmp/py-test-repo/ch10-primer-on-oop
+    - type: dead_code_group
+      entity: internal/cache
+      entities:
+        - scanMetrics
+        - scanMetricsRows
+        - initSchema
+      file: internal/cache
+      in_degree: 3
+      recommendation: 3 dead code candidates in internal/cache
+    - type: dead_code_group
+      entity: internal/bd
+      entities:
+        - jsonlDependency
+      file: internal/bd
+      in_degree: 1
+      recommendation: 1 dead code candidates in internal/bd
+complexity:
+  hotspots:
+    - entity: runContext
+      out_degree: 56
+      lines: 291
+    - entity: runFindWithRanking
+      out_degree: 45
+      lines: 231
+    - entity: runShowDefault
+      out_degree: 44
+      lines: 113
+    - entity: runSafeDrift
+      out_degree: 40
+      lines: 336
+    - entity: extractEntitiesFromContent
+      out_degree: 38
+      lines: 73
+    - entity: ParseWithoutStore
+      out_degree: 38
+      lines: 95
+    - entity: runTestSelection
+      out_degree: 38
+      lines: 288
+    - entity: extractCurrentEntities
+      out_degree: 37
+      lines: 75
+    - entity: runSafeChanges
+      out_degree: 36
+      lines: 184
+    - entity: runShowGraph
+      out_degree: 35
+      lines: 192
+    - entity: runSafeQuick
+      out_degree: 34
+      lines: 198
+    - entity: analyzeFiles
+      out_degree: 33
+      lines: 234
+    - entity: discoverTestsInFile
+      out_degree: 32
+      lines: 131
+    - entity: runReset
+      out_degree: 29
+      lines: 186
+    - entity: runSafeFull
+      out_degree: 28
+      lines: 84
+    - entity: storeEntityToOutput
+      out_degree: 27
+      lines: 69
+    - entity: extractFunctionDefinition
+      out_degree: 26
+      lines: 121
+    - entity: ExtractAllWithNodes
+      out_degree: 26
+      lines: 98
+    - entity: runDiffContext
+      out_degree: 26
+      lines: 61
+    - entity: runGuideDeps
+      out_degree: 26
+      lines: 121
+diagrams: {}
+dead_code_groups:
+  - type: dead_code_group
+    module: internal/cmd
+    count: 37
+    candidates:
+      - entity: runContext
+        entity_type: function
+        file: internal/cmd/context.go
+        line: 190
+        recommendation: Consider removing runContext if it's unused
+      - entity: runImport
+        entity_type: function
+        file: internal/cmd/coverage.go
+        line: 110
+        recommendation: Consider removing runImport if it's unused
+      - entity: runStatus
+        entity_type: function
+        file: internal/cmd/coverage.go
+        line: 306
+        recommendation: Consider removing runStatus if it's unused
+      - entity: runDaemonControlStatus
+        entity_type: function
+        file: internal/cmd/daemon.go
+        line: 182
+        recommendation: Consider removing runDaemonControlStatus if it's unused
+      - entity: runDaemonControlStop
+        entity_type: function
+        file: internal/cmd/daemon.go
+        line: 289
+        recommendation: Consider removing runDaemonControlStop if it's unused
+      - entity: runDaemonControlStart
+        entity_type: function
+        file: internal/cmd/daemon.go
+        line: 308
+        recommendation: Consider removing runDaemonControlStart if it's unused
+      - entity: runDaemonMCP
+        entity_type: function
+        file: internal/cmd/daemon.go
+        line: 369
+        recommendation: Consider removing runDaemonMCP if it's unused
+      - entity: useDaemon
+        entity_type: function
+        file: internal/cmd/daemon_client.go
+        line: 42
+        recommendation: Consider removing useDaemon if it's unused
+      - entity: resetDaemonClient
+        entity_type: function
+        file: internal/cmd/daemon_client.go
+        line: 49
+        recommendation: Consider removing resetDaemonClient if it's unused
+      - entity: runDbInfo
+        entity_type: function
+        file: internal/cmd/db.go
+        line: 92
+        recommendation: Consider removing runDbInfo if it's unused
+      - entity: runDbCompact
+        entity_type: function
+        file: internal/cmd/db.go
+        line: 158
+        recommendation: Consider removing runDbCompact if it's unused
+      - entity: runDbExport
+        entity_type: function
+        file: internal/cmd/db.go
+        line: 244
+        recommendation: Consider removing runDbExport if it's unused
+      - entity: runDead
+        entity_type: function
+        file: internal/cmd/dead.go
+        line: 82
+        recommendation: Consider removing runDead if it's unused
+      - entity: runDiff
+        entity_type: function
+        file: internal/cmd/diff.go
+        line: 64
+        recommendation: Consider removing runDiff if it's unused
+      - entity: runDoctor
+        entity_type: function
+        file: internal/cmd/doctor.go
+        line: 47
+        recommendation: Consider removing runDoctor if it's unused
+      - entity: runFind
+        entity_type: function
+        file: internal/cmd/find.go
+        line: 117
+        recommendation: Consider removing runFind if it's unused
+      - entity: mapEntityTypeToCGF
+        entity_type: function
+        file: internal/cmd/find.go
+        line: 696
+        recommendation: Consider removing mapEntityTypeToCGF if it's unused
+      - entity: runGuard
+        entity_type: function
+        file: internal/cmd/guard.go
+        line: 117
+        recommendation: Consider removing runGuard if it's unused
+      - entity: runGuideOverview
+        entity_type: function
+        file: internal/cmd/guide.go
+        line: 140
+        recommendation: Consider removing runGuideOverview if it's unused
+      - entity: runGuideHotspots
+        entity_type: function
+        file: internal/cmd/guide.go
+        line: 211
+        recommendation: Consider removing runGuideHotspots if it's unused
+      - entity: runGuideModules
+        entity_type: function
+        file: internal/cmd/guide.go
+        line: 324
+        recommendation: Consider removing runGuideModules if it's unused
+      - entity: runGuideDeps
+        entity_type: function
+        file: internal/cmd/guide.go
+        line: 416
+        recommendation: Consider removing runGuideDeps if it's unused
+      - entity: runHelpAgents
+        entity_type: function
+        file: internal/cmd/helpagents.go
+        line: 29
+        recommendation: Consider removing runHelpAgents if it's unused
+      - entity: runLink
+        entity_type: function
+        file: internal/cmd/link.go
+        line: 45
+        recommendation: Consider removing runLink if it's unused
+      - entity: runMap
+        entity_type: function
+        file: internal/cmd/map.go
+        line: 69
+        recommendation: Consider removing runMap if it's unused
+      - entity: runReset
+        entity_type: function
+        file: internal/cmd/reset.go
+        line: 54
+        recommendation: Consider removing runReset if it's unused
+      - entity: runSafe
+        entity_type: function
+        file: internal/cmd/safe.go
+        line: 182
+        recommendation: Consider removing runSafe if it's unused
+      - entity: runScan
+        entity_type: function
+        file: internal/cmd/scan.go
+        line: 113
+        recommendation: Consider removing runScan if it's unused
+      - entity: isFileChanged
+        entity_type: function
+        file: internal/cmd/scan.go
+        line: 1018
+        recommendation: Consider removing isFileChanged if it's unused
+      - entity: runShow
+        entity_type: function
+        file: internal/cmd/show.go
+        line: 121
+        recommendation: Consider removing runShow if it's unused
+      - entity: runDaemonStatus
+        entity_type: function
+        file: internal/cmd/status.go
+        line: 88
+        recommendation: Consider removing runDaemonStatus if it's unused
+      - entity: runTagShortcut
+        entity_type: function
+        file: internal/cmd/tag.go
+        line: 200
+        recommendation: Consider removing runTagShortcut if it's unused
+      - entity: runTagRemove
+        entity_type: function
+        file: internal/cmd/tag.go
+        line: 251
+        recommendation: Consider removing runTagRemove if it's unused
+      - entity: runTagsList
+        entity_type: function
+        file: internal/cmd/tag.go
+        line: 280
+        recommendation: Consider removing runTagsList if it's unused
+      - entity: runTagFind
+        entity_type: function
+        file: internal/cmd/tag.go
+        line: 296
+        recommendation: Consider removing runTagFind if it's unused
+      - entity: runTagsExport
+        entity_type: function
+        file: internal/cmd/tag.go
+        line: 483
+        recommendation: Consider removing runTagsExport if it's unused
+      - entity: runTagsImport
+        entity_type: function
+        file: internal/cmd/tag.go
+        line: 550
+        recommendation: Consider removing runTagsImport if it's unused
+  - type: dead_code_group
+    module: ../../../tmp/py-test-repo/ch10-primer-on-oop
+    count: 9
+    candidates:
+      - entity: __init__
+        entity_type: method
+        file: ../../../tmp/py-test-repo/ch10-primer-on-oop/2-instantiate-an-object.py
+        line: 10
+        recommendation: Consider removing __init__ if it's unused
+      - entity: __str__
+        entity_type: method
+        file: ../../../tmp/py-test-repo/ch10-primer-on-oop/2-instantiate-an-object.py
+        line: 15
+        recommendation: Consider removing __str__ if it's unused
+      - entity: __init__
+        entity_type: method
+        file: ../../../tmp/py-test-repo/ch10-primer-on-oop/2-instantiate-an-object.py
+        line: 29
+        recommendation: Consider removing __init__ if it's unused
+      - entity: __init__
+        entity_type: method
+        file: ../../../tmp/py-test-repo/ch10-primer-on-oop/2-instantiate-an-object.py
+        line: 43
+        recommendation: Consider removing __init__ if it's unused
+      - entity: __init__
+        entity_type: method
+        file: ../../../tmp/py-test-repo/ch10-primer-on-oop/3-inherit-from-other-classes.py
+        line: 10
+        recommendation: Consider removing __init__ if it's unused
+      - entity: __str__
+        entity_type: method
+        file: ../../../tmp/py-test-repo/ch10-primer-on-oop/3-inherit-from-other-classes.py
+        line: 14
+        recommendation: Consider removing __str__ if it's unused
+      - entity: __init__
+        entity_type: method
+        file: ../../../tmp/py-test-repo/ch10-primer-on-oop/3-inherit-from-other-classes.py
+        line: 30
+        recommendation: Consider removing __init__ if it's unused
+      - entity: __init__
+        entity_type: method
+        file: ../../../tmp/py-test-repo/ch10-primer-on-oop/3-inherit-from-other-classes.py
+        line: 39
+        recommendation: Consider removing __init__ if it's unused
+      - entity: __init__
+        entity_type: method
+        file: ../../../tmp/py-test-repo/ch10-primer-on-oop/4-challenge-model-a-farm.py
+        line: 12
+        recommendation: Consider removing __init__ if it's unused
+  - type: dead_code_group
+    module: internal/cache
+    count: 3
+    candidates:
+      - entity: scanMetrics
+        entity_type: function
+        file: internal/cache/metrics.go
+        line: 205
+        recommendation: Consider removing scanMetrics if it's unused
+      - entity: scanMetricsRows
+        entity_type: function
+        file: internal/cache/metrics.go
+        line: 219
+        recommendation: Consider removing scanMetricsRows if it's unused
+      - entity: initSchema
+        entity_type: method
+        file: internal/cache/schema.go
+        line: 30
+        recommendation: Consider removing initSchema if it's unused
+  - type: dead_code_group
+    module: internal/bd
+    count: 1
+    candidates:
+      - entity: jsonlDependency
+        entity_type: type
+        file: internal/bd/deps.go
+        line: 142
+        recommendation: Consider removing jsonlDependency if it's unused

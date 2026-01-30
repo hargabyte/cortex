@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cortex (cx) Command Flow Architecture</title>
+  <style>
+    :root {
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #16213e;
+      --bg-card: #0f3460;
+      --text-primary: #e4e4e4;
+      --text-secondary: #a4a4a4;
+      --accent-blue: #4da8da;
+      --accent-green: #4ecca3;
+      --accent-orange: #ff9f43;
+      --accent-purple: #a55eea;
+      --border-color: #2a3f5f;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      color: var(--accent-blue);
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+    }
+
+    .meta {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .diagram-section {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .diagram-section h2 {
+      color: var(--accent-green);
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+    }
+
+    .diagram-container {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+    }
+
+    .diagram-container img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .card h3 {
+      color: var(--accent-orange);
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .card li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .card li:last-child {
+      border-bottom: none;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-blue { background: var(--accent-blue); color: #000; }
+    .badge-green { background: var(--accent-green); color: #000; }
+    .badge-orange { background: var(--accent-orange); color: #000; }
+    .badge-purple { background: var(--accent-purple); color: #fff; }
+
+    .flow-section {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .flow-section h2 {
+      color: var(--accent-purple);
+      margin-bottom: 1.5rem;
+    }
+
+    .flow-step {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+      align-items: flex-start;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      background: var(--accent-blue);
+      color: #000;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-content h4 {
+      color: var(--accent-green);
+      margin-bottom: 0.5rem;
+    }
+
+    .step-content p {
+      color: var(--text-secondary);
+    }
+
+    code {
+      background: var(--bg-primary);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-family: 'Fira Code', 'Monaco', monospace;
+      font-size: 0.9rem;
+      color: var(--accent-orange);
+    }
+
+    .code-block {
+      background: var(--bg-primary);
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+      overflow-x: auto;
+      font-family: 'Fira Code', 'Monaco', monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      border: 1px solid var(--border-color);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--accent-blue);
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+
+    .layer-description {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: var(--bg-primary);
+      border-radius: 8px;
+      border-left: 4px solid var(--accent-blue);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Cortex (cx) Command Flow Architecture</h1>
+      <p class="subtitle">How commands flow through the codebase analysis tool</p>
+      <p class="meta">Generated: January 21, 2026 | Cortex v0.3.0</p>
+    </header>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">30+</div>
+        <div class="stat-label">CLI Commands</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">16</div>
+        <div class="stat-label">Internal Packages</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">3,769</div>
+        <div class="stat-label">Code Entities</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">9,851</div>
+        <div class="stat-label">Dependencies</div>
+      </div>
+    </div>
+
+    <section class="diagram-section">
+      <h2>Architecture Diagram</h2>
+      <div class="diagram-container">
+        <img src="command-flow.svg" alt="Cortex Command Flow Architecture">
+      </div>
+    </section>
+
+    <section class="flow-section">
+      <h2>Command Execution Flow</h2>
+
+      <div class="flow-step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Entry Point</h4>
+          <p>User runs <code>cx &lt;command&gt;</code>. The CLI starts at <code>cmd/cx/main.go</code> which calls <code>cmd.Execute()</code> in the internal/cmd package.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Command Dispatch</h4>
+          <p>Cobra's <code>rootCmd</code> dispatches to the appropriate subcommand. Each command is defined in its own file (e.g., <code>find.go</code>, <code>show.go</code>) and registered via <code>init()</code> functions.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Store Access</h4>
+          <p>Commands use <code>openStore()</code> from <code>utils.go</code> to get a database handle. The StoreProxy decides between direct access or routing through the daemon for performance.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <h4>Entity Resolution</h4>
+          <p><code>resolveEntityByName()</code> translates user queries (names, IDs, file:line) into concrete entities. It handles fuzzy matching, qualified names, and disambiguation.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-number">5</div>
+        <div class="step-content">
+          <h4>Graph Operations</h4>
+          <p>Commands that need dependency analysis call <code>BuildFromStore()</code> to construct an in-memory graph. This supports BFS traversal, path finding, and impact analysis.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-number">6</div>
+        <div class="step-content">
+          <h4>Output Formatting</h4>
+          <p><code>GetFormatter()</code> returns the appropriate formatter (YAML, JSON, JSONL). The <code>FormatToWriter()</code> method renders structured output with configurable density levels.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <div class="card">
+        <h3>Command Categories</h3>
+        <ul>
+          <li>
+            <span class="badge badge-blue">Discovery</span>
+            <span><code>find</code>, <code>show</code>, <code>map</code>, <code>trace</code> - Query and explore entities</span>
+          </li>
+          <li>
+            <span class="badge badge-green">Analysis</span>
+            <span><code>safe</code>, <code>context</code>, <code>dead</code>, <code>guard</code> - Safety and impact analysis</span>
+          </li>
+          <li>
+            <span class="badge badge-orange">Data</span>
+            <span><code>scan</code>, <code>coverage</code>, <code>test</code>, <code>report</code> - Build and populate graph</span>
+          </li>
+          <li>
+            <span class="badge badge-purple">Admin</span>
+            <span><code>doctor</code>, <code>status</code>, <code>daemon</code>, <code>reset</code> - Maintenance operations</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Key Internal Packages</h3>
+        <ul>
+          <li>
+            <span class="badge badge-blue">store</span>
+            <span>Dolt database wrapper - SQL queries, versioning, schema management</span>
+          </li>
+          <li>
+            <span class="badge badge-green">graph</span>
+            <span>In-memory dependency graph - BFS, path finding, PageRank</span>
+          </li>
+          <li>
+            <span class="badge badge-orange">parser</span>
+            <span>Tree-sitter integration - AST parsing for multiple languages</span>
+          </li>
+          <li>
+            <span class="badge badge-purple">extract</span>
+            <span>Entity extraction - Go, TypeScript, Python, Java, Rust, C++</span>
+          </li>
+          <li>
+            <span class="badge badge-blue">coverage</span>
+            <span>Test coverage mapping - Links tests to code entities</span>
+          </li>
+          <li>
+            <span class="badge badge-green">context</span>
+            <span>Smart context assembly - Task-focused context for AI agents</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div class="card">
+        <h3>Store Layer (Dolt)</h3>
+        <div class="layer-description">
+          <p>The <code>Store</code> type (<code>internal/store/db.go:17</code>) wraps a Dolt database providing:</p>
+          <ul style="margin-top: 0.5rem; padding-left: 1.5rem; list-style: disc;">
+            <li>Entity storage with full-text search</li>
+            <li>Dependency relationship tracking</li>
+            <li>Time-travel queries (AS OF)</li>
+            <li>Branch-based experimentation</li>
+            <li>Coverage and test mapping</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Daemon Mode</h3>
+        <div class="layer-description">
+          <p>Optional daemon (<code>internal/daemon/</code>) provides:</p>
+          <ul style="margin-top: 0.5rem; padding-left: 1.5rem; list-style: disc;">
+            <li>Persistent database connection</li>
+            <li>JSON-RPC over Unix socket</li>
+            <li>File system watching for auto-rescan</li>
+            <li>MCP server for AI tool integration</li>
+          </ul>
+          <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">The <code>StoreProxy</code> transparently routes requests to daemon or direct mode.</p>
+        </div>
+      </div>
+    </div>
+
+    <section class="flow-section">
+      <h2>Typical Command Flow: <code>cx show LoginUser</code></h2>
+
+      <div class="code-block">
+main()
+  -> cmd.Execute()
+    -> rootCmd.Execute() [cobra]
+      -> showCmd.RunE(cmd, ["LoginUser"])
+        -> openStore() -> *Store
+        -> resolveEntityByName("LoginUser", store)
+          -> QueryEntities() [prefix match]
+          -> rank by PageRank, type priority
+          -> return best match or error with alternatives
+        -> runShowDefault(entity, store, format, density)
+          -> GetFormatter(format)
+          -> build EntityOutput struct
+          -> FormatToWriter(output, density)
+        -> store.Close()
+      </div>
+    </section>
+
+    <section class="flow-section">
+      <h2>Scan Flow: Building the Code Graph</h2>
+
+      <div class="code-block">
+cx scan
+  -> runScan(cmd, args)
+    -> config.Load() [.cx/config.yaml]
+    -> openStore() [create if needed]
+    -> parser.New(languages)
+    -> for each file in project:
+        -> parser.ParseFile(path)
+          -> tree-sitter AST
+        -> extract.Extract(parseResult)
+          -> entities + dependencies
+        -> store.UpsertEntity()
+        -> store.AddDependency()
+    -> graph.BuildFromStore() [optional]
+    -> metrics.Compute() [PageRank, betweenness]
+    -> store.Commit() [Dolt commit]
+      </div>
+    </section>
+
+    <div class="card" style="margin-top: 2rem;">
+      <h3>Key Keystones (High-Importance Entities)</h3>
+      <ul>
+        <li>
+          <span class="badge badge-purple">keystone</span>
+          <span><code>Store</code> (in_degree: 171) - Central database type used by all commands</span>
+        </li>
+        <li>
+          <span class="badge badge-purple">keystone</span>
+          <span><code>Entity</code> (in_degree: 280) - Core data type representing code symbols</span>
+        </li>
+        <li>
+          <span class="badge badge-purple">keystone</span>
+          <span><code>walkNode</code> (in_degree: 118) - AST traversal helper used by all extractors</span>
+        </li>
+        <li>
+          <span class="badge badge-orange">bottleneck</span>
+          <span><code>Query</code> (in_degree: 76) - Daemon socket query method</span>
+        </li>
+        <li>
+          <span class="badge badge-orange">bottleneck</span>
+          <span><code>execBD</code> (in_degree: 40) - Beads integration CLI wrapper</span>
+        </li>
+      </ul>
+    </div>
+
+    <footer>
+      <p>Generated by Cortex <code>cx report feature</code> | <a href="https://github.com/anthropics/cx" style="color: var(--accent-blue);">GitHub</a></p>
+    </footer>
+  </div>
+</body>
+</html>

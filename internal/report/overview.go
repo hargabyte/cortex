@@ -41,6 +41,10 @@ type OverviewReportData struct {
 	// Health contains overall health indicators and risk metrics.
 	// Optional - only included if health analysis was performed.
 	Health *HealthSummary `yaml:"health,omitempty" json:"health,omitempty"`
+
+	// Playground contains metadata for interactive playground generation.
+	// Only populated when --playground flag is used.
+	Playground *PlaygroundMetadata `yaml:"playground,omitempty" json:"playground,omitempty"`
 }
 
 // NewOverviewReport creates a new OverviewReportData with default values.

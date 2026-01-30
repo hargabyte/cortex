@@ -62,6 +62,10 @@ type ChangesReportData struct {
 	// Impact contains impact analysis showing high-impact changes and their effects
 	// on dependent code. This field is optional and may be nil.
 	Impact *ImpactAnalysis `yaml:"impact,omitempty" json:"impact,omitempty"`
+
+	// Playground contains metadata for interactive playground generation.
+	// Only populated when --playground flag is used.
+	Playground *PlaygroundMetadata `yaml:"playground,omitempty" json:"playground,omitempty"`
 }
 
 // NewChangesReport creates a new ChangesReportData for a changes report.

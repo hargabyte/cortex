@@ -1,0 +1,315 @@
+vars: {
+  d2-config: {
+    theme-id: 0
+    layout-engine: elk
+  }
+}
+
+title: {
+  label: "Cortex (cx) Command Flow Architecture"
+  near: top-center
+  style: {
+    font-size: 24
+    bold: true
+  }
+}
+
+direction: down
+
+# Entry Point Layer
+entry: "Entry Point" {
+  style: {
+    fill: "#e3f2fd"
+    stroke: "#1565c0"
+    stroke-width: 2
+    border-radius: 8
+  }
+
+  main: "main()" {
+    shape: rectangle
+    style: {
+      fill: "#bbdefb"
+      stroke: "#1565c0"
+      font-size: 14
+    }
+  }
+
+  execute: "cmd.Execute()" {
+    shape: rectangle
+    style: {
+      fill: "#bbdefb"
+      stroke: "#1565c0"
+    }
+  }
+
+  rootCmd: "rootCmd\n(cobra.Command)" {
+    shape: rectangle
+    style: {
+      fill: "#90caf9"
+      stroke: "#1565c0"
+      bold: true
+    }
+  }
+
+  main -> execute
+  execute -> rootCmd
+}
+
+# Command Layer
+commands: "CLI Commands" {
+  style: {
+    fill: "#e8f5e9"
+    stroke: "#2e7d32"
+    stroke-width: 2
+    border-radius: 8
+  }
+
+  # Discovery commands
+  discovery: "Discovery" {
+    find: "find" {shape: rectangle}
+    show: "show" {shape: rectangle}
+    map: "map" {shape: rectangle}
+    trace: "trace" {shape: rectangle}
+  }
+
+  # Analysis commands
+  analysis: "Analysis" {
+    safe: "safe" {shape: rectangle}
+    context: "context" {shape: rectangle}
+    dead: "dead" {shape: rectangle}
+    guard: "guard" {shape: rectangle}
+  }
+
+  # Data commands
+  data: "Data" {
+    scan: "scan" {shape: rectangle}
+    coverage: "coverage" {shape: rectangle}
+    test: "test" {shape: rectangle}
+    report: "report" {shape: rectangle}
+  }
+
+  # DB/Admin commands
+  admin: "Admin" {
+    doctor: "doctor" {shape: rectangle}
+    status: "status" {shape: rectangle}
+    daemon: "daemon" {shape: rectangle}
+    reset: "reset" {shape: rectangle}
+  }
+}
+
+# Core Processing Layer
+processing: "Core Processing" {
+  style: {
+    fill: "#fff3e0"
+    stroke: "#e65100"
+    stroke-width: 2
+    border-radius: 8
+  }
+
+  utils: "cmd/utils.go\n- resolveEntityByName\n- openStore\n- buildSearchOutput" {
+    shape: rectangle
+    style: {
+      fill: "#ffe0b2"
+    }
+  }
+
+  formatter: "output/formatter.go\n- GetFormatter\n- FormatToWriter\n- writeEntityOutput" {
+    shape: rectangle
+    style: {
+      fill: "#ffe0b2"
+    }
+  }
+}
+
+# Internal Packages Layer
+packages: "Internal Packages" {
+  style: {
+    fill: "#f3e5f5"
+    stroke: "#7b1fa2"
+    stroke-width: 2
+    border-radius: 8
+  }
+
+  store: "store\n(Dolt DB)" {
+    shape: cylinder
+    style: {
+      fill: "#e1bee7"
+      stroke: "#7b1fa2"
+    }
+  }
+
+  graph: "graph\n(Dependency Graph)" {
+    shape: hexagon
+    style: {
+      fill: "#ce93d8"
+    }
+  }
+
+  parser: "parser\n(Tree-sitter)" {
+    shape: rectangle
+    style: {
+      fill: "#e1bee7"
+    }
+  }
+
+  extract: "extract\n(AST → Entities)" {
+    shape: rectangle
+    style: {
+      fill: "#e1bee7"
+    }
+  }
+
+  coverage: "coverage\n(Test Mapping)" {
+    shape: rectangle
+    style: {
+      fill: "#e1bee7"
+    }
+  }
+
+  context: "context\n(Smart Context)" {
+    shape: rectangle
+    style: {
+      fill: "#e1bee7"
+    }
+  }
+
+  config: "config\n(Settings)" {
+    shape: document
+    style: {
+      fill: "#e1bee7"
+    }
+  }
+}
+
+# Daemon Layer
+daemon_layer: "Daemon (Optional)" {
+  style: {
+    fill: "#fce4ec"
+    stroke: "#c2185b"
+    stroke-width: 2
+    border-radius: 8
+  }
+
+  daemon_process: "Daemon Process" {
+    shape: rectangle
+    style: {
+      fill: "#f8bbd9"
+    }
+  }
+
+  storeproxy: "StoreProxy\n(direct/daemon)" {
+    shape: rectangle
+    style: {
+      fill: "#f8bbd9"
+    }
+  }
+
+  socket: "Unix Socket\nJSON-RPC" {
+    shape: oval
+    style: {
+      fill: "#f48fb1"
+    }
+  }
+
+  daemon_process -> socket
+  socket -> storeproxy
+}
+
+# External Dependencies
+external: "External" {
+  style: {
+    fill: "#eceff1"
+    stroke: "#455a64"
+    stroke-width: 2
+    border-radius: 8
+  }
+
+  dolt: "Dolt\n(Git for Data)" {
+    shape: cylinder
+    style: {
+      fill: "#b0bec5"
+    }
+  }
+
+  treesitter: "Tree-sitter\n(AST Parser)" {
+    shape: rectangle
+    style: {
+      fill: "#b0bec5"
+    }
+  }
+
+  d2_cli: "D2 CLI\n(Diagrams)" {
+    shape: rectangle
+    style: {
+      fill: "#b0bec5"
+    }
+  }
+
+  beads: "Beads\n(Issue Tracker)" {
+    shape: rectangle
+    style: {
+      fill: "#b0bec5"
+    }
+  }
+}
+
+# Flow connections
+entry.rootCmd -> commands: "dispatch" {
+  style: {
+    stroke: "#1565c0"
+    stroke-width: 2
+  }
+}
+
+commands.discovery -> processing.utils: "resolve entities" {
+  style: {
+    stroke: "#2e7d32"
+  }
+}
+commands.analysis -> processing.utils
+commands.data -> processing.utils
+
+processing.utils -> packages.store: "query/mutate" {
+  style: {
+    stroke: "#e65100"
+  }
+}
+
+processing.utils -> daemon_layer.storeproxy: "via proxy" {
+  style: {
+    stroke: "#e65100"
+    stroke-dash: 3
+  }
+}
+
+processing.formatter -> packages.store: "read entities"
+
+packages.store -> external.dolt: "SQL + versioning" {
+  style: {
+    stroke: "#7b1fa2"
+  }
+}
+
+packages.parser -> external.treesitter: "parse AST"
+packages.parser -> packages.extract: "entities"
+packages.extract -> packages.store: "persist"
+
+packages.graph -> packages.store: "build from deps"
+
+commands.data.scan -> packages.parser: "scan files"
+commands.analysis.context -> packages.context: "smart context"
+commands.analysis.safe -> packages.coverage: "coverage check"
+commands.data.report -> external.d2_cli: "render diagrams"
+
+daemon_layer.storeproxy -> packages.store: "direct mode"
+
+packages.context -> packages.graph: "traverse"
+packages.context -> packages.store: "query"
+
+# Integration connections
+packages.store -> external.beads: "link issues" {
+  style: {
+    stroke: "#455a64"
+    stroke-dash: 3
+  }
+}

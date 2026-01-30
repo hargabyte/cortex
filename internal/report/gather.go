@@ -16,19 +16,26 @@ import (
 
 // DataGatherer gathers data from the store for report generation.
 type DataGatherer struct {
-	store *store.Store
-	theme string // Optional theme for D2 diagrams
+	store          *store.Store
+	theme          string // Optional theme for D2 diagrams
+	playgroundMode bool   // Enable playground metadata generation
 }
 
 // NewDataGatherer creates a new DataGatherer with the given store.
 func NewDataGatherer(s *store.Store) *DataGatherer {
-	return &DataGatherer{store: s, theme: ""}
+	return &DataGatherer{store: s, theme: "", playgroundMode: false}
 }
 
 // SetTheme sets the diagram theme for report generation.
 // Use empty string for default theme.
 func (g *DataGatherer) SetTheme(theme string) {
 	g.theme = theme
+}
+
+// SetPlaygroundMode enables or disables playground metadata generation.
+// When enabled, reports include extra metadata for interactive playground features.
+func (g *DataGatherer) SetPlaygroundMode(enabled bool) {
+	g.playgroundMode = enabled
 }
 
 // GatherOverviewData populates an OverviewReportData with data from the store.
@@ -45,6 +52,13 @@ func (g *DataGatherer) GatherOverviewData(data *OverviewReportData) error {
 		return fmt.Errorf("gather keystones: %w", err)
 	}
 
+	// Add layer and CSS classes to keystones if playground mode is enabled
+	if g.playgroundMode {
+		for i := range data.Keystones {
+			g.enrichEntityForPlayground(&data.Keystones[i])
+		}
+	}
+
 	// Gather module structure
 	if err := g.gatherModules(&data.Modules); err != nil {
 		return fmt.Errorf("gather modules: %w", err)
@@ -57,6 +71,14 @@ func (g *DataGatherer) GatherOverviewData(data *OverviewReportData) error {
 		health = nil
 	}
 	data.Health = health
+
+	// Gather playground metadata if enabled
+	if g.playgroundMode {
+		if err := g.gatherPlaygroundMetadata(data); err != nil {
+			// Playground data is optional, log but don't fail
+			data.Playground = &PlaygroundMetadata{Enabled: true}
+		}
+	}
 
 	// Generate architecture diagram using preset
 	if err := g.gatherArchitectureDiagram(data); err != nil {
@@ -149,6 +171,18 @@ func (g *DataGatherer) GatherFeatureData(data *FeatureReportData, query string) 
 		// Diagram is optional, don't fail the whole report
 		if data.Diagrams == nil {
 			data.Diagrams = make(map[string]DiagramData)
+		}
+	}
+
+	// Add layer and CSS classes to entities if playground mode is enabled
+	if g.playgroundMode {
+		for i := range data.Entities {
+			g.enrichEntityForPlayground(&data.Entities[i])
+		}
+		// Create playground metadata for feature reports
+		if err := g.gatherFeaturePlaygroundMetadata(data); err != nil {
+			// Playground data is optional
+			data.Playground = &PlaygroundMetadata{Enabled: true}
 		}
 	}
 
@@ -1055,4 +1089,270 @@ func GetAllEntityCoverage(s *store.Store) ([]coverage.EntityCoverage, error) {
 	}
 
 	return results, rows.Err()
+}
+
+// gatherPlaygroundMetadata populates playground-specific metadata for interactive reports.
+func (g *DataGatherer) gatherPlaygroundMetadata(data *OverviewReportData) error {
+	// Initialize playground metadata
+	pm := &PlaygroundMetadata{
+		Enabled:    true,
+		Layers:     make([]LayerInfo, 0),
+		ElementMap: make(map[string]string),
+	}
+
+	// Build layer information from modules
+	layerCounts := make(map[string]int)
+	for _, mod := range data.Modules {
+		layer := deriveLayerFromPath(mod.Path)
+		layerCounts[layer] += mod.Entities
+	}
+
+	// Define layer colors and create LayerInfo entries
+	layerColors := map[string]string{
+		LayerCore:     "#4a90d9", // Blue
+		LayerAPI:      "#50c878", // Emerald green
+		LayerStore:    "#9b59b6", // Purple
+		LayerParser:   "#e67e22", // Orange
+		LayerGraph:    "#1abc9c", // Teal
+		LayerOutput:   "#f39c12", // Yellow
+		LayerTest:     "#95a5a6", // Gray
+		LayerExternal: "#34495e", // Dark gray
+	}
+
+	for layer, count := range layerCounts {
+		color := layerColors[layer]
+		if color == "" {
+			color = "#7f8c8d" // Default gray
+		}
+		pm.Layers = append(pm.Layers, LayerInfo{
+			ID:             layer,
+			Label:          strings.Title(layer),
+			Color:          color,
+			EntityCount:    count,
+			DefaultVisible: true,
+		})
+	}
+
+	// Sort layers by entity count (descending)
+	sort.Slice(pm.Layers, func(i, j int) bool {
+		return pm.Layers[i].EntityCount > pm.Layers[j].EntityCount
+	})
+
+	// Define connection types
+	pm.ConnectionTypes = []ConnectionTypeInfo{
+		{Type: DepTypeCalls, Label: "Calls", Color: "#3498db", DefaultVisible: true},
+		{Type: DepTypeUsesType, Label: "Uses Type", Color: "#2ecc71", DefaultVisible: true},
+		{Type: DepTypeImplements, Label: "Implements", Color: "#9b59b6", DefaultVisible: true},
+		{Type: DepTypeExtends, Label: "Extends", Color: "#e74c3c", DefaultVisible: true},
+		{Type: DepTypeImports, Label: "Imports", Color: "#95a5a6", DefaultVisible: false},
+	}
+
+	// Define view presets
+	pm.ViewPresets = []ViewPreset{
+		{
+			ID:                 "full",
+			Label:              "Full System",
+			Description:        "Show all layers and connections",
+			VisibleLayers:      []string{LayerCore, LayerAPI, LayerStore, LayerParser, LayerGraph, LayerOutput},
+			VisibleConnections: []string{DepTypeCalls, DepTypeUsesType, DepTypeImplements},
+		},
+		{
+			ID:                 "keystones",
+			Label:              "Keystones Only",
+			Description:        "Show only keystone entities and their connections",
+			VisibleLayers:      []string{LayerCore, LayerAPI, LayerStore, LayerParser, LayerGraph, LayerOutput},
+			VisibleConnections: []string{DepTypeCalls, DepTypeUsesType},
+			ImportanceFilter:   []string{string(ImportanceKeystone)},
+		},
+		{
+			ID:                 "core",
+			Label:              "Core Architecture",
+			Description:        "Focus on core, store, and parser modules",
+			VisibleLayers:      []string{LayerCore, LayerStore, LayerParser},
+			VisibleConnections: []string{DepTypeCalls, DepTypeUsesType},
+		},
+		{
+			ID:                 "api",
+			Label:              "API Layer",
+			Description:        "Focus on API and output modules",
+			VisibleLayers:      []string{LayerAPI, LayerOutput},
+			VisibleConnections: []string{DepTypeCalls},
+		},
+	}
+
+	// Build element map from keystones (entity ID -> SVG element ID)
+	for _, entity := range data.Keystones {
+		// Generate a valid SVG element ID from entity name
+		svgID := "node-" + sanitizeForSVGID(entity.Name)
+		pm.ElementMap[entity.ID] = svgID
+	}
+
+	data.Playground = pm
+	return nil
+}
+
+// enrichEntityForPlayground adds playground-specific fields to an entity.
+func (g *DataGatherer) enrichEntityForPlayground(entity *EntityData) {
+	// Derive layer from file path
+	entity.Layer = deriveLayerFromPath(entity.File)
+
+	// Build CSS classes for filtering
+	var classes []string
+	classes = append(classes, "layer-"+entity.Layer)
+	classes = append(classes, "entity-"+entity.Type)
+	if entity.Importance != "" {
+		classes = append(classes, "importance-"+string(entity.Importance))
+	}
+	entity.CSSClasses = strings.Join(classes, " ")
+}
+
+// deriveLayerFromPath determines the logical layer from a file path.
+func deriveLayerFromPath(filePath string) string {
+	// Normalize path separators
+	path := filepath.ToSlash(filePath)
+	parts := strings.Split(path, "/")
+
+	// Look for common directory patterns
+	for _, part := range parts {
+		switch strings.ToLower(part) {
+		case "cmd", "cli", "commands":
+			return LayerAPI
+		case "api", "handler", "handlers", "routes", "http":
+			return LayerAPI
+		case "store", "storage", "db", "database", "repository":
+			return LayerStore
+		case "parser", "parse", "ast", "syntax":
+			return LayerParser
+		case "graph", "deps", "dependencies":
+			return LayerGraph
+		case "output", "format", "render", "view":
+			return LayerOutput
+		case "test", "tests", "testing", "_test":
+			return LayerTest
+		case "internal", "pkg", "lib":
+			// Continue looking for more specific directories
+			continue
+		case "external", "vendor", "third_party":
+			return LayerExternal
+		}
+	}
+
+	// Check for test files by suffix
+	if strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/test/") {
+		return LayerTest
+	}
+
+	// Default to core for everything else
+	return LayerCore
+}
+
+// sanitizeForSVGID converts a string to a valid SVG element ID.
+func sanitizeForSVGID(s string) string {
+	// Replace invalid characters with dashes
+	result := strings.Builder{}
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			result.WriteRune(r)
+		} else {
+			result.WriteRune('-')
+		}
+	}
+	return result.String()
+}
+
+// gatherFeaturePlaygroundMetadata populates feature-specific playground metadata.
+func (g *DataGatherer) gatherFeaturePlaygroundMetadata(data *FeatureReportData) error {
+	pm := &PlaygroundMetadata{
+		Enabled:    true,
+		Layers:     make([]LayerInfo, 0),
+		ElementMap: make(map[string]string),
+	}
+
+	// Build layer information from entities
+	layerCounts := make(map[string]int)
+	for _, entity := range data.Entities {
+		layer := entity.Layer
+		if layer == "" {
+			layer = deriveLayerFromPath(entity.File)
+		}
+		layerCounts[layer]++
+	}
+
+	// Define layer colors
+	layerColors := map[string]string{
+		LayerCore:     "#4a90d9",
+		LayerAPI:      "#50c878",
+		LayerStore:    "#9b59b6",
+		LayerParser:   "#e67e22",
+		LayerGraph:    "#1abc9c",
+		LayerOutput:   "#f39c12",
+		LayerTest:     "#95a5a6",
+		LayerExternal: "#34495e",
+	}
+
+	for layer, count := range layerCounts {
+		color := layerColors[layer]
+		if color == "" {
+			color = "#7f8c8d"
+		}
+		pm.Layers = append(pm.Layers, LayerInfo{
+			ID:             layer,
+			Label:          strings.Title(layer),
+			Color:          color,
+			EntityCount:    count,
+			DefaultVisible: true,
+		})
+	}
+
+	// Sort layers by count
+	sort.Slice(pm.Layers, func(i, j int) bool {
+		return pm.Layers[i].EntityCount > pm.Layers[j].EntityCount
+	})
+
+	// Count connection types
+	connCounts := make(map[string]int)
+	for _, dep := range data.Dependencies {
+		connCounts[dep.Type]++
+	}
+
+	pm.ConnectionTypes = []ConnectionTypeInfo{
+		{Type: DepTypeCalls, Label: "Calls", Color: "#3498db", Count: connCounts[DepTypeCalls], DefaultVisible: true},
+		{Type: DepTypeUsesType, Label: "Uses Type", Color: "#2ecc71", Count: connCounts[DepTypeUsesType], DefaultVisible: true},
+		{Type: DepTypeImplements, Label: "Implements", Color: "#9b59b6", Count: connCounts[DepTypeImplements], DefaultVisible: true},
+	}
+
+	// Feature-specific view presets
+	pm.ViewPresets = []ViewPreset{
+		{
+			ID:                 "full",
+			Label:              "Full Feature",
+			Description:        "Show all entities and connections in this feature",
+			VisibleLayers:      []string{LayerCore, LayerAPI, LayerStore, LayerParser},
+			VisibleConnections: []string{DepTypeCalls, DepTypeUsesType},
+		},
+		{
+			ID:                 "call-flow",
+			Label:              "Call Flow",
+			Description:        "Focus on function calls only",
+			VisibleLayers:      []string{LayerCore, LayerAPI, LayerStore, LayerParser},
+			VisibleConnections: []string{DepTypeCalls},
+		},
+		{
+			ID:                 "keystones",
+			Label:              "Keystones Only",
+			Description:        "Show only high-importance entities",
+			VisibleLayers:      []string{LayerCore, LayerAPI, LayerStore},
+			VisibleConnections: []string{DepTypeCalls, DepTypeUsesType},
+			ImportanceFilter:   []string{string(ImportanceKeystone), string(ImportanceBottleneck)},
+		},
+	}
+
+	// Build element map
+	for _, entity := range data.Entities {
+		svgID := "node-" + sanitizeForSVGID(entity.Name)
+		pm.ElementMap[entity.ID] = svgID
+	}
+
+	data.Playground = pm
+	return nil
 }

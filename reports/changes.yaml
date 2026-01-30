@@ -1,0 +1,11 @@
+report:
+  type: changes
+  generated_at: 2026-01-20T19:28:42.627046785Z
+  from_ref: frio6pf
+  to_ref: HEAD
+metadata: {}
+statistics: {}
+added_entities: []
+modified_entities: []
+deleted_entities: []
+diagrams: {}

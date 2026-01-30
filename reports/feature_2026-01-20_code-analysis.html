@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CX Feature Report: Code Analysis - Cortex</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+            --accent-orange: #fb8500;
+            --border-color: #30363d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 { font-size: 2.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-secondary); font-size: 1.1rem; }
+        .timestamp { color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem; }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 2.5rem 0 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--accent-blue);
+        }
+
+        .feature-badge {
+            display: inline-block;
+            background: var(--accent-orange);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            margin-top: 1rem;
+            font-weight: 500;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--accent-blue); }
+        .stat-label { color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem; }
+
+        .entity-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .entity-table th {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .entity-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .entity-table tr:last-child td { border-bottom: none; }
+        .entity-table tbody tr:hover { background: var(--bg-tertiary); }
+
+        .entity-name {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-weight: 600;
+            color: var(--accent-blue);
+            font-size: 0.95rem;
+        }
+
+        .entity-file {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .entity-type {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            background: var(--bg-tertiary);
+            color: var(--accent-green);
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .relevance-score {
+            font-weight: 600;
+            color: var(--accent-purple);
+        }
+
+        .relevance-bar {
+            width: 80px;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+            display: inline-block;
+            margin-left: 0.5rem;
+        }
+
+        .relevance-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+            border-radius: 3px;
+        }
+
+        .section-content {
+            margin: 1.5rem 0;
+            line-height: 1.8;
+        }
+
+        .section-content p {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .code-block {
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--accent-blue);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        .code {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.85rem;
+            color: var(--accent-green);
+            line-height: 1.5;
+        }
+
+        .diagram-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .diagram-title {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .d2-code {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        .d2-code code {
+            color: var(--text-primary);
+            display: block;
+            margin: 0.25rem 0;
+        }
+
+        .dependency-item {
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--accent-green);
+            padding: 1rem;
+            margin: 0.75rem 0;
+            border-radius: 4px;
+        }
+
+        .dependency-from {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .dependency-to {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            color: var(--accent-yellow);
+            font-weight: 600;
+        }
+
+        .recommendation {
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--accent-purple);
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        .recommendation-title {
+            font-weight: 600;
+            color: var(--accent-purple);
+            margin-bottom: 0.5rem;
+        }
+
+        .recommendation-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .metrics-list {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .metrics-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .metrics-list li:last-child {
+            border-bottom: none;
+        }
+
+        .metrics-list strong {
+            color: var(--accent-blue);
+        }
+
+        footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .toc {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .toc-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--accent-blue);
+        }
+
+        .toc-list {
+            list-style: none;
+        }
+
+        .toc-list li {
+            margin: 0.5rem 0;
+        }
+
+        .toc-list a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .toc-list a:hover {
+            color: var(--accent-green);
+            text-decoration: underline;
+        }
+
+        .highlight-box {
+            background: rgba(165, 113, 247, 0.1);
+            border: 1px solid var(--accent-purple);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .highlight-box strong {
+            color: var(--accent-purple);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Feature Deep-Dive: Code Analysis</h1>
+            <p class="subtitle">Scanning, parsing, and entity extraction in Cortex</p>
+            <div class="feature-badge">Query: "scan parse extract entity"</div>
+            <p class="timestamp">Generated: 2026-01-20</p>
+        </header>
+
+        <nav class="toc">
+            <div class="toc-title">Contents</div>
+            <ul class="toc-list">
+                <li><a href="#overview">Feature Overview</a></li>
+                <li><a href="#key-metrics">Key Metrics</a></li>
+                <li><a href="#key-entities">Key Entities by Relevance</a></li>
+                <li><a href="#call-flow">Call Flow Analysis</a></li>
+                <li><a href="#dependencies">Dependencies</a></li>
+                <li><a href="#bottlenecks">Bottlenecks & Hotspots</a></li>
+                <li><a href="#recommendations">Recommendations</a></li>
+            </ul>
+        </nav>
+
+        <section id="overview">
+            <h2>Feature Overview</h2>
+            <div class="section-content">
+                <p>
+                    Code Analysis is the core analytical engine of Cortex, responsible for parsing source files, extracting entities (functions, classes, interfaces, constants), and building the semantic code graph that powers all CX commands.
+                </p>
+                <p>
+                    The feature comprises three main phases:
+                </p>
+                <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                    <li><strong>Scanning</strong>: Traverse filesystem, discover source files, and manage exclusions</li>
+                    <li><strong>Parsing</strong>: Language-specific AST parsing to extract structure</li>
+                    <li><strong>Entity Extraction</strong>: Convert parsed AST to standardized entity representations</li>
+                </ul>
+                <p>
+                    This feature is fundamental to CX's value proposition. Every CX command (find, show, trace, guard) depends on accurate code analysis.
+                </p>
+            </div>
+        </section>
+
+        <section id="key-metrics">
+            <h2>Key Metrics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">50</div>
+                    <div class="stat-label">Relevant Entities</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">10</div>
+                    <div class="stat-label">Top-Level Functions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">6+</div>
+                    <div class="stat-label">Languages Supported</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">0%</div>
+                    <div class="stat-label">Test Coverage</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="key-entities">
+            <h2>Key Entities by Relevance</h2>
+            <p>The following entities are most critical to the Code Analysis feature, ranked by relevance to the feature's core functionality:</p>
+
+            <table class="entity-table">
+                <thead>
+                    <tr>
+                        <th>Entity</th>
+                        <th>Type</th>
+                        <th>Location</th>
+                        <th>Relevance</th>
+                        <th>Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="entity-name">runScan</span></td>
+                        <td><span class="entity-type">function</span></td>
+                        <td><span class="entity-file">scan.go:113-637</span></td>
+                        <td><span class="relevance-score">69%</span> <span class="relevance-bar"><span class="relevance-fill" style="width: 69%"></span></span></td>
+                        <td>Main scan command orchestrator</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-name">runSafeDrift</span></td>
+                        <td><span class="entity-type">function</span></td>
+                        <td><span class="entity-file">safe.go:646-981</span></td>
+                        <td><span class="relevance-score">69%</span> <span class="relevance-bar"><span class="relevance-fill" style="width: 69%"></span></span></td>
+                        <td>Staleness and drift verification</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-name">analyzeFiles</span></td>
+                        <td><span class="entity-type">function</span></td>
+                        <td><span class="entity-file">guard.go:292-525</span></td>
+                        <td><span class="relevance-score">69%</span> <span class="relevance-bar"><span class="relevance-fill" style="width: 69%"></span></span></td>
+                        <td>Guard analysis and validation</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-name">ParseWithoutStore</span></td>
+                        <td><span class="entity-type">function</span></td>
+                        <td><span class="entity-file">inlinedrift.go:131-225</span></td>
+                        <td><span class="relevance-score">68%</span> <span class="relevance-bar"><span class="relevance-fill" style="width: 68%"></span></span></td>
+                        <td>In-memory parsing without persistence</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-name">discoverTestsInFile</span></td>
+                        <td><span class="entity-type">function</span></td>
+                        <td><span class="entity-file">testdiscovery.go:103-233</span></td>
+                        <td><span class="relevance-score">68%</span> <span class="relevance-bar"><span class="relevance-fill" style="width: 68%"></span></span></td>
+                        <td>Test function discovery and extraction</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-name">scanFilePass1</span></td>
+                        <td><span class="entity-type">function</span></td>
+                        <td><span class="entity-file">scan.go:641-734</span></td>
+                        <td><span class="relevance-score">68%</span> <span class="relevance-bar"><span class="relevance-fill" style="width: 68%"></span></span></td>
+                        <td>First pass file scanning with AST</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-name">extractCurrentEntities</span></td>
+                        <td><span class="entity-type">function</span></td>
+                        <td><span class="entity-file">semdiff.go:276-350</span></td>
+                        <td><span class="relevance-score">68%</span> <span class="relevance-bar"><span class="relevance-fill" style="width: 68%"></span></span></td>
+                        <td>Semantic diff entity extraction</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-name">extractEntitiesFromContent</span></td>
+                        <td><span class="entity-type">function</span></td>
+                        <td><span class="entity-file">diffcontext.go:479-551</span></td>
+                        <td><span class="relevance-score">68%</span> <span class="relevance-bar"><span class="relevance-fill" style="width: 68%"></span></span></td>
+                        <td>Content-based entity extraction</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-name">ExtractAllWithNodes</span></td>
+                        <td><span class="entity-type">method</span></td>
+                        <td><span class="entity-file">various files</span></td>
+                        <td><span class="relevance-score">67%</span> <span class="relevance-bar"><span class="relevance-fill" style="width: 67%"></span></span></td>
+                        <td>AST-based extraction with node info</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-name">extractClass</span></td>
+                        <td><span class="entity-type">function</span></td>
+                        <td><span class="entity-file">typescript.go:439-479</span></td>
+                        <td><span class="relevance-score">65%</span> <span class="relevance-bar"><span class="relevance-fill" style="width: 65%"></span></span></td>
+                        <td>TypeScript class extraction (bottleneck)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="call-flow">
+            <h2>Call Flow Analysis</h2>
+            <p>The main execution flow for the scanning feature:</p>
+
+            <div class="diagram-container">
+                <div class="diagram-title">Scan Command Call Chain</div>
+                <div class="d2-code">
+                    <code>runScan [main orchestrator]</code>
+                    <code>  ├─ scanFilePass1 [phase 1: parse files]</code>
+                    <code>  │   ├─ getRelativePath</code>
+                    <code>  │   ├─ parser.ExtractAll [language-specific]</code>
+                    <code>  │   └─ processEntityWithStore [store integration]</code>
+                    <code>  │</code>
+                    <code>  ├─ processEntityWithStore [extract & store]</code>
+                    <code>  │   ├─ detectLanguageFromPath</code>
+                    <code>  │   ├─ ExtractAllWithNodes [get AST nodes]</code>
+                    <code>  │   └─ store.SaveEntity [persist to database]</code>
+                    <code>  │</code>
+                    <code>  ├─ showScanOverview [post-scan reporting]</code>
+                    <code>  │   └─ printScanOverviewSummary</code>
+                    <code>  │</code>
+                    <code>  └─ shouldExcludeDir/shouldExcludeFile [filtering]</code>
+                </div>
+            </div>
+
+            <h3>Related Call Flows</h3>
+            <p><strong>Guard Analysis Flow:</strong></p>
+            <div class="code-block">
+                <div class="code">
+runSafeChanges → Analyze → analyzeFiles → extractEntitiesFromContent<br>
+                </div>
+            </div>
+
+            <p><strong>Semantic Diff Flow:</strong></p>
+            <div class="code-block">
+                <div class="code">
+extractCurrentEntities → ExtractAllWithNodes → extractClass [TypeScript]<br>
+                </div>
+            </div>
+
+            <p><strong>Test Discovery Flow:</strong></p>
+            <div class="code-block">
+                <div class="code">
+discoverTestsInFile → ExtractAllWithNodes → store integration<br>
+                </div>
+            </div>
+        </section>
+
+        <section id="dependencies">
+            <h2>Dependencies</h2>
+            <p>Key dependency relationships in the Code Analysis feature:</p>
+
+            <h3>High-Level Dependencies</h3>
+            <div class="dependency-item">
+                <div class="dependency-from">runScan</div>
+                <div>calls → <span class="dependency-to">scanFilePass1</span></div>
+                <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.85rem;">Core scanning dependency: orchestrator delegates file processing</p>
+            </div>
+
+            <div class="dependency-item">
+                <div class="dependency-from">scanFilePass1</div>
+                <div>calls → <span class="dependency-to">processEntityWithStore</span></div>
+                <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.85rem;">After parsing, entities must be persisted</p>
+            </div>
+
+            <div class="dependency-item">
+                <div class="dependency-from">processEntityWithStore</div>
+                <div>calls → <span class="dependency-to">detectLanguageFromPath</span></div>
+                <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.85rem;">Language detection determines parser selection</p>
+            </div>
+
+            <div class="dependency-item">
+                <div class="dependency-from">ExtractAllWithNodes</div>
+                <div>calls → <span class="dependency-to">extractClass</span> (TypeScript)</div>
+                <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.85rem;">Language-specific extraction implementations</p>
+            </div>
+
+            <div class="dependency-item">
+                <div class="dependency-from">runSafeChanges</div>
+                <div>calls → <span class="dependency-to">Analyze</span></div>
+                <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.85rem;">Guard analysis depends on core extraction</p>
+            </div>
+
+            <div class="dependency-item">
+                <div class="dependency-from">discoverTestsInFile</div>
+                <div>calls → <span class="dependency-to">ExtractAllWithNodes</span></div>
+                <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.85rem;">Test discovery uses entity extraction</p>
+            </div>
+
+            <h3>Dependency Graph Statistics</h3>
+            <ul class="metrics-list">
+                <li><strong>extractClass bottleneck:</strong> 32 incoming edges (most called entity)</li>
+                <li><strong>runScan centrality:</strong> Main orchestrator for feature</li>
+                <li><strong>Cross-file dependencies:</strong> Functions span across 9+ files</li>
+                <li><strong>Language-specific branches:</strong> TypeScript, JavaScript, Go, Python, Java, etc.</li>
+            </ul>
+        </section>
+
+        <section id="bottlenecks">
+            <h2>Bottlenecks & Hotspots</h2>
+
+            <h3>Critical Hotspots</h3>
+            <div class="highlight-box">
+                <strong>extractClass (typescript.go)</strong><br>
+                32 incoming edges - highest centrality in the graph. This is the most called entity. Any performance regression here affects all TypeScript/JavaScript analysis. Requires careful optimization and comprehensive test coverage.
+            </div>
+
+            <div class="highlight-box">
+                <strong>ExtractAllWithNodes (multiple implementations)</strong><br>
+                Core abstraction point. Language-specific implementations must maintain consistent output format for the rest of the pipeline. Inconsistencies here propagate downstream.
+            </div>
+
+            <div class="highlight-box">
+                <strong>runScan (scan.go:113-637)</strong><br>
+                Large function (525 lines). Combines orchestration, filtering, and I/O. Would benefit from decomposition. Current size makes it harder to test in isolation and reason about control flow.
+            </div>
+
+            <h3>Coverage Issues</h3>
+            <div class="highlight-box">
+                <strong>Zero test coverage (0%)</strong><br>
+                The entire Code Analysis feature has no unit tests. This is a critical risk for the most important feature in Cortex. High complexity + zero coverage = maintenance nightmare.
+            </div>
+
+            <h3>Performance Considerations</h3>
+            <ul class="metrics-list">
+                <li><strong>Parsing overhead:</strong> Language-specific parsers vary significantly in performance. No benchmarking data available.</li>
+                <li><strong>AST traversal:</strong> ExtractAll* functions traverse full AST. No lazy evaluation or incremental parsing.</li>
+                <li><strong>I/O bound:</strong> scanFilePass1 reads all files sequentially. Could benefit from parallelization.</li>
+                <li><strong>Memory usage:</strong> ParseWithoutStore does in-memory parsing. Large codebases may exhaust memory.</li>
+            </ul>
+        </section>
+
+        <section id="recommendations">
+            <h2>Recommendations</h2>
+
+            <div class="recommendation">
+                <div class="recommendation-title">1. Decompose runScan Function</div>
+                <div class="recommendation-content">
+                    The 525-line runScan function combines too many concerns. Break it into smaller, testable functions:
+                    <ul style="margin: 0.75rem 0 0 1.5rem; line-height: 1.8;">
+                        <li>scanDirectory() - filesystem traversal and filtering</li>
+                        <li>processFiles() - coordinate passes</li>
+                        <li>generateReport() - post-scan reporting</li>
+                    </ul>
+                    <strong>Benefit:</strong> Improved testability, easier to parallelize file processing, better error handling.
+                </div>
+            </div>
+
+            <div class="recommendation">
+                <div class="recommendation-title">2. Add Comprehensive Test Coverage</div>
+                <div class="recommendation-content">
+                    Priority 0: Write unit tests for all extraction functions, especially extractClass (32 dependents).
+                    <ul style="margin: 0.75rem 0 0 1.5rem; line-height: 1.8;">
+                        <li>Test each language's ExtractAllWithNodes implementation</li>
+                        <li>Test edge cases: empty files, syntax errors, malformed AST</li>
+                        <li>Integration tests for end-to-end scanning pipeline</li>
+                    </ul>
+                    <strong>Target:</strong> >80% coverage, especially for hotspots (extractClass, ExtractAllWithNodes).
+                </div>
+            </div>
+
+            <div class="recommendation">
+                <div class="recommendation-title">3. Standardize Entity Extraction Interface</div>
+                <div class="recommendation-content">
+                    Language-specific extractors vary in implementation. Create a strict interface contract:
+                    <ul style="margin: 0.75rem 0 0 1.5rem; line-height: 1.8;">
+                        <li>Formalize ExtractAllWithNodes interface</li>
+                        <li>Define required fields for entity objects</li>
+                        <li>Create validation layer to enforce consistency</li>
+                    </ul>
+                    <strong>Benefit:</strong> Prevent downstream inconsistencies, easier to add new languages, fewer bugs from malformed entities.
+                </div>
+            </div>
+
+            <div class="recommendation">
+                <div class="recommendation-title">4. Parallelize File Processing</div>
+                <div class="recommendation-content">
+                    Currently sequential, I/O bound. Implement worker pool pattern:
+                    <ul style="margin: 0.75rem 0 0 1.5rem; line-height: 1.8;">
+                        <li>Use goroutine pool with bounded concurrency (4-8 workers)</li>
+                        <li>Thread-safe store persistence</li>
+                        <li>Add progress reporting for large codebases</li>
+                    </ul>
+                    <strong>Expected improvement:</strong> 3-4x speedup on large projects (100k+ files).
+                </div>
+            </div>
+
+            <div class="recommendation">
+                <div class="recommendation-title">5. Add Performance Monitoring</div>
+                <div class="recommendation-content">
+                    No performance data available for language parsers or extraction functions:
+                    <ul style="margin: 0.75rem 0 0 1.5rem; line-height: 1.8;">
+                        <li>Benchmark each language's ExtractAll* implementation</li>
+                        <li>Profile memory usage during large scans</li>
+                        <li>Add metrics for extraction latency by entity type</li>
+                    </ul>
+                    <strong>Benefit:</strong> Identify actual bottlenecks, validate optimizations, track regression.
+                </div>
+            </div>
+
+            <div class="recommendation">
+                <div class="recommendation-title">6. Improve Error Handling in Extractors</div>
+                <div class="recommendation-content">
+                    Unknown error behavior for malformed code. Add robust error handling:
+                    <ul style="margin: 0.75rem 0 0 1.5rem; line-height: 1.8;">
+                        <li>Graceful degradation on parse errors</li>
+                        <li>Detailed error logs with file/line context</li>
+                        <li>Recovery mechanisms (skip malformed entities, continue scanning)</li>
+                    </ul>
+                    <strong>Benefit:</strong> CX won't crash on repositories with syntax errors or unusual formatting.
+                </div>
+            </div>
+
+            <div class="recommendation">
+                <div class="recommendation-title">7. Implement Incremental Scanning</div>
+                <div class="recommendation-content">
+                    Full rescan for every change is inefficient. Add incremental support:
+                    <ul style="margin: 0.75rem 0 0 1.5rem; line-height: 1.8;">
+                        <li>Track file modification times (mtime) as cache key</li>
+                        <li>Only re-extract entities for modified files</li>
+                        <li>Preserve unchanged entities across scans</li>
+                    </ul>
+                    <strong>Expected improvement:</strong> 50-100x faster incremental scans vs. full rescan.
+                </div>
+            </div>
+
+            <h3>Implementation Priority</h3>
+            <table class="entity-table">
+                <thead>
+                    <tr>
+                        <th>Priority</th>
+                        <th>Recommendation</th>
+                        <th>Effort</th>
+                        <th>Impact</th>
+                        <th>Timeline</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="entity-type">P0</span></td>
+                        <td>Add comprehensive test coverage</td>
+                        <td>High</td>
+                        <td>Critical</td>
+                        <td>1-2 weeks</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-type">P0</span></td>
+                        <td>Standardize extraction interface</td>
+                        <td>Medium</td>
+                        <td>Critical</td>
+                        <td>3-5 days</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-type">P1</span></td>
+                        <td>Decompose runScan function</td>
+                        <td>Medium</td>
+                        <td>High</td>
+                        <td>3-5 days</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-type">P1</span></td>
+                        <td>Parallelize file processing</td>
+                        <td>High</td>
+                        <td>High</td>
+                        <td>1 week</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-type">P1</span></td>
+                        <td>Implement incremental scanning</td>
+                        <td>High</td>
+                        <td>High</td>
+                        <td>1-2 weeks</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-type">P2</span></td>
+                        <td>Add performance monitoring</td>
+                        <td>Medium</td>
+                        <td>Medium</td>
+                        <td>1 week</td>
+                    </tr>
+                    <tr>
+                        <td><span class="entity-type">P2</span></td>
+                        <td>Improve error handling</td>
+                        <td>Medium</td>
+                        <td>Medium</td>
+                        <td>3-5 days</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <footer>
+            <p>This report was generated by the Cortex analysis system.</p>
+            <p>Feature: Code Analysis | Query: "scan parse extract entity" | Total Entities: 50</p>
+            <p>Audience: Tech Leads, Architecture Reviewers</p>
+        </footer>
+    </div>
+</body>
+</html>

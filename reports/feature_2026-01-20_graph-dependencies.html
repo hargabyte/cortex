@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CX Feature Report: Graph & Dependencies - Cortex</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+            --accent-orange: #fb8500;
+            --border-color: #30363d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 { font-size: 2.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-secondary); font-size: 1.1rem; }
+        .timestamp { color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem; }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--accent-blue);
+        }
+
+        .feature-badge {
+            display: inline-block;
+            background: var(--accent-purple);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--accent-blue); }
+        .stat-label { color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem; }
+
+        .overview-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .overview-section p {
+            margin: 0.75rem 0;
+            color: var(--text-primary);
+        }
+
+        .entity-list {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .entity-item {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .entity-item:last-child { border-bottom: none; }
+        .entity-item:hover { background: var(--bg-tertiary); }
+
+        .entity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .entity-name {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--accent-blue);
+        }
+
+        .entity-type {
+            font-size: 0.75rem;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        .entity-location {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .entity-signature {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.8rem;
+            color: var(--accent-green);
+            background: var(--bg-tertiary);
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            overflow-x: auto;
+        }
+
+        .entity-doc {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .entity-meta {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .meta-badge {
+            background: var(--bg-tertiary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+        }
+
+        .relevance-score {
+            display: inline-block;
+            background: var(--accent-orange);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--accent-blue);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: var(--bg-tertiary); }
+
+        .code-block {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.85rem;
+            color: var(--accent-green);
+        }
+
+        .algorithm-card {
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--accent-purple);
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .algorithm-card h4 {
+            color: var(--accent-purple);
+            margin-bottom: 0.5rem;
+        }
+
+        .deps-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .dep-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.85rem;
+        }
+
+        .dep-item:last-child { border-bottom: none; }
+
+        .recommendation {
+            background: rgba(58, 166, 240, 0.1);
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .recommendation h4 {
+            color: var(--accent-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .callout {
+            background: rgba(63, 185, 80, 0.1);
+            border-left: 4px solid var(--accent-green);
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .callout strong { color: var(--accent-green); }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .priority-rank {
+            display: inline-block;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+        }
+
+        .rank-1 { background: var(--accent-red); color: white; }
+        .rank-2 { background: var(--accent-orange); color: white; }
+        .rank-3 { background: var(--accent-yellow); color: #000; }
+        .rank-4 { background: var(--accent-green); color: white; }
+        .rank-5 { background: var(--accent-blue); color: white; }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .two-column { grid-template-columns: 1fr; }
+            h1 { font-size: 1.75rem; }
+            h2 { font-size: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Cortex: Graph & Dependencies Feature</h1>
+            <p class="subtitle">Call Graphs, Dependency Analysis, and Tracing</p>
+            <span class="feature-badge">Feature Analysis</span>
+            <p class="timestamp">Generated: January 20, 2026</p>
+        </header>
+
+        <!-- Statistics Overview -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">50</div>
+                <div class="stat-label">Entities Found</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">10</div>
+                <div class="stat-label">Key Entities</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">3</div>
+                <div class="stat-label">Key Types</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">0%</div>
+                <div class="stat-label">Coverage</div>
+            </div>
+        </div>
+
+        <!-- Feature Overview -->
+        <h2>Feature Overview</h2>
+        <div class="overview-section">
+            <p>
+                The <strong>Graph & Dependencies</strong> feature provides comprehensive analysis of code structure, function calls,
+                and dependency relationships across the codebase. It enables developers and tech leads to understand code flow,
+                identify bottlenecks, trace execution paths, and detect circular dependencies.
+            </p>
+            <p>
+                Key capabilities include:
+            </p>
+            <ul style="margin-left: 1.5rem; margin-top: 0.75rem;">
+                <li><strong>Call Graph Analysis:</strong> Extract and visualize function/method call relationships</li>
+                <li><strong>Dependency Tracing:</strong> Trace execution paths between functions with configurable hop limits</li>
+                <li><strong>Graph Algorithms:</strong> Apply PageRank and Betweenness Centrality for importance scoring</li>
+                <li><strong>Cycle Detection:</strong> Identify circular dependencies and problematic patterns</li>
+                <li><strong>Multi-Language Support:</strong> Works with Go, TypeScript/JavaScript, Ruby, and more</li>
+                <li><strong>Bottleneck Identification:</strong> Find critical nodes with high in-degree or betweenness scores</li>
+            </ul>
+        </div>
+
+        <!-- Key Entities Table -->
+        <h2>Top 10 Key Entities by Relevance</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%;">Rank</th>
+                    <th style="width: 30%;">Entity Name</th>
+                    <th style="width: 40%;">Location & Purpose</th>
+                    <th style="width: 15%;">Relevance</th>
+                    <th style="width: 10%;">Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="priority-rank rank-1">1</span></td>
+                    <td><code>runScan</code></td>
+                    <td><strong>scan.go:113-637</strong><br/>Main scan operation with comprehensive dependency extraction and entity relationship discovery</td>
+                    <td><span class="relevance-score">0.69</span></td>
+                    <td>Function</td>
+                </tr>
+                <tr>
+                    <td><span class="priority-rank rank-2">2</span></td>
+                    <td><code>runShowGraph</code></td>
+                    <td><strong>show.go:564-755</strong><br/>Graph visualization mode for displaying dependency relationships</td>
+                    <td><span class="relevance-score">0.68</span></td>
+                    <td>Function</td>
+                </tr>
+                <tr>
+                    <td><span class="priority-rank rank-2">3</span></td>
+                    <td><code>traceFlow</code></td>
+                    <td><strong>smart.go:490-707</strong><br/>Dependency tracing algorithm for finding execution paths</td>
+                    <td><span class="relevance-score">0.68</span></td>
+                    <td>Function</td>
+                </tr>
+                <tr>
+                    <td><span class="priority-rank rank-2">4</span></td>
+                    <td><code>BuildDependencyGraph</code></td>
+                    <td><strong>graph.go:13-48</strong><br/>Constructs in-memory dependency graph from bead relationships</td>
+                    <td><span class="relevance-score">0.68</span></td>
+                    <td>Function</td>
+                </tr>
+                <tr>
+                    <td><span class="priority-rank rank-3">5</span></td>
+                    <td><code>runGuideDeps</code></td>
+                    <td><strong>guide.go:416-536</strong><br/>Comprehensive dependency analysis with cycle detection</td>
+                    <td><span class="relevance-score">0.67</span></td>
+                    <td>Function</td>
+                </tr>
+                <tr>
+                    <td><span class="priority-rank rank-3">6</span></td>
+                    <td><code>runGuideModules</code></td>
+                    <td><strong>guide.go:324-413</strong><br/>Module breakdown with architectural diagrams</td>
+                    <td><span class="relevance-score">0.67</span></td>
+                    <td>Function</td>
+                </tr>
+                <tr>
+                    <td><span class="priority-rank rank-3">7</span></td>
+                    <td><code>ComputeGraphStats</code></td>
+                    <td><strong>graph.go:214-267</strong><br/>Calculates statistical metrics on dependency graphs</td>
+                    <td><span class="relevance-score">0.67</span></td>
+                    <td>Function</td>
+                </tr>
+                <tr>
+                    <td><span class="priority-rank rank-3">8</span></td>
+                    <td><code>ComputeBetweenness</code></td>
+                    <td><strong>betweenness.go:25-106</strong><br/>Computes betweenness centrality for bottleneck detection</td>
+                    <td><span class="relevance-score">0.67</span></td>
+                    <td>Function</td>
+                </tr>
+                <tr>
+                    <td><span class="priority-rank rank-4">9</span></td>
+                    <td><code>ComputePageRankWithInfo</code></td>
+                    <td><strong>pagerank.go:55-130</strong><br/>PageRank scoring via random walk simulation</td>
+                    <td><span class="relevance-score">0.66</span></td>
+                    <td>Function</td>
+                </tr>
+                <tr>
+                    <td><span class="priority-rank rank-4">10</span></td>
+                    <td><code>TraceCallers</code></td>
+                    <td><strong>pathfinding.go:306-332</strong><br/>Recursive caller tracing up to N hops</td>
+                    <td><span class="relevance-score">0.66</span></td>
+                    <td>Function</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Key Types Section -->
+        <h2>Core Types & Structures</h2>
+        <div class="entity-list">
+            <div class="entity-item">
+                <div class="entity-header">
+                    <span class="entity-name">CallGraphEntity</span>
+                    <span class="entity-type">Type</span>
+                </div>
+                <div class="entity-location">callgraph.go:67-85</div>
+                <div class="entity-doc">Entity representation for call graph extraction and analysis. Critical bottleneck with 86 in-degree relationships.</div>
+                <div class="entity-meta">
+                    <span class="meta-badge">Bottleneck</span>
+                    <span class="meta-badge">In-Degree: 86</span>
+                    <span class="meta-badge">Core Type</span>
+                </div>
+            </div>
+            <div class="entity-item">
+                <div class="entity-header">
+                    <span class="entity-name">Graph</span>
+                    <span class="entity-type">Type</span>
+                </div>
+                <div class="entity-location">graph.go:8-13</div>
+                <div class="entity-doc">In-memory dependency graph representation with nodes and edges. Primary data structure for all graph operations.</div>
+                <div class="entity-meta">
+                    <span class="meta-badge">Core Type</span>
+                    <span class="meta-badge">Core Data Structure</span>
+                </div>
+            </div>
+            <div class="entity-item">
+                <div class="entity-header">
+                    <span class="entity-name">TypeScriptCallGraphExtractor</span>
+                    <span class="entity-type">Type</span>
+                </div>
+                <div class="entity-location">callgraph_typescript.go:15-20</div>
+                <div class="entity-doc">Language-specific call graph extraction for TypeScript and JavaScript codebases.</div>
+                <div class="entity-meta">
+                    <span class="meta-badge">Language: TypeScript/JavaScript</span>
+                    <span class="meta-badge">Extractor</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Functions -->
+        <h2>Analysis Functions</h2>
+        <div class="two-column">
+            <div>
+                <h3>Call Graph Extraction</h3>
+                <div class="deps-section">
+                    <div class="dep-item">extractFunctionCalls</div>
+                    <div class="dep-item">extractMethodCalls (callgraph_ruby.go:96-150)</div>
+                    <div class="dep-item">extractCallTarget</div>
+                    <div class="dep-item">extractTypeReferences</div>
+                </div>
+            </div>
+            <div>
+                <h3>Graph Operations</h3>
+                <div class="deps-section">
+                    <div class="dep-item">BuildDependencyGraph</div>
+                    <div class="dep-item">ReverseGraph</div>
+                    <div class="dep-item">ComputeGraphStats</div>
+                    <div class="dep-item">TraceCallers (recursive)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Graph Algorithms -->
+        <h2>Graph Algorithms</h2>
+        <p>Cortex implements sophisticated algorithms for analyzing code structure and identifying critical components.</p>
+
+        <div class="algorithm-card">
+            <h4>PageRank Algorithm</h4>
+            <p>
+                <strong>Function:</strong> <code>ComputePageRankWithInfo</code> (pagerank.go:55-130)
+            </p>
+            <p style="margin-top: 0.5rem;">
+                Importance scoring via random walk simulation. Assigns scores based on the principle that important entities
+                are called by other important entities. Used to identify high-value functions and modules that are frequently
+                referenced across the codebase.
+            </p>
+            <p style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">
+                <strong>Use Case:</strong> Finding critical business logic functions that are depended upon by many other components.
+            </p>
+        </div>
+
+        <div class="algorithm-card">
+            <h4>Betweenness Centrality</h4>
+            <p>
+                <strong>Function:</strong> <code>ComputeBetweenness</code> (betweenness.go:25-106)
+            </p>
+            <p style="margin-top: 0.5rem;">
+                Bottleneck detection via shortest path analysis. Measures how often a function appears on the shortest path
+                between other entities. High betweenness scores indicate functions that are critical "bridge" points in the
+                code flow.
+            </p>
+            <p style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">
+                <strong>Use Case:</strong> Identifying bottlenecks and pinch points where changes have maximum impact. Essential
+                for refactoring planning.
+            </p>
+        </div>
+
+        <div class="algorithm-card">
+            <h4>Dependency Tracing</h4>
+            <p>
+                <strong>Function:</strong> <code>traceFlow</code> (smart.go:490-707)
+            </p>
+            <p style="margin-top: 0.5rem;">
+                Bidirectional tracing of execution paths with configurable hop limits. Finds all call chains from one function
+                to another, respecting depth constraints and cycle detection.
+            </p>
+            <p style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">
+                <strong>Use Case:</strong> Understanding call chains for debugging, impact analysis, and feature propagation paths.
+            </p>
+        </div>
+
+        <!-- Dependencies -->
+        <h2>Key Dependencies</h2>
+        <div class="callout">
+            <strong>Important:</strong> These functions have tightly coupled dependencies and should be modified carefully to avoid
+            breaking the analysis pipeline.
+        </div>
+
+        <div class="two-column">
+            <div>
+                <h3>Incoming Dependencies</h3>
+                <div class="deps-section">
+                    <div class="dep-item"><strong>BuildDependencyGraph</strong><br/>→ ReadAllDependenciesFromJSONL</div>
+                    <div class="dep-item"><strong>runFindWithRanking</strong><br/>→ ComputeBetweenness</div>
+                    <div class="dep-item"><strong>runShowGraph</strong><br/>→ BuildDependencyGraph</div>
+                    <div class="dep-item"><strong>traceFlow</strong><br/>→ TraceCallers (recursive)</div>
+                </div>
+            </div>
+            <div>
+                <h3>Outgoing Dependencies</h3>
+                <div class="deps-section">
+                    <div class="dep-item"><strong>CallGraphEntity</strong><br/>→ Used in extractFunctionCalls</div>
+                    <div class="dep-item"><strong>TraceCallers</strong><br/>→ Recursive on Graph edges</div>
+                    <div class="dep-item"><strong>ComputeGraphStats</strong><br/>→ Walks entire Graph</div>
+                    <div class="dep-item"><strong>TypeScriptCallGraphExtractor</strong><br/>→ Populates CallGraphEntity</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Language Support -->
+        <h2>Multi-Language Call Graph Extractors</h2>
+        <p>Cortex supports call graph analysis across multiple programming languages:</p>
+        <div class="entity-list">
+            <div class="entity-item">
+                <span class="entity-name">Go</span>
+                <div class="entity-location">callgraph_go.go</div>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                    Extracts function calls from AST using Go's analysis tools. Supports struct methods, package functions, and interface implementations.
+                </p>
+            </div>
+            <div class="entity-item">
+                <span class="entity-name">TypeScript/JavaScript</span>
+                <div class="entity-location">callgraph_typescript.go</div>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                    Extracts function/method calls from JavaScript/TypeScript AST. Handles ES6 modules, async/await, and class methods.
+                </p>
+            </div>
+            <div class="entity-item">
+                <span class="entity-name">Ruby</span>
+                <div class="entity-location">callgraph_ruby.go:96-150</div>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                    Extracts method calls from Ruby AST. Supports class methods, instance methods, and metaprogramming patterns.
+                </p>
+            </div>
+        </div>
+
+        <!-- Use Cases -->
+        <h2>Primary Use Cases</h2>
+        <div class="two-column">
+            <div class="recommendation">
+                <h4>Impact Analysis</h4>
+                <p>
+                    Use graph tracing to understand the impact of changes. When modifying a critical function, trace callers
+                    to see all affected code paths.
+                </p>
+            </div>
+            <div class="recommendation">
+                <h4>Bottleneck Identification</h4>
+                <p>
+                    Apply betweenness centrality to find critical bridge functions. These are high-impact targets for optimization
+                    and refactoring.
+                </p>
+            </div>
+            <div class="recommendation">
+                <h4>Cycle Detection</h4>
+                <p>
+                    The <code>runGuideDeps</code> function detects circular dependencies that can cause issues in testing and
+                    deployment.
+                </p>
+            </div>
+            <div class="recommendation">
+                <h4>Architecture Understanding</h4>
+                <p>
+                    Use <code>runGuideModules</code> with diagrams to understand module relationships and data flow across
+                    your codebase.
+                </p>
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <h2>Technical Recommendations</h2>
+
+        <div class="recommendation">
+            <h4>1. Leverage PageRank for Priority Selection</h4>
+            <p>
+                When planning refactoring or optimization work, prioritize entities with high PageRank scores computed by
+                <code>ComputePageRankWithInfo</code>. These represent the most frequently depended-upon code.
+            </p>
+        </div>
+
+        <div class="recommendation">
+            <h4>2. Monitor CallGraphEntity Bottleneck</h4>
+            <p>
+                The <code>CallGraphEntity</code> type has an in-degree of 86, making it a critical bottleneck. Any changes to
+                this type could have widespread impact. Ensure comprehensive test coverage before modifying.
+            </p>
+        </div>
+
+        <div class="recommendation">
+            <h4>3. Use Betweenness Centrality for Test Planning</h4>
+            <p>
+                Functions with high betweenness centrality deserve extra testing attention. Apply <code>ComputeBetweenness</code>
+                to identify which functions should have the most comprehensive test coverage.
+            </p>
+        </div>
+
+        <div class="recommendation">
+            <h4>4. Implement Recursive Tracing Limits</h4>
+            <p>
+                The <code>TraceCallers</code> function is recursive. Always use configurable hop limits to prevent excessive
+                traversal and maintain performance, especially in large codebases.
+            </p>
+        </div>
+
+        <div class="recommendation">
+            <h4>5. Regular Cycle Detection</h4>
+            <p>
+                Incorporate <code>runGuideDeps</code> into your CI/CD pipeline to detect circular dependencies early. Circular
+                dependencies can cause initialization issues and testing complications.
+            </p>
+        </div>
+
+        <div class="recommendation">
+            <h4>6. Archive Pre-Graph Diagram Scans</h4>
+            <p>
+                Use <code>runGuideModules</code> to generate architectural diagrams. Archive these periodically to track how
+                your architecture evolves over time.
+            </p>
+        </div>
+
+        <!-- Architecture Insights -->
+        <h2>Architecture Insights</h2>
+        <div class="overview-section">
+            <h3>Graph Pipeline</h3>
+            <p style="margin-top: 0.75rem;">
+                The feature implements a complete graph analysis pipeline:
+            </p>
+            <ol style="margin-left: 1.5rem; margin-top: 0.75rem;">
+                <li><strong>Extraction:</strong> Language-specific extractors (TypeScript, Go, Ruby) populate <code>CallGraphEntity</code></li>
+                <li><strong>Construction:</strong> <code>BuildDependencyGraph</code> creates in-memory <code>Graph</code> from entities</li>
+                <li><strong>Analysis:</strong> Algorithms (PageRank, Betweenness) compute importance metrics</li>
+                <li><strong>Visualization:</strong> <code>runShowGraph</code> and <code>runGuideModules</code> render results</li>
+                <li><strong>Tracing:</strong> <code>traceFlow</code> and <code>TraceCallers</code> enable path discovery</li>
+            </ol>
+        </div>
+
+        <div class="callout" style="margin-top: 1.5rem;">
+            <strong>Coverage Gap:</strong> Current test coverage is 0%. This is a critical area requiring test implementation,
+            particularly for the complex graph algorithms (PageRank, Betweenness Centrality) and recursive tracing functions.
+        </div>
+
+        <!-- Query Details -->
+        <h2>Analysis Metadata</h2>
+        <div class="overview-section">
+            <div style="display: grid; grid-template-columns: auto 1fr; gap: 1rem;">
+                <strong>Search Query:</strong>
+                <code style="color: var(--accent-green);">graph dependency trace call</code>
+
+                <strong>Total Entities:</strong>
+                <span style="color: var(--accent-blue);">50</span>
+
+                <strong>Audience:</strong>
+                <span style="color: var(--accent-blue);">Tech Leads & Architects</span>
+
+                <strong>Focus Areas:</strong>
+                <span style="color: var(--accent-blue);">Graph algorithms, dependency analysis, tracing</span>
+            </div>
+        </div>
+
+        <footer>
+            <p>CX Feature Report: Graph & Dependencies Analysis</p>
+            <p>Generated with Cortex Code Analysis Tool | January 20, 2026</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CX Feature Report: Scanning</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+            --accent-cyan: #39c5cf;
+            --border-color: #30363d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 { font-size: 2.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-secondary); font-size: 1.1rem; }
+        .query-badge {
+            display: inline-block;
+            background: var(--accent-blue);
+            color: var(--bg-primary);
+            padding: 0.3rem 0.8rem;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        .timestamp { color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.75rem; }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--accent-blue);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .entity-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .entity-card:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .entity-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .entity-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            color: var(--accent-cyan);
+        }
+
+        .entity-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-type { background: rgba(163, 113, 247, 0.2); color: var(--accent-purple); }
+        .badge-importance { background: rgba(210, 153, 34, 0.2); color: var(--accent-yellow); }
+        .badge-lang { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); }
+
+        .entity-location {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .file-path {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.8rem;
+            color: var(--accent-blue);
+            background: var(--bg-tertiary);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+        }
+
+        .entity-signature {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            margin: 0.75rem 0;
+            overflow-x: auto;
+        }
+
+        .entity-doc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            border-left: 3px solid var(--border-color);
+            padding-left: 0.75rem;
+            margin-top: 0.75rem;
+        }
+
+        .entity-metrics {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .metric-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .metric-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .relevance-bar {
+            width: 100px;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-left: 0.5rem;
+        }
+
+        .relevance-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+            border-radius: 3px;
+        }
+
+        .diagram-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .diagram-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--accent-purple);
+        }
+
+        .diagram-container {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .diagram-container img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .d2-code {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.8rem;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .theme-badge {
+            display: inline-block;
+            background: rgba(63, 185, 80, 0.2);
+            color: var(--accent-green);
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .dependency-list {
+            list-style: none;
+        }
+
+        .dependency-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        .dependency-item:last-child {
+            border-bottom: none;
+        }
+
+        .dep-from {
+            color: var(--accent-cyan);
+            font-family: monospace;
+        }
+
+        .dep-arrow {
+            color: var(--text-secondary);
+        }
+
+        .dep-to {
+            color: var(--accent-purple);
+            font-family: monospace;
+        }
+
+        .dep-type {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-left: auto;
+        }
+
+        footer {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .section-description {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CX Feature Report</h1>
+            <p class="subtitle">Deep-dive analysis of feature entities and dependencies</p>
+            <div class="query-badge">scanning</div>
+            <p class="timestamp">Generated: January 20, 2026 at 21:25 UTC</p>
+            <span class="theme-badge">Theme: Colorblind Clear</span>
+        </header>
+
+        <!-- Search Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">15</div>
+                <div class="stat-label">Entities Found</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">3,769</div>
+                <div class="stat-label">Entities Searched</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">Go</div>
+                <div class="stat-label">Language</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">FTS</div>
+                <div class="stat-label">Search Method</div>
+            </div>
+        </div>
+
+        <!-- Top Entities -->
+        <h2>Top Matching Entities</h2>
+        <p class="section-description">Entities matching "scanning" ranked by relevance score (FTS + PageRank).</p>
+
+        <div class="entity-card">
+            <div class="entity-header">
+                <span class="entity-name">SearchEntities</span>
+                <div class="entity-badges">
+                    <span class="badge badge-type">method</span>
+                    <span class="badge badge-lang">go</span>
+                </div>
+            </div>
+            <div class="entity-location">
+                <span class="file-path">internal/store/fts.go:47-142</span>
+            </div>
+            <div class="entity-signature">(opts: SearchOptions) -> ([]*SearchResult, error)</div>
+            <div class="entity-doc">
+                SearchEntities performs full-text search on entities using MySQL FULLTEXT.
+                Returns entities sorted by combined relevance score (FTS + PageRank).
+            </div>
+            <div class="entity-metrics">
+                <div class="metric-item">
+                    Relevance: <span class="metric-value">64%</span>
+                    <div class="relevance-bar"><div class="relevance-fill" style="width: 64%"></div></div>
+                </div>
+                <div class="metric-item">
+                    In-degree: <span class="metric-value">6</span>
+                </div>
+                <div class="metric-item">
+                    PageRank: <span class="metric-value">0.00035</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="entity-card">
+            <div class="entity-header">
+                <span class="entity-name">scanFilePass1</span>
+                <div class="entity-badges">
+                    <span class="badge badge-type">function</span>
+                    <span class="badge badge-lang">go</span>
+                </div>
+            </div>
+            <div class="entity-location">
+                <span class="file-path">internal/cmd/scan.go:641-734</span>
+            </div>
+            <div class="entity-signature">(path: string, basePath: string, p: *parser.Parser, storeDB: *store.Store, stats: *scanStats) -> *fileScanResult</div>
+            <div class="entity-doc">
+                scanFilePass1 handles the first pass of scanning: parse file and extract entities with AST nodes.
+                Returns nil if file should be skipped (unchanged or error).
+            </div>
+            <div class="entity-metrics">
+                <div class="metric-item">
+                    Relevance: <span class="metric-value">64%</span>
+                    <div class="relevance-bar"><div class="relevance-fill" style="width: 64%"></div></div>
+                </div>
+                <div class="metric-item">
+                    In-degree: <span class="metric-value">1</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="entity-card">
+            <div class="entity-header">
+                <span class="entity-name">showScanOverview</span>
+                <div class="entity-badges">
+                    <span class="badge badge-type">function</span>
+                    <span class="badge badge-lang">go</span>
+                </div>
+            </div>
+            <div class="entity-location">
+                <span class="file-path">internal/cmd/scan.go:1033-1105</span>
+            </div>
+            <div class="entity-signature">(s: *store.Store, projectRoot: string, cfg: *config.Config) -> error</div>
+            <div class="entity-doc">
+                showScanOverview displays a project overview after scanning (--overview flag).
+                This consolidates the quickstart functionality into scan.
+            </div>
+            <div class="entity-metrics">
+                <div class="metric-item">
+                    Relevance: <span class="metric-value">64%</span>
+                    <div class="relevance-bar"><div class="relevance-fill" style="width: 64%"></div></div>
+                </div>
+                <div class="metric-item">
+                    In-degree: <span class="metric-value">1</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="entity-card">
+            <div class="entity-header">
+                <span class="entity-name">DiscoverTests</span>
+                <div class="entity-badges">
+                    <span class="badge badge-type">method</span>
+                    <span class="badge badge-lang">go</span>
+                </div>
+            </div>
+            <div class="entity-location">
+                <span class="file-path">internal/coverage/testdiscovery.go:53-100</span>
+            </div>
+            <div class="entity-signature">() -> ([]DiscoveredTest, error)</div>
+            <div class="entity-doc">
+                DiscoverTests scans the codebase for test files and returns discovered tests.
+                It extracts test function entities from all test files.
+            </div>
+            <div class="entity-metrics">
+                <div class="metric-item">
+                    Relevance: <span class="metric-value">64%</span>
+                    <div class="relevance-bar"><div class="relevance-fill" style="width: 64%"></div></div>
+                </div>
+                <div class="metric-item">
+                    In-degree: <span class="metric-value">2</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="entity-card">
+            <div class="entity-header">
+                <span class="entity-name">TestDiscovery</span>
+                <div class="entity-badges">
+                    <span class="badge badge-type">type</span>
+                    <span class="badge badge-lang">go</span>
+                </div>
+            </div>
+            <div class="entity-location">
+                <span class="file-path">internal/coverage/testdiscovery.go:18-21</span>
+            </div>
+            <div class="entity-doc">
+                TestDiscovery handles scanning and discovering test functions in a codebase.
+            </div>
+            <div class="entity-metrics">
+                <div class="metric-item">
+                    Relevance: <span class="metric-value">59%</span>
+                    <div class="relevance-bar"><div class="relevance-fill" style="width: 59%"></div></div>
+                </div>
+                <div class="metric-item">
+                    In-degree: <span class="metric-value">4</span>
+                </div>
+            </div>
+        </div>
+
+        <p style="color: var(--text-secondary); font-style: italic; margin-top: 0.5rem;">
+            + 10 more entities...
+        </p>
+
+        <!-- Dependencies -->
+        <h2>Dependencies</h2>
+        <p class="section-description">Relationships between the matched entities.</p>
+
+        <div class="entity-card">
+            <ul class="dependency-list">
+                <li class="dependency-item">
+                    <span class="dep-from">scanFilePass1</span>
+                    <span class="dep-arrow">→</span>
+                    <span class="dep-to">fileScanResult</span>
+                    <span class="dep-type">uses_type</span>
+                </li>
+                <li class="dependency-item">
+                    <span class="dep-from">DiscoverTests</span>
+                    <span class="dep-arrow">→</span>
+                    <span class="dep-to">TestDiscovery</span>
+                    <span class="dep-type">method_of</span>
+                </li>
+                <li class="dependency-item">
+                    <span class="dep-from">DiscoverTests</span>
+                    <span class="dep-arrow">→</span>
+                    <span class="dep-to">DiscoveredTest</span>
+                    <span class="dep-type">uses_type</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Diagram -->
+        <h2>Call Flow Diagram</h2>
+        <p class="section-description">
+            Visual representation of call relationships.
+            <span class="theme-badge">D2 Theme: Colorblind Clear (ID 8)</span>
+        </p>
+
+        <div class="diagram-section">
+            <div class="diagram-title">Call Flow: SearchEntities</div>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                Shows how SearchEntities connects to its callees. Render with: <code>d2 diagram.d2 --theme 8</code>
+            </p>
+            <pre class="d2-code">vars: {
+  d2-config: {
+    theme-id: 8
+    layout-engine: elk
+  }
+}
+
+title: {
+  label: "Call Flow: SearchEntities"
+  near: top-center
+}
+
+direction: down
+
+# Nodes
+SearchEntities: {
+  label: "SearchEntities"
+  shape: rectangle
+  style: {
+    fill: "#fff3e0"
+    stroke: "#e65100"
+    stroke-width: 3
+    shadow: true
+  }
+}
+
+buildFTSQuery: {
+  label: "buildFTSQuery"
+  style: { fill: "#e3f2fd"; stroke: "#1976d2" }
+}
+
+cleanFTSWord: {
+  label: "cleanFTSWord"
+  style: { fill: "#e3f2fd"; stroke: "#1976d2" }
+}
+
+scanSearchResult: {
+  label: "scanSearchResult"
+  style: { fill: "#e3f2fd"; stroke: "#1976d2" }
+}
+
+sortSearchResults: {
+  label: "sortSearchResults"
+  style: { fill: "#e3f2fd"; stroke: "#1976d2" }
+}
+
+Query: {
+  label: "Query"
+  style: { fill: "#fff8e1"; stroke: "#ff8f00"; stroke-width: 2 }
+}
+
+# Edges
+SearchEntities -> buildFTSQuery
+SearchEntities -> scanSearchResult
+SearchEntities -> sortSearchResults
+SearchEntities -> Query
+buildFTSQuery -> cleanFTSWord</pre>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>Generated by CX (Cortex) - Codebase Analysis Tool</p>
+            <p style="font-size: 0.875rem; margin-top: 0.5rem;">
+                D2 Theme: Colorblind Clear (ID 8) - Accessible, high contrast visualization
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

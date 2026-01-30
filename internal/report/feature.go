@@ -57,6 +57,10 @@ type FeatureReportData struct {
 	// This is optional and only populated if coverage data is available.
 	// It includes overall coverage, per-entity coverage, and identified gaps.
 	Coverage *CoverageData `yaml:"coverage,omitempty" json:"coverage,omitempty"`
+
+	// Playground contains metadata for interactive playground generation.
+	// Only populated when --playground flag is used.
+	Playground *PlaygroundMetadata `yaml:"playground,omitempty" json:"playground,omitempty"`
 }
 
 // NewFeatureReport creates a new FeatureReportData initialized with the query.

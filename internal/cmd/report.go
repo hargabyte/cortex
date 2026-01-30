@@ -62,16 +62,20 @@ Examples:
   cx report overview --data --theme earth-tones -o overview.yaml
 
   # JSON format with dark theme
-  cx report feature "auth" --data --format json --theme dark`,
+  cx report feature "auth" --data --format json --theme dark
+
+  # Interactive playground mode (includes layer/filter metadata)
+  cx report overview --data --playground -o overview-playground.yaml`,
 	RunE: runReportRoot,
 }
 
 // Report flags
 var (
-	reportData      bool   // --data flag to output structured data
-	reportOutput    string // -o/--output file path
-	reportInitSkill bool   // --init-skill flag to output skill template
-	reportTheme     string // --theme flag for diagram theme
+	reportData       bool   // --data flag to output structured data
+	reportOutput     string // -o/--output file path
+	reportInitSkill  bool   // --init-skill flag to output skill template
+	reportTheme      string // --theme flag for diagram theme
+	reportPlayground bool   // --playground flag for interactive playground mode
 )
 
 // reportOverviewCmd generates overview report data
@@ -180,6 +184,7 @@ func init() {
 	reportCmd.PersistentFlags().BoolVar(&reportData, "data", false, "Output structured data for AI consumption")
 	reportCmd.PersistentFlags().StringVarP(&reportOutput, "output", "o", "", "Output file path (default: stdout)")
 	reportCmd.PersistentFlags().StringVar(&reportTheme, "theme", "", "Diagram color theme (use --themes to list)")
+	reportCmd.PersistentFlags().BoolVar(&reportPlayground, "playground", false, "Include playground metadata for interactive HTML generation")
 
 	// Skill template flag (local to report command, not inherited)
 	reportCmd.Flags().BoolVar(&reportInitSkill, "init-skill", false, "Output skill template for interactive report generation")
@@ -223,6 +228,7 @@ func runReportOverview(cmd *cobra.Command, args []string) error {
 	// Gather data from store
 	gatherer := report.NewDataGatherer(store)
 	gatherer.SetTheme(reportTheme)
+	gatherer.SetPlaygroundMode(reportPlayground)
 	if err := gatherer.GatherOverviewData(data); err != nil {
 		return fmt.Errorf("gather overview data: %w", err)
 	}
@@ -256,6 +262,7 @@ func runReportFeature(cmd *cobra.Command, args []string) error {
 	// Gather data from store using FTS search
 	gatherer := report.NewDataGatherer(store)
 	gatherer.SetTheme(reportTheme)
+	gatherer.SetPlaygroundMode(reportPlayground)
 	if err := gatherer.GatherFeatureData(data, query); err != nil {
 		return fmt.Errorf("gather feature data: %w", err)
 	}
@@ -287,6 +294,7 @@ func runReportChanges(cmd *cobra.Command, args []string) error {
 	// Gather data from Dolt time-travel queries
 	gatherer := report.NewDataGatherer(store)
 	gatherer.SetTheme(reportTheme)
+	gatherer.SetPlaygroundMode(reportPlayground)
 	if err := gatherer.GatherChangesData(data, changesSince, changesUntil); err != nil {
 		return fmt.Errorf("gather changes data: %w", err)
 	}
@@ -318,6 +326,7 @@ func runReportHealth(cmd *cobra.Command, args []string) error {
 	// Gather health data from store
 	gatherer := report.NewDataGatherer(store)
 	gatherer.SetTheme(reportTheme)
+	gatherer.SetPlaygroundMode(reportPlayground)
 	if err := gatherer.GatherHealthData(data); err != nil {
 		return fmt.Errorf("gather health data: %w", err)
 	}
