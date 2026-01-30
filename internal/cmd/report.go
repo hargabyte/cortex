@@ -537,6 +537,17 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
     .tooltip { position: fixed; background: rgba(0,0,0,0.85); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; pointer-events: none; z-index: 1000; max-width: 280px; display: none; }
     .tooltip-name { font-weight: 600; margin-bottom: 4px; }
     .tooltip-info { opacity: 0.8; font-size: 0.7rem; }
+    .help-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
+    .help-modal.visible { display: flex; }
+    .help-content { background: white; border-radius: 12px; max-width: 500px; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .help-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .help-header h2 { margin: 0; font-size: 1.2rem; }
+    .help-body { padding: 20px; font-size: 0.9rem; line-height: 1.6; }
+    .help-body h3 { margin: 20px 0 10px 0; font-size: 1rem; color: var(--accent); }
+    .help-body h3:first-child { margin-top: 0; }
+    .help-body ul { margin: 0; padding-left: 20px; }
+    .help-body li { margin: 6px 0; }
+    .help-body p { margin: 8px 0; }
     /* Selection ring animation */
     @keyframes pulse-ring { 0%% { transform: scale(1); opacity: 0.8; } 100%% { transform: scale(1.5); opacity: 0; } }
     .selection-ring { position: absolute; border: 3px solid var(--accent); border-radius: 50%%; pointer-events: none; animation: pulse-ring 0.6s ease-out forwards; }
@@ -562,6 +573,53 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
 </head>
 <body>
   <div class="tooltip" id="tooltip"><div class="tooltip-name"></div><div class="tooltip-info"></div></div>
+  <div class="help-modal" id="help-modal">
+    <div class="help-content">
+      <div class="help-header">
+        <h2>🎮 Cortex Playground Guide</h2>
+        <button class="close-btn" onclick="hideHelp()">×</button>
+      </div>
+      <div class="help-body">
+        <h3>🖱️ Selection</h3>
+        <ul>
+          <li><strong>Click</strong> - Select a single entity</li>
+          <li><strong>Ctrl+Click</strong> - Add/remove from selection</li>
+          <li><strong>Shift+Click</strong> - Select range of entities</li>
+        </ul>
+        
+        <h3>📝 Feedback</h3>
+        <p>Select an entity, then click a feedback button:</p>
+        <ul>
+          <li><strong>🔴 Issue</strong> - Report a problem or bug</li>
+          <li><strong>❓ Question</strong> - Ask about the code</li>
+          <li><strong>💡 Idea</strong> - Suggest an improvement</li>
+          <li><strong>💬 Comment</strong> - Add a general note</li>
+        </ul>
+        
+        <h3>🎨 View Presets</h3>
+        <ul>
+          <li><strong>Full System</strong> - Complete architecture</li>
+          <li><strong>Core Only</strong> - Core module components</li>
+          <li><strong>Data Flow</strong> - Storage & caching layer</li>
+          <li><strong>Parser</strong> - Parsing & analysis layer</li>
+        </ul>
+        
+        <h3>🛠️ Tools</h3>
+        <ul>
+          <li><strong>+/-/⟲</strong> - Zoom in, out, reset</li>
+          <li><strong>🌡️ Coverage</strong> - Toggle test coverage heatmap</li>
+          <li><strong>📋 Copy Prompt</strong> - Copy generated AI prompt</li>
+        </ul>
+        
+        <h3>💡 Tips</h3>
+        <ul>
+          <li>Multi-select entities to include all in the AI prompt</li>
+          <li>Add feedback to multiple entities for detailed analysis</li>
+          <li>Use coverage heatmap to find untested code</li>
+        </ul>
+      </div>
+    </div>
+  </div>
   <div class="sidebar">
     <div class="sidebar-header"><h1>🔬 Cortex Playground</h1><p>Interactive Architecture Analysis</p></div>
     <div class="section">
@@ -589,6 +647,7 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
       <button class="toolbar-btn" onclick="zoomOut()">−</button>
       <button class="toolbar-btn" onclick="resetZoom()">⟲</button>
       <button class="toolbar-btn" id="heatmap-btn" onclick="toggleHeatmap()">🌡️ Coverage</button>
+      <button class="toolbar-btn" onclick="showHelp()">❓ Help</button>
     </div>
     <div class="svg-container" id="svg-container">%s</div>
     <div class="entity-panel" id="entity-panel">
@@ -953,6 +1012,22 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
       event.target.textContent = '✓ Copied!'; 
       setTimeout(() => event.target.textContent = '📋 Copy Prompt to Clipboard', 2000); 
     }
+    
+    function showHelp() {
+      document.getElementById('help-modal').classList.add('visible');
+    }
+    
+    function hideHelp() {
+      document.getElementById('help-modal').classList.remove('visible');
+    }
+    
+    // Close help modal on click outside or Escape key
+    document.getElementById('help-modal')?.addEventListener('click', (e) => {
+      if (e.target.classList.contains('help-modal')) hideHelp();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') hideHelp();
+    });
     
     function zoomIn() { state.zoom *= 1.2; applyZoom(); }
     function zoomOut() { state.zoom /= 1.2; applyZoom(); }
