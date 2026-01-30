@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CX Report - Interactive Architecture Explorer</title>
+  <style>
+    /* ============================================
+       CSS VARIABLES & THEME
+       ============================================ */
+    :root {
+      --primary: #3b82f6;
+      --primary-light: #60a5fa;
+      --primary-dark: #1d4ed8;
+      --secondary: #64748b;
+      --bg-dark: #1e293b;
+      --bg-light: #f8fafc;
+      --bg-white: #ffffff;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --border: #e2e8f0;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --layer-core: #3b82f6;
+      --layer-api: #8b5cf6;
+      --layer-store: #10b981;
+      --layer-parser: #f59e0b;
+      --layer-graph: #8b5cf6;
+      --layer-output: #6366f1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: #f1f5f9;
+      line-height: 1.6;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ============================================
+       LAYOUT STRUCTURE
+       ============================================ */
+    .app-container {
+      display: flex;
+      width: 100%;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 320px;
+      min-width: 320px;
+      background: var(--bg-white);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 100;
+      box-shadow: 4px 0 12px rgba(0,0,0,0.08);
+    }
+
+    .sidebar-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, var(--bg-white) 0%, var(--bg-light) 100%);
+    }
+
+    .sidebar-header h1 {
+      font-size: 20px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.25rem;
+    }
+
+    .sidebar-stats {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    .stat-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg-light);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .stat-badge .icon {
+      font-size: 18px;
+    }
+
+    .stat-badge .value {
+      color: var(--primary);
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      height: 72px;
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .toolbar-left {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .view-toggle {
+      display: flex;
+      background: var(--bg-light);
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .view-toggle button {
+      padding: 0.5rem 1rem;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .view-toggle button.active {
+      background: var(--bg-white);
+      color: var(--primary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .view-toggle button:hover:not(.active) {
+      color: var(--text-primary);
+    }
+
+    .search-box {
+      position: relative;
+      width: 400px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.75rem 1rem 0.75rem 3rem;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: var(--bg-light);
+      transition: all 0.2s ease;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: var(--bg-white);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      font-size: 18px;
+    }
+
+    .search-count {
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--primary);
+      color: white;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* ============================================
+       LAYER-BASED CARD VIEW
+       ============================================ */
+    .layers-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 1.5rem;
+      align-content: start;
+    }
+
+    .layer-section {
+      background: var(--bg-white);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transition: all 0.3s ease;
+      animation: slideUp 0.4s ease;
+    }
+
+    .layer-section:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .layer-section.core {
+      border-top: 4px solid var(--layer-core);
+    }
+
+    .layer-section.api {
+      border-top: 4px solid var(--layer-api);
+    }
+
+    .layer-section.store {
+      border-top: 4px solid var(--layer-store);
+    }
+
+    .layer-section.parser {
+      border-top: 4px solid var(--layer-parser);
+    }
+
+    .layer-section.graph {
+      border-top: 4px solid var(--layer-graph);
+    }
+
+    .layer-section.output {
+      border-top: 4px solid var(--layer-output);
+    }
+
+    .layer-header {
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, var(--bg-light) 0%, var(--bg-white) 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .layer-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    .layer-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .layer-section.core .layer-icon {
+      background: var(--layer-core);
+    }
+
+    .layer-section.api .layer-icon {
+      background: var(--layer-api);
+    }
+
+    .layer-section.store .layer-icon {
+      background: var(--layer-store);
+    }
+
+    .layer-section.parser .layer-icon {
+      background: var(--layer-parser);
+    }
+
+    .layer-section.graph .layer-icon {
+      background: var(--layer-graph);
+    }
+
+    .layer-section.output .layer-icon {
+      background: var(--layer-output);
+    }
+
+    .layer-badge {
+      padding: 0.375rem 0.75rem;
+      background: var(--primary);
+      color: white;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .layer-stats {
+      display: flex;
+      gap: 1rem;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .layer-stat {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .layer-stat .icon {
+      font-size: 14px;
+    }
+
+    .layer-content {
+      padding: 1rem 1.5rem;
+    }
+
+    .entity-card {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .entity-card:hover {
+      border-color: var(--primary);
+      background: var(--bg-white);
+      transform: translateX(4px);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+    }
+
+    .entity-card.selected {
+      border-color: var(--primary);
+      border-width: 2px;
+      background: #f0f9ff;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+    }
+
+    .entity-card.keystone {
+      border-left: 4px solid var(--warning);
+    }
+
+    .entity-card.bottleneck {
+      border-left: 4px solid var(--primary);
+    }
+
+    .entity-card.has-comment::before {
+      content: '💬';
+      position: absolute;
+      top: -8px;
+      right: 12px;
+      font-size: 16px;
+      animation: bounceIn 0.3s ease;
+    }
+
+    @keyframes bounceIn {
+      0% {
+        transform: scale(0) translateY(10px);
+        opacity: 0;
+      }
+      60% {
+        transform: scale(1.1) translateY(-2px);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .entity-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .entity-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .entity-badges {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .entity-badge-small {
+      padding: 0.25rem 0.625rem;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-type {
+      background: var(--bg-dark);
+      color: white;
+    }
+
+    .badge-keystone {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-bottleneck {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-coverage {
+      background: var(--success);
+      color: white;
+    }
+
+    .badge-coverage.low {
+      background: var(--danger);
+    }
+
+    .badge-coverage.medium {
+      background: var(--warning);
+    }
+
+    .entity-file {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .entity-stats-row {
+      display: flex;
+      gap: 1rem;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .entity-stat-item {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .entity-stat-item .icon {
+      font-size: 14px;
+    }
+
+    /* ============================================
+       SVG DIAGRAM VIEW
+       ============================================ */
+    .diagram-container {
+      flex: 1;
+      overflow: hidden;
+      background: #fafafa;
+      position: relative;
+      cursor: grab;
+    }
+
+    .diagram-container:active {
+      cursor: grabbing;
+    }
+
+    .diagram-container svg {
+      transition: transform 0.15s ease-out;
+    }
+
+    /* ============================================
+       ENTITY DETAILS PANEL (DRAWER)
+       ============================================ */
+    .details-drawer {
+      position: fixed;
+      right: -500px;
+      top: 0;
+      width: 450px;
+      height: 100vh;
+      background: var(--bg-white);
+      box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .details-drawer.open {
+      right: 0;
+    }
+
+    .drawer-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, var(--bg-light) 0%, var(--bg-white) 100%);
+    }
+
+    .drawer-title {
+      font-size: 22px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .drawer-close {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-light);
+      cursor: pointer;
+      font-size: 24px;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drawer-close:hover {
+      background: var(--danger);
+      color: white;
+      transform: rotate(90deg);
+    }
+
+    .drawer-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+    }
+
+    .detail-section {
+      margin-bottom: 2rem;
+    }
+
+    .detail-section h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.75px;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .detail-card {
+      background: var(--bg-light);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid var(--border);
+    }
+
+    .detail-card h4 {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .detail-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .detail-value.small {
+      font-size: 18px;
+    }
+
+    .code-block {
+      background: var(--bg-dark);
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 10px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-x: auto;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .comment-section {
+      background: #f0f9ff;
+      border: 1px solid var(--primary);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .comment-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+      margin-bottom: 0.75rem;
+    }
+
+    .comment-textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn.secondary {
+      background: var(--bg-light);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn.secondary:hover {
+      background: var(--border);
+      transform: translateY(-1px);
+    }
+
+    .btn.danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    /* ============================================
+       SIDEBAR CONTROLS
+       ============================================ */
+    .control-group {
+      margin-bottom: 2rem;
+    }
+
+    .control-group h3 {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.75px;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    .layer-toggles {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .layer-toggle-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: var(--bg-light);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .layer-toggle-item:hover {
+      background: var(--border);
+    }
+
+    .layer-toggle-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+    }
+
+    .layer-color-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    .layer-label {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .layer-count {
+      background: var(--primary);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* Connection Legend */
+    .connection-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg-light);
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    .legend-line {
+      width: 40px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .legend-line.solid {
+      border-bottom: 3px solid;
+    }
+
+    .legend-line.dashed {
+      border-bottom: 3px dashed;
+    }
+
+    .legend-label {
+      font-weight: 600;
+    }
+
+    /* Preset Buttons */
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .preset-btn {
+      padding: 1rem;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-white);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--primary);
+      background: #f0f9ff;
+      transform: translateY(-2px);
+    }
+
+    .preset-btn.active {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .preset-title {
+      font-size: 14px;
+      margin-bottom: 0.25rem;
+    }
+
+    .preset-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Comments in Sidebar */
+    .sidebar-comments {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .sidebar-comments h3 {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.75px;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .comments-list-sidebar {
+      max-height: 250px;
+      overflow-y: auto;
+    }
+
+    .comment-item-sidebar {
+      background: var(--bg-light);
+      border-radius: 10px;
+      padding: 0.875rem;
+      margin-bottom: 0.75rem;
+      border-left: 3px solid var(--primary);
+      animation: slideInLeft 0.3s ease;
+    }
+
+    @keyframes slideInLeft {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .comment-header-sidebar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.375rem;
+    }
+
+    .comment-entity-name {
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 12px;
+    }
+
+    .comment-delete {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0.25rem;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .comment-delete:hover {
+      color: var(--danger);
+      background: #fee2e2;
+    }
+
+    .comment-body-sidebar {
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .comment-file-sidebar {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 0.375rem;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    /* Prompt Output */
+    .prompt-output-section {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .prompt-textarea-full {
+      width: 100%;
+      height: 150px;
+      padding: 0.875rem;
+      background: var(--bg-dark);
+      color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      resize: vertical;
+    }
+
+    .prompt-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-light);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <!-- ============================================
+       SIDEBAR
+       ============================================ -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>Architecture Explorer</h1>
+      <div class="sidebar-stats">
+        <div class="stat-badge">
+          <span class="icon">📊</span>
+          <span class="value" id="total-entities">0</span>
+        </div>
+        <div class="stat-badge">
+          <span class="icon">⭐</span>
+          <span class="value" id="total-keystones">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-content">
+      <!-- View Mode Toggle -->
+      <div class="control-group">
+        <h3>View Mode</h3>
+        <div class="view-toggle">
+          <button class="active" onclick="switchView('cards')" id="btn-view-cards">
+            <span>📋</span> Cards
+          </button>
+          <button onclick="switchView('diagram')" id="btn-view-diagram">
+            <span>🔗</span> Diagram
+          </button>
+        </div>
+      </div>
+
+      <!-- Layer Toggles -->
+      <div class="control-group">
+        <h3>Layers</h3>
+        <div class="layer-toggles" id="layer-toggles"></div>
+      </div>
+
+      <!-- View Presets -->
+      <div class="control-group">
+        <h3>Quick Views</h3>
+        <div class="preset-grid" id="preset-buttons"></div>
+      </div>
+
+      <!-- Comments -->
+      <div class="sidebar-comments">
+        <h3>
+          Comments
+          <span id="comment-count" style="color: var(--primary); font-weight: 700;">0</span>
+        </h3>
+        <div class="comments-list-sidebar" id="sidebar-comments-list">
+          <div style="text-align: center; color: var(--text-secondary); font-style: italic; padding: 2rem;">
+            Click an entity to add a comment
+          </div>
+        </div>
+      </div>
+
+      <!-- Prompt Output -->
+      <div class="prompt-output-section">
+        <h3>Prompt Output</h3>
+        <textarea class="prompt-textarea-full" id="prompt-output" readonly></textarea>
+        <div class="prompt-actions">
+          <button class="btn primary" onclick="copyPrompt()">
+            <span>📋</span> Copy Prompt
+          </button>
+          <button class="btn secondary" onclick="clearComments()">
+            <span>🗑️</span> Clear
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================
+       MAIN CONTENT
+       ============================================ -->
+  <div class="main-content">
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="Search entities by name or file..." oninput="handleSearch()">
+          <span class="search-count" id="search-count"></span>
+        </div>
+      </div>
+      <div class="view-toggle" id="toolbar-view-toggle" style="display: none;">
+        <button class="active" onclick="switchView('cards')" id="btn-toolbar-cards">
+          <span>📋</span> Cards
+        </button>
+        <button onclick="switchView('diagram')" id="btn-toolbar-diagram">
+          <span>🔗</span> Diagram
+        </button>
+      </div>
+    </div>
+
+    <!-- Cards View -->
+    <div class="layers-container" id="cards-view">
+      <!-- Layers will be injected here -->
+    </div>
+
+    <!-- Diagram View -->
+    <div class="diagram-container" id="diagram-view" style="display: none;">
+      <svg id="architecture-diagram" viewBox="0 0 1200 800" style="width: 100%; height: 100%;">
+        <text x="600" y="400" text-anchor="middle" fill="#999" font-size="16">
+          Loading architecture diagram...
+        </text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ============================================
+       ENTITY DETAILS DRAWER
+       ============================================ -->
+  <div class="details-drawer" id="details-drawer">
+    <div class="drawer-header">
+      <span class="drawer-title">Entity Details</span>
+      <button class="drawer-close" onclick="closeDrawer()">×</button>
+    </div>
+    <div class="drawer-content" id="drawer-content">
+      <div class="detail-section">
+        <h3>Overview</h3>
+        <div class="detail-grid">
+          <div class="detail-card">
+            <h4>Type</h4>
+            <div class="detail-value small" id="detail-type">function</div>
+          </div>
+          <div class="detail-card">
+            <h4>Importance</h4>
+            <div class="detail-value small" id="detail-importance">normal</div>
+          </div>
+          <div class="detail-card">
+            <h4>Layer</h4>
+            <div class="detail-value small" id="detail-layer">core</div>
+          </div>
+          <div class="detail-card">
+            <h4>Coverage</h4>
+            <div class="detail-value" id="detail-coverage">85%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>Location</h3>
+        <div class="detail-card">
+          <h4>File</h4>
+          <div class="detail-value small" id="detail-file">internal/parser/node.go</div>
+        </div>
+        <div class="detail-card" style="margin-top: 0.75rem;">
+          <h4>Lines</h4>
+          <div class="detail-value small" id="detail-lines">45-120</div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>Metrics</h3>
+        <div class="detail-grid">
+          <div class="detail-card">
+            <h4>PageRank</h4>
+            <div class="detail-value decimal" id="detail-pagerank">0.042</div>
+          </div>
+          <div class="detail-card">
+            <h4>In-Degree</h4>
+            <div class="detail-value" id="detail-indegree">23</div>
+          </div>
+          <div class="detail-card">
+            <h4>Out-Degree</h4>
+            <div class="detail-value" id="detail-outdegree">8</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>Signature</h3>
+        <div class="code-block" id="detail-signature">
+          func walkNode(n *node.Node) error
+        </div>
+      </div>
+
+      <div class="comment-section">
+        <h3 style="margin-bottom: 0.75rem;">Add Comment</h3>
+        <textarea class="comment-textarea" id="comment-input" placeholder="Add your observations or request changes..."></textarea>
+        <button class="btn primary" style="width: 100%;" onclick="saveComment()">
+          <span>💬</span> Save Comment
+        </button>
+      </div>
+
+      <div style="margin-top: 2rem;">
+        <button class="btn secondary" onclick="highlightPath()" style="width: 100%;">
+          <span>🔍</span> Trace Call Path
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // STATE MANAGEMENT
+    // ============================================
+    const state = {
+      currentView: 'cards',  // 'cards' or 'diagram'
+      layers: {},
+      layerVisibility: {},
+      zoom: 1,
+      pan: { x: 0, y: 0 },
+      selectedEntity: null,
+      comments: [],
+      searchQuery: '',
+      searchResults: [],
+    };
+
+    // ============================================
+    // REPORT DATA (injected from YAML)
+    // ============================================
+    const reportData = {
+      playground: {
+        layers: [
+          { id: 'core', label: 'Core Parser', color: '#3b82f6', entity_count: 2136, default_visible: true },
+          { id: 'api', label: 'API Layer', color: '#8b5cf6', entity_count: 881, default_visible: true },
+          { id: 'store', label: 'Entity Store', color: '#10b981', entity_count: 238, default_visible: true },
+          { id: 'parser', label: 'Parser', color: '#f59e0b', entity_count: 122, default_visible: true },
+          { id: 'graph', label: 'Dependency Graph', color: '#8b5cf6', entity_count: 103, default_visible: true },
+          { id: 'output', label: 'Output', color: '#6366f1', entity_count: 206, default_visible: true }
+        ],
+        view_presets: [
+          { id: 'full', label: 'Full System', description: 'Show all layers and entities' },
+          { id: 'keystones', label: 'Keystones Only', description: 'Show only high-importance entities' },
+          { id: 'core', label: 'Core Architecture', description: 'Core parser and store layers' },
+          { id: 'api', label: 'API Layer', description: 'API handlers and routing' }
+        ],
+        element_map: {}
+      },
+      entities: [],
+      diagrams: {
+        architecture: {
+          svg: '',
+          title: 'System Architecture'
+        }
+      }
+    };
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    window.onload = function() {
+      initializeFromData();
+      initLayerToggles();
+      initPresetButtons();
+      renderCardsView();
+      generatePrompt();
+      updateStats();
+    };
+
+    function initializeFromData() {
+      reportData.playground.layers.forEach(layer => {
+        state.layerVisibility[layer.id] = layer.default_visible;
+      });
+    }
+
+    // ============================================
+    // VIEW SWITCHING
+    // ============================================
+    function switchView(viewMode) {
+      state.currentView = viewMode;
+
+      // Update toggle buttons
+      document.querySelectorAll('.view-toggle button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.getElementById(`btn-view-${viewMode}`).classList.add('active');
+      document.getElementById(`btn-toolbar-${viewMode}`).classList.add('active');
+
+      // Show/hide views
+      const cardsView = document.getElementById('cards-view');
+      const diagramView = document.getElementById('diagram-view');
+
+      if (viewMode === 'cards') {
+        cardsView.style.display = 'grid';
+        diagramView.style.display = 'none';
+      } else {
+        cardsView.style.display = 'none';
+        diagramView.style.display = 'block';
+        renderDiagram();
+      }
+    }
+
+    // ============================================
+    // LAYER TOGGLES
+    // ============================================
+    function initLayerToggles() {
+      const container = document.getElementById('layer-toggles');
+      container.innerHTML = '';
+
+      reportData.playground.layers.forEach(layer => {
+        state.layers[layer.id] = layer.default_visible;
+
+        const item = document.createElement('label');
+        item.className = 'layer-toggle-item';
+        item.innerHTML = `
+          <input type="checkbox" ${layer.default_visible ? 'checked' : ''} 
+                 onchange="toggleLayer('${layer.id}')">
+          <div class="layer-color-dot" style="background: ${layer.color}"></div>
+          <span class="layer-label">${layer.label}</span>
+          <span class="layer-count">${layer.entity_count}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function toggleLayer(layerId) {
+      state.layerVisibility[layerId] = !state.layerVisibility[layerId];
+      
+      // Update checkbox
+      const checkbox = document.querySelector(`#layer-toggles input[onchange="toggleLayer('${layerId}')"]`);
+      if (checkbox) checkbox.checked = state.layerVisibility[layerId];
+
+      // Re-render cards or update diagram
+      if (state.currentView === 'cards') {
+        renderCardsView();
+      } else {
+        updateDiagramFilters();
+      }
+
+      generatePrompt();
+    }
+
+    // ============================================
+    // CARDS VIEW RENDERING
+    // ============================================
+    function renderCardsView() {
+      const container = document.getElementById('cards-view');
+      container.innerHTML = '';
+
+      reportData.playground.layers.forEach(layer => {
+        if (!state.layerVisibility[layer.id]) return;
+
+        // Get entities for this layer
+        const layerEntities = reportData.entities.filter(e => e.layer === layer.id);
+        if (layerEntities.length === 0) return;
+
+        // Create layer section
+        const section = document.createElement('div');
+        section.className = `layer-section ${layer.id}`;
+        section.innerHTML = `
+          <div class="layer-header">
+            <div class="layer-title">
+              <div class="layer-icon">${layer.label.charAt(0)}</div>
+              <span>${layer.label}</span>
+            </div>
+            <div class="layer-stats">
+              <span class="layer-stat">
+                <span class="icon">📊</span>
+                ${layerEntities.length} entities
+              </span>
+            </div>
+          </div>
+          <div class="layer-content" id="layer-content-${layer.id}"></div>
+        `;
+
+        // Add entity cards
+        const content = section.querySelector(`#layer-content-${layer.id}`);
+        layerEntities.forEach(entity => {
+          const card = document.createElement('div');
+          card.className = `entity-card ${entity.importance || 'normal'}`;
+          if (state.comments.find(c => c.entityId === entity.id)) {
+            card.classList.add('has-comment');
+          }
+          if (state.selectedEntity && state.selectedEntity.id === entity.id) {
+            card.classList.add('selected');
+          }
+          card.innerHTML = `
+            <div class="entity-header">
+              <span class="entity-name">${entity.name}</span>
+              <div class="entity-badges">
+                <span class="entity-badge-small badge-type">${entity.type}</span>
+                ${entity.importance === 'keystone' ? '<span class="entity-badge-small badge-keystone">★ Keystone</span>' : ''}
+                ${entity.bottleneck ? '<span class="entity-badge-small badge-bottleneck">⚡ Bottleneck</span>' : ''}
+                ${entity.coverage !== undefined ? `<span class="entity-badge-small badge-coverage ${getCoverageClass(entity.coverage)}">${entity.coverage}%</span>` : ''}
+              </div>
+            </div>
+            <div class="entity-file">${entity.file}</div>
+            <div class="entity-stats-row">
+              <div class="entity-stat-item">
+                <span class="icon">📊</span>
+                PR: ${entity.pagerank ? entity.pagerank.toFixed(3) : 'N/A'}
+              </div>
+              <div class="entity-stat-item">
+                <span class="icon">🔗</span>
+                ${entity.in_degree || 0} in
+              </div>
+              <div class="entity-stat-item">
+                <span class="icon">📤</span>
+                ${entity.out_degree || 0} out
+              </div>
+            </div>
+          `;
+
+          // Click handler
+          card.addEventListener('click', () => showEntityDetails(entity));
+          content.appendChild(card);
+        });
+
+        container.appendChild(section);
+      });
+    }
+
+    function getCoverageClass(coverage) {
+      if (coverage >= 80) return 'high';
+      if (coverage >= 50) return 'medium';
+      return 'low';
+    }
+
+    // ============================================
+    // DIAGRAM VIEW
+    // ============================================
+    function renderDiagram() {
+      const svgContainer = document.getElementById('architecture-diagram');
+      if (reportData.diagrams.architecture.svg) {
+        svgContainer.innerHTML = reportData.diagrams.architecture.svg;
+        setupDiagramClickHandlers();
+      }
+    }
+
+    function setupDiagramClickHandlers() {
+      Object.entries(reportData.playground.element_map).forEach(([entityId, svgId]) => {
+        const el = document.getElementById(svgId);
+        if (el) {
+          el.style.cursor = 'pointer';
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const entity = reportData.entities.find(ent => ent.id === entityId);
+            if (entity) {
+              showEntityDetails(entity);
+            }
+          });
+        }
+      });
+    }
+
+    function updateDiagramFilters() {
+      // Hide/show layers in diagram
+      Object.entries(state.layerVisibility).forEach(([layerId, visible]) => {
+        document.querySelectorAll(`.layer-${layerId}`).forEach(el => {
+          el.style.display = visible ? '' : 'none';
+        });
+      });
+    }
+
+    // ============================================
+    // PRESET BUTTONS
+    // ============================================
+    function initPresetButtons() {
+      const container = document.getElementById('preset-buttons');
+      container.innerHTML = '';
+
+      reportData.playground.view_presets.forEach(preset => {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn';
+        if (preset.id === 'full') btn.classList.add('active');
+        btn.innerHTML = `
+          <div class="preset-title">${preset.label}</div>
+          <div class="preset-desc">${preset.description}</div>
+        `;
+        btn.onclick = () => applyPreset(preset);
+        container.appendChild(btn);
+      });
+    }
+
+    function applyPreset(presetId) {
+      const preset = reportData.playground.view_presets.find(p => p.id === presetId);
+      if (!preset) return;
+
+      // Update active button
+      document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.preset-btn[onclick*="${presetId}"]`)?.classList.add('active');
+
+      // Apply preset-specific layer visibility
+      if (preset.id === 'keystones') {
+        // Show all layers but filter entities by importance
+        reportData.playground.layers.forEach(layer => {
+          state.layerVisibility[layer.id] = true;
+        });
+      } else if (preset.id === 'core') {
+        // Show only core-related layers
+        state.layerVisibility.core = true;
+        state.layerVisibility.api = false;
+        state.layerVisibility.store = true;
+        state.layerVisibility.parser = false;
+        state.layerVisibility.graph = false;
+        state.layerVisibility.output = false;
+      } else if (preset.id === 'api') {
+        state.layerVisibility.core = false;
+        state.layerVisibility.api = true;
+        state.layerVisibility.store = false;
+        state.layerVisibility.parser = false;
+        state.layerVisibility.graph = false;
+        state.layerVisibility.output = false;
+      } else {
+        // Full: show all
+        reportData.playground.layers.forEach(layer => {
+          state.layerVisibility[layer.id] = true;
+        });
+      }
+
+      // Update checkboxes
+      document.querySelectorAll('#layer-toggles input').forEach(cb => {
+        const layer = reportData.playground.layers.find(l => l.label === cb.parentElement.querySelector('.layer-label').textContent);
+        if (layer) cb.checked = state.layerVisibility[layer.id];
+      });
+
+      // Re-render
+      if (state.currentView === 'cards') {
+        renderCardsView();
+      } else {
+        updateDiagramFilters();
+      }
+
+      generatePrompt();
+    }
+
+    // ============================================
+    // ENTITY DETAILS
+    // ============================================
+    function showEntityDetails(entity) {
+      state.selectedEntity = entity;
+
+      // Populate drawer
+      document.getElementById('detail-type').textContent = entity.type;
+      document.getElementById('detail-importance').textContent = entity.importance || 'normal';
+      document.getElementById('detail-layer').textContent = entity.layer;
+      document.getElementById('detail-coverage').textContent = entity.coverage !== undefined ? `${entity.coverage}%` : 'N/A';
+      document.getElementById('detail-file').textContent = entity.file;
+      document.getElementById('detail-lines').textContent = `${entity.lines[0]}-${entity.lines[1]}`;
+      document.getElementById('detail-pagerank').textContent = entity.pagerank ? entity.pagerank.toFixed(4) : 'N/A';
+      document.getElementById('detail-indegree').textContent = entity.in_degree || 0;
+      document.getElementById('detail-outdegree').textContent = entity.out_degree || 0;
+      document.getElementById('detail-signature').textContent = entity.signature || 'N/A';
+
+      // Show drawer
+      document.getElementById('details-drawer').classList.add('open');
+
+      // Highlight in cards view
+      if (state.currentView === 'cards') {
+        renderCardsView();
+      }
+    }
+
+    function closeDrawer() {
+      document.getElementById('details-drawer').classList.remove('open');
+      state.selectedEntity = null;
+      if (state.currentView === 'cards') {
+        renderCardsView();
+      }
+    }
+
+    // ============================================
+    // COMMENTS
+    // ============================================
+    function saveComment() {
+      if (!state.selectedEntity) {
+        alert('Please select an entity first');
+        return;
+      }
+
+      const text = document.getElementById('comment-input').value.trim();
+      if (!text) {
+        alert('Please enter a comment');
+        return;
+      }
+
+      const comment = {
+        id: Date.now(),
+        entityId: state.selectedEntity.id,
+        entityName: state.selectedEntity.name,
+        entityFile: state.selectedEntity.file,
+        text: text,
+        timestamp: new Date().toISOString()
+      };
+
+      state.comments.push(comment);
+      document.getElementById('comment-input').value = '';
+      renderSidebarComments();
+      generatePrompt();
+
+      // Update card view
+      if (state.currentView === 'cards') {
+        renderCardsView();
+      }
+    }
+
+    function deleteComment(commentId) {
+      state.comments = state.comments.filter(c => c.id !== commentId);
+      renderSidebarComments();
+      generatePrompt();
+      if (state.currentView === 'cards') {
+        renderCardsView();
+      }
+    }
+
+    function clearComments() {
+      if (!confirm('Clear all comments?')) return;
+      state.comments = [];
+      renderSidebarComments();
+      generatePrompt();
+      if (state.currentView === 'cards') {
+        renderCardsView();
+      }
+    }
+
+    function renderSidebarComments() {
+      const container = document.getElementById('sidebar-comments-list');
+      document.getElementById('comment-count').textContent = state.comments.length;
+
+      if (state.comments.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; color: var(--text-secondary); font-style: italic; padding: 2rem;">
+            Click an entity to add a comment
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = state.comments.map(comment => `
+        <div class="comment-item-sidebar">
+          <div class="comment-header-sidebar">
+            <span class="comment-entity-name">${comment.entityName}</span>
+            <button class="comment-delete" onclick="deleteComment(${comment.id})">×</button>
+          </div>
+          <div class="comment-body-sidebar">${comment.text}</div>
+          <div class="comment-file-sidebar">${comment.entityFile}</div>
+        </div>
+      `).join('');
+    }
+
+    // ============================================
+    // SEARCH
+    // ============================================
+    function handleSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase();
+      state.searchQuery = query;
+      state.searchResults = [];
+
+      if (query.length === 0) {
+        document.getElementById('search-count').textContent = '';
+        return;
+      }
+
+      // Find matching entities
+      reportData.entities.forEach(entity => {
+        if (entity.name.toLowerCase().includes(query) ||
+            entity.file.toLowerCase().includes(query)) {
+          state.searchResults.push(entity);
+        }
+      });
+
+      document.getElementById('search-count').textContent = `(${state.searchResults.length})`;
+    }
+
+    // ============================================
+    // PROMPT GENERATION
+    // ============================================
+    function generatePrompt() {
+      const visibleLayers = Object.entries(state.layerVisibility)
+        .filter(([, visible]) => visible)
+        .map(([layerId]) => {
+          const layer = reportData.playground.layers.find(l => l.id === layerId);
+          return layer ? layer.label : layerId;
+        })
+        .join(', ');
+
+      let prompt = `# Architecture Analysis Report
+
+Generated at: ${new Date().toISOString()}
+
+## Current View
+- **View Mode:** ${state.currentView === 'cards' ? 'Cards' : 'Diagram'}
+- **Visible Layers:** ${visibleLayers || 'none'}
+- **Total Entities:** ${reportData.entities.length}
+`;
+
+      if (state.comments.length > 0) {
+        prompt += `## Comments & Observations
+
+`;
+        state.comments.forEach(comment => {
+          prompt += `### ${comment.entityName}
+**File:** ${comment.entityFile}
+**Comment:** ${comment.text}
+
+`;
+        });
+      } else {
+        prompt += `\n(No comments added yet. Click entities to add comments.)\n`;
+      }
+
+      prompt += `## Next Steps
+Based on the above analysis and observations:
+
+1. Analyze the architecture patterns
+2. Identify potential improvements
+3. Address specific comments and concerns
+4. Provide recommendations for refactoring
+
+---
+
+Generated by CX Interactive Playground`;
+
+      document.getElementById('prompt-output').value = prompt;
+    }
+
+    function copyPrompt() {
+      const textarea = document.getElementById('prompt-output');
+      textarea.select();
+      document.execCommand('copy');
+
+      const btn = document.querySelector('.prompt-actions .btn.primary');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span>✓</span> Copied!';
+      setTimeout(() => btn.innerHTML = originalText, 2000);
+    }
+
+    // ============================================
+    // STATS UPDATE
+    // ============================================
+    function updateStats() {
+      document.getElementById('total-entities').textContent = reportData.entities.length;
+      
+      const keystones = reportData.entities.filter(e => e.importance === 'keystone').length;
+      document.getElementById('total-keystones').textContent = keystones;
+    }
+
+    // ============================================
+    // PLACEHOLDER FUNCTIONS
+    // ============================================
+    function highlightPath() {
+      alert('Path tracing coming soon!\\n\\nThis feature will show the call path from entry points to the selected entity.');
+    }
+  </script>
+</body>
+</html>

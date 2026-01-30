@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CX Report - Interactive Playground</title>
+  <style>
+    :root {
+      --bg-primary: #f8f9fa;
+      --bg-secondary: #ffffff;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --accent-blue: #3498db;
+      --accent-green: #2ecc71;
+      --accent-purple: #9b59b6;
+      --border-color: #e5e7eb;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Controls Panel - Left Sidebar */
+    .controls {
+      width: 280px;
+      min-width: 280px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .control-group h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .preset-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .preset-btn {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent-blue);
+      background: #e3f2fd;
+    }
+
+    .preset-btn.active {
+      border-color: var(--accent-blue);
+      background: var(--accent-blue);
+      color: white;
+    }
+
+    .layer-toggle, .connection-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .layer-toggle:hover, .connection-toggle:hover {
+      background: var(--bg-primary);
+    }
+
+    .layer-toggle input, .connection-toggle input {
+      margin: 0;
+    }
+
+    .layer-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    .layer-label {
+      flex: 1;
+      font-size: 0.9rem;
+    }
+
+    .layer-count {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* Main Canvas Area */
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: #fafafa;
+    }
+
+    .canvas-container svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Zoom Controls */
+    .zoom-controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 0.5rem;
+      background: var(--bg-secondary);
+      padding: 0.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .zoom-btn {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .zoom-btn:hover {
+      background: var(--bg-primary);
+    }
+
+    /* Entity Details Panel */
+    .entity-details {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      padding: 1rem 1.5rem;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      max-height: 40%;
+      overflow-y: auto;
+    }
+
+    .entity-details.visible {
+      transform: translateY(0);
+    }
+
+    .entity-details-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .entity-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .close-details {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .entity-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* Comments Panel */
+    .comments-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 280px;
+      max-height: 60%;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: none;
+      flex-direction: column;
+    }
+
+    .comments-panel.visible {
+      display: flex;
+    }
+
+    .comments-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      font-weight: 600;
+    }
+
+    .comments-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+
+    .comment-item {
+      padding: 0.75rem;
+      background: var(--bg-primary);
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .comment-entity {
+      font-weight: 500;
+      color: var(--accent-blue);
+      margin-bottom: 0.25rem;
+    }
+
+    /* Prompt Output */
+    .prompt-output {
+      margin-top: auto;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .prompt-output textarea {
+      width: 100%;
+      height: 100px;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      resize: none;
+    }
+
+    .copy-prompt-btn {
+      margin-top: 0.5rem;
+      width: 100%;
+      padding: 0.5rem;
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .copy-prompt-btn:hover {
+      background: #2980b9;
+    }
+  </style>
+</head>
+<body>
+  <!-- Controls Panel -->
+  <div class="controls">
+    <!-- View Presets -->
+    <div class="control-group">
+      <h3>View</h3>
+      <div class="preset-buttons" id="presets"></div>
+    </div>
+
+    <!-- Layer Toggles -->
+    <div class="control-group">
+      <h3>Layers</h3>
+      <div id="layers"></div>
+    </div>
+
+    <!-- Connection Type Toggles -->
+    <div class="control-group">
+      <h3>Connections</h3>
+      <div id="connections"></div>
+    </div>
+
+    <!-- Prompt Output -->
+    <div class="prompt-output">
+      <h3>Prompt Output</h3>
+      <textarea id="prompt-output" readonly placeholder="Comments and observations will appear here..."></textarea>
+      <button class="copy-prompt-btn" onclick="copyPrompt()">📋 Copy Prompt</button>
+    </div>
+  </div>
+
+  <!-- Main Canvas -->
+  <div class="canvas-container" id="canvas">
+    <svg id="diagram" viewBox="0 0 1200 800">
+      <!-- SVG content will be injected here -->
+      <text x="600" y="400" text-anchor="middle" fill="#999">
+        Loading diagram...
+      </text>
+    </svg>
+
+    <!-- Zoom Controls -->
+    <div class="zoom-controls">
+      <button class="zoom-btn" onclick="zoomIn()">+</button>
+      <button class="zoom-btn" onclick="zoomOut()">−</button>
+      <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+    </div>
+  </div>
+
+  <!-- Entity Details Panel -->
+  <div class="entity-details" id="entity-details">
+    <div class="entity-details-header">
+      <span class="entity-name" id="entity-name">Entity Name</span>
+      <button class="close-details" onclick="hideDetails()">×</button>
+    </div>
+    <div class="entity-meta" id="entity-meta">
+      <span id="entity-type">function</span>
+      <span id="entity-file">path/to/file.go</span>
+      <span id="entity-importance">keystone</span>
+    </div>
+    <div style="margin-top: 1rem;">
+      <button onclick="addComment()" style="padding: 0.5rem 1rem; cursor: pointer;">
+        💬 Add Comment
+      </button>
+    </div>
+  </div>
+
+  <!-- Comments Panel -->
+  <div class="comments-panel" id="comments-panel">
+    <div class="comments-header">
+      Comments (<span id="comment-count">0</span>)
+      <button onclick="toggleComments()" style="float: right; background: none; border: none; cursor: pointer;">×</button>
+    </div>
+    <div class="comments-list" id="comments-list"></div>
+  </div>
+
+  <script>
+    // ========================================
+    // PLAYGROUND STATE
+    // ========================================
+    const state = {
+      layers: {},
+      connections: {},
+      zoom: 1,
+      pan: { x: 0, y: 0 },
+      comments: [],
+      selectedEntity: null
+    };
+
+    // ========================================
+    // REPORT DATA (injected by AI)
+    // ========================================
+    // This object will be populated with data from cx report --playground
+    const reportData = {
+      playground: {
+        enabled: true,
+        layers: [
+          { id: 'core', label: 'Core', color: '#4a90d9', entity_count: 150, default_visible: true },
+          { id: 'api', label: 'API', color: '#50c878', entity_count: 80, default_visible: true },
+          { id: 'store', label: 'Store', color: '#9b59b6', entity_count: 60, default_visible: true },
+          { id: 'parser', label: 'Parser', color: '#e67e22', entity_count: 45, default_visible: true }
+        ],
+        connection_types: [
+          { type: 'calls', label: 'Calls', color: '#3498db', count: 500, default_visible: true },
+          { type: 'uses_type', label: 'Uses Type', color: '#2ecc71', count: 200, default_visible: true },
+          { type: 'implements', label: 'Implements', color: '#9b59b6', count: 50, default_visible: true }
+        ],
+        view_presets: [
+          { id: 'full', label: 'Full System', description: 'Show everything' },
+          { id: 'keystones', label: 'Keystones Only', description: 'High-importance entities' },
+          { id: 'core', label: 'Core Architecture', description: 'Core modules only' }
+        ]
+      },
+      entities: [],
+      diagrams: {}
+    };
+
+    // ========================================
+    // INITIALIZATION
+    // ========================================
+    function init() {
+      initLayers();
+      initConnections();
+      initPresets();
+      renderDiagram();
+    }
+
+    function initLayers() {
+      const container = document.getElementById('layers');
+      container.innerHTML = '';
+
+      reportData.playground.layers.forEach(layer => {
+        state.layers[layer.id] = layer.default_visible;
+
+        const toggle = document.createElement('label');
+        toggle.className = 'layer-toggle';
+        toggle.innerHTML = `
+          <input type="checkbox" ${layer.default_visible ? 'checked' : ''} 
+                 onchange="toggleLayer('${layer.id}')">
+          <span class="layer-color" style="background: ${layer.color}"></span>
+          <span class="layer-label">${layer.label}</span>
+          <span class="layer-count">${layer.entity_count}</span>
+        `;
+        container.appendChild(toggle);
+      });
+    }
+
+    function initConnections() {
+      const container = document.getElementById('connections');
+      container.innerHTML = '';
+
+      reportData.playground.connection_types.forEach(conn => {
+        state.connections[conn.type] = conn.default_visible;
+
+        const toggle = document.createElement('label');
+        toggle.className = 'connection-toggle';
+        toggle.innerHTML = `
+          <input type="checkbox" ${conn.default_visible ? 'checked' : ''} 
+                 onchange="toggleConnection('${conn.type}')">
+          <span class="layer-color" style="background: ${conn.color}"></span>
+          <span class="layer-label">${conn.label}</span>
+          <span class="layer-count">${conn.count}</span>
+        `;
+        container.appendChild(toggle);
+      });
+    }
+
+    function initPresets() {
+      const container = document.getElementById('presets');
+      container.innerHTML = '';
+
+      reportData.playground.view_presets.forEach(preset => {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn';
+        btn.textContent = preset.label;
+        btn.title = preset.description;
+        btn.onclick = () => applyPreset(preset.id);
+        container.appendChild(btn);
+      });
+    }
+
+    // ========================================
+    // FILTERING
+    // ========================================
+    function toggleLayer(layerId) {
+      state.layers[layerId] = !state.layers[layerId];
+      applyFilters();
+      generatePrompt();
+    }
+
+    function toggleConnection(connType) {
+      state.connections[connType] = !state.connections[connType];
+      applyFilters();
+      generatePrompt();
+    }
+
+    function applyPreset(presetId) {
+      // Update active state
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(presetId));
+      });
+
+      // Apply preset settings
+      const preset = reportData.playground.view_presets.find(p => p.id === presetId);
+      if (preset) {
+        // If preset has visible_layers, apply them
+        if (preset.visible_layers) {
+          Object.keys(state.layers).forEach(layer => {
+            state.layers[layer] = preset.visible_layers.includes(layer);
+          });
+          // Update checkboxes
+          document.querySelectorAll('#layers input[type="checkbox"]').forEach((cb, i) => {
+            const layerId = reportData.playground.layers[i].id;
+            cb.checked = state.layers[layerId];
+          });
+        }
+      }
+
+      applyFilters();
+      generatePrompt();
+    }
+
+    function applyFilters() {
+      // Apply layer visibility
+      Object.entries(state.layers).forEach(([layer, visible]) => {
+        document.querySelectorAll(`.layer-${layer}`).forEach(el => {
+          el.style.display = visible ? '' : 'none';
+        });
+      });
+
+      // Apply connection visibility
+      Object.entries(state.connections).forEach(([conn, visible]) => {
+        document.querySelectorAll(`.connection-${conn}`).forEach(el => {
+          el.style.display = visible ? '' : 'none';
+        });
+      });
+    }
+
+    // ========================================
+    // DIAGRAM RENDERING
+    // ========================================
+    function renderDiagram() {
+      // In real implementation, this would load the pre-rendered SVG
+      // or render D2 code dynamically
+      console.log('Rendering diagram...');
+    }
+
+    // ========================================
+    // ZOOM/PAN
+    // ========================================
+    function zoomIn() {
+      state.zoom = Math.min(state.zoom * 1.2, 5);
+      applyTransform();
+    }
+
+    function zoomOut() {
+      state.zoom = Math.max(state.zoom / 1.2, 0.5);
+      applyTransform();
+    }
+
+    function resetZoom() {
+      state.zoom = 1;
+      state.pan = { x: 0, y: 0 };
+      applyTransform();
+    }
+
+    function applyTransform() {
+      const svg = document.getElementById('diagram');
+      svg.style.transform = `scale(${state.zoom}) translate(${state.pan.x}px, ${state.pan.y}px)`;
+    }
+
+    // ========================================
+    // ENTITY DETAILS
+    // ========================================
+    function showDetails(entity) {
+      state.selectedEntity = entity;
+      document.getElementById('entity-name').textContent = entity.name;
+      document.getElementById('entity-type').textContent = entity.type;
+      document.getElementById('entity-file').textContent = entity.file;
+      document.getElementById('entity-importance').textContent = entity.importance || 'normal';
+      document.getElementById('entity-details').classList.add('visible');
+    }
+
+    function hideDetails() {
+      state.selectedEntity = null;
+      document.getElementById('entity-details').classList.remove('visible');
+    }
+
+    // ========================================
+    // COMMENTS
+    // ========================================
+    function addComment() {
+      if (!state.selectedEntity) return;
+
+      const comment = prompt(`Add comment for ${state.selectedEntity.name}:`);
+      if (comment) {
+        state.comments.push({
+          entity: state.selectedEntity.name,
+          entityId: state.selectedEntity.id,
+          text: comment,
+          timestamp: new Date().toISOString()
+        });
+        updateCommentsList();
+        generatePrompt();
+      }
+    }
+
+    function updateCommentsList() {
+      const list = document.getElementById('comments-list');
+      document.getElementById('comment-count').textContent = state.comments.length;
+
+      list.innerHTML = state.comments.map((c, i) => `
+        <div class="comment-item">
+          <div class="comment-entity">${c.entity}</div>
+          <div>${c.text}</div>
+          <button onclick="removeComment(${i})" style="margin-top: 0.5rem; font-size: 0.75rem; cursor: pointer;">
+            Remove
+          </button>
+        </div>
+      `).join('');
+
+      if (state.comments.length > 0) {
+        document.getElementById('comments-panel').classList.add('visible');
+      }
+    }
+
+    function removeComment(index) {
+      state.comments.splice(index, 1);
+      updateCommentsList();
+      generatePrompt();
+    }
+
+    function toggleComments() {
+      document.getElementById('comments-panel').classList.toggle('visible');
+    }
+
+    // ========================================
+    // PROMPT GENERATION
+    // ========================================
+    function generatePrompt() {
+      const visibleLayers = Object.entries(state.layers)
+        .filter(([, visible]) => visible)
+        .map(([layer]) => layer);
+
+      const visibleConnections = Object.entries(state.connections)
+        .filter(([, visible]) => visible)
+        .map(([conn]) => conn);
+
+      let prompt = `# Codebase Analysis
+
+## Current View
+- **Visible Layers:** ${visibleLayers.join(', ') || 'none'}
+- **Visible Connections:** ${visibleConnections.join(', ') || 'none'}
+
+`;
+
+      if (state.comments.length > 0) {
+        prompt += `## Comments & Observations
+
+`;
+        state.comments.forEach(c => {
+          prompt += `### ${c.entity}
+${c.text}
+
+`;
+        });
+      }
+
+      prompt += `## Next Steps
+Based on the above observations, please:
+1. 
+2. 
+3. 
+`;
+
+      document.getElementById('prompt-output').value = prompt;
+    }
+
+    function copyPrompt() {
+      const textarea = document.getElementById('prompt-output');
+      textarea.select();
+      document.execCommand('copy');
+      
+      const btn = document.querySelector('.copy-prompt-btn');
+      const originalText = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => btn.textContent = originalText, 2000);
+    }
+
+    // ========================================
+    // INIT
+    // ========================================
+    window.onload = init;
+  </script>
+</body>
+</html>

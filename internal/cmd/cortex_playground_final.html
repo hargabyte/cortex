@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CX Report - Interactive Playground</title>
+  <style>
+    /* ============================================
+       CSS VARIABLES
+       ============================================ */
+    :root {
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --secondary: #6b7280;
+      --bg-light: #f8f9fa;
+      --bg-white: #ffffff;
+      --border: #e5e7eb;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+    }
+
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: var(--bg-light);
+      line-height: 1.6;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ============================================
+       CONTROLS SIDEBAR (LEFT)
+       ============================================ */
+    .controls {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 300px;
+      min-width: 300px;
+      height: 100vh;
+      background: var(--bg-white);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 1.5rem;
+      z-index: 100;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+    }
+
+    .control-section {
+      margin-bottom: 2rem;
+    }
+
+    .control-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .control-section h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.75px;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+
+    /* Preset Buttons */
+    .preset-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .preset-btn {
+      padding: 0.625rem 0.875rem;
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      text-align: left;
+      color: var(--text-primary);
+    }
+
+    .preset-btn:hover {
+      border-color: var(--primary);
+      background: #eff6ff;
+      transform: translateX(4px);
+    }
+
+    .preset-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+    }
+
+    /* Checkbox Groups */
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 6px;
+      transition: background 0.15s ease;
+    }
+
+    .checkbox-item:hover {
+      background: var(--bg-light);
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      margin: 0;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    /* Indicators */
+    .layer-indicator {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .conn-indicator {
+      width: 28px;
+      height: 3px;
+      border-radius: 2px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .conn-indicator.solid {
+      border-bottom: 3px solid;
+    }
+
+    .conn-indicator.dashed {
+      border-bottom: 3px dashed;
+    }
+
+    .checkbox-label {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .checkbox-count {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      background: var(--bg-light);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Comments Section */
+    .comments-section {
+      margin-top: 1rem;
+    }
+
+    .comments-list {
+      max-height: 180px;
+      overflow-y: auto;
+      margin-top: 0.75rem;
+    }
+
+    .comments-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .comments-list::-webkit-scrollbar-track {
+      background: var(--bg-light);
+      border-radius: 3px;
+    }
+
+    .comments-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .empty-state {
+      color: var(--text-secondary);
+      font-style: italic;
+      font-size: 12px;
+      text-align: center;
+      padding: 1rem;
+      background: var(--bg-light);
+      border-radius: 8px;
+    }
+
+    .comment-item {
+      padding: 0.75rem;
+      background: var(--bg-light);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      border-left: 3px solid var(--primary);
+      animation: slideIn 0.2s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .comment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .comment-entity {
+      font-weight: 600;
+      color: var(--primary);
+      font-size: 12px;
+    }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .delete-btn:hover {
+      color: var(--danger);
+      background: #fee2e2;
+    }
+
+    .comment-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-primary);
+    }
+
+    .comment-file {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    /* Prompt Output */
+    .prompt-section {
+      margin-top: 1.5rem;
+    }
+
+    .prompt-textarea {
+      width: 100%;
+      height: 120px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      resize: vertical;
+      background: var(--bg-light);
+      color: var(--text-primary);
+      transition: border-color 0.15s ease;
+    }
+
+    .prompt-textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .action-btn {
+      padding: 0.625rem 0.875rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .action-btn.primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .action-btn.primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(59, 130, 246, 0.25);
+    }
+
+    .action-btn.secondary {
+      background: var(--bg-white);
+      color: var(--text-primary);
+    }
+
+    .action-btn.secondary:hover {
+      background: var(--bg-light);
+      border-color: var(--primary);
+    }
+
+    /* ============================================
+       MAIN CANVAS AREA (RIGHT)
+       ============================================ */
+    .canvas-area {
+      margin-left: 300px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Canvas Toolbar */
+    .canvas-toolbar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 300px;
+      height: 64px;
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      z-index: 50;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.625rem 1rem 0.625rem 2.5rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      background: var(--bg-light);
+      transition: all 0.2s ease;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: var(--bg-white);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      font-size: 16px;
+    }
+
+    .search-count {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--bg-light);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* Zoom Controls */
+    .zoom-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: var(--bg-light);
+      padding: 0.375rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .zoom-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: var(--bg-white);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      color: var(--text-primary);
+    }
+
+    .zoom-btn:hover {
+      background: var(--bg-light);
+      color: var(--primary);
+      transform: scale(1.05);
+    }
+
+    .zoom-separator {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+    }
+
+    /* SVG Container */
+    .svg-container {
+      flex: 1;
+      overflow: hidden;
+      background: var(--bg-light);
+      cursor: grab;
+      padding-top: 64px;
+      position: relative;
+    }
+
+    .svg-container:active {
+      cursor: grabbing;
+    }
+
+    .svg-container svg {
+      transition: transform 0.15s ease-out;
+    }
+
+    /* ============================================
+       ENTITY DETAILS PANEL (SLIDE-UP)
+       ============================================ */
+    .entity-panel {
+      position: fixed;
+      bottom: 0;
+      left: 300px;
+      right: 0;
+      height: 420px;
+      background: var(--bg-white);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 200;
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+
+    .entity-panel.visible {
+      transform: translateY(0);
+    }
+
+    .panel-close {
+      position: absolute;
+      top: 1rem;
+      right: 1.5rem;
+      background: none;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.15s ease;
+    }
+
+    .panel-close:hover {
+      color: var(--text-primary);
+      background: var(--bg-light);
+    }
+
+    .entity-content h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      color: var(--text-primary);
+      padding-right: 2rem;
+    }
+
+    .entity-meta {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .entity-badge {
+      padding: 0.375rem 0.75rem;
+      background: var(--bg-light);
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid var(--border);
+    }
+
+    .entity-badge.keystone {
+      background: #fef3c7;
+      border-color: var(--warning);
+      color: #92400e;
+    }
+
+    .entity-badge.bottleneck {
+      background: #dbeafe;
+      border-color: var(--primary);
+      color: #1e40af;
+    }
+
+    .entity-badge.normal {
+      background: var(--bg-light);
+      border-color: var(--border);
+    }
+
+    .entity-badge.leaf {
+      background: #f3f4f6;
+      border-color: var(--secondary);
+      color: var(--text-secondary);
+    }
+
+    .entity-location {
+      margin-bottom: 1.25rem;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    .entity-location strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .entity-signature {
+      margin-bottom: 1.5rem;
+    }
+
+    .entity-signature code {
+      display: block;
+      padding: 1rem;
+      background: var(--bg-light);
+      border-radius: 8px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    .entity-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .stat-card {
+      text-align: center;
+      padding: 1.25rem;
+      background: var(--bg-light);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.375rem;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stat-value.decimal {
+      font-size: 24px;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .entity-actions {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .entity-actions .action-btn {
+      flex: 1;
+      padding: 0.875rem;
+      font-size: 14px;
+    }
+
+    /* ============================================
+       SVG HIGHLIGHTING & ANIMATIONS
+       ============================================ */
+    .highlighted {
+      filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.4));
+      animation: pulse-border 2s infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% {
+        stroke: var(--primary);
+        stroke-width: 3;
+      }
+      50% {
+        stroke: #60a5fa;
+        stroke-width: 2;
+      }
+    }
+
+    .search-match {
+      animation: search-pulse 1.5s infinite;
+    }
+
+    @keyframes search-pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.6;
+        transform: scale(1.02);
+      }
+    }
+
+    .has-comment {
+      position: relative;
+    }
+
+    .has-comment::after {
+      content: '💬';
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      font-size: 18px;
+      z-index: 10;
+      animation: bounce-in 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    @keyframes bounce-in {
+      0% {
+        transform: scale(0);
+      }
+      50% {
+        transform: scale(1.2);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    /* SVG Element Classes (injected from D2) */
+    .layer-hidden {
+      display: none !important;
+    }
+
+    .layer-faded {
+      opacity: 0.2;
+    }
+
+    .connection-hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- ============================================
+       CONTROLS SIDEBAR
+       ============================================ -->
+  <div class="controls">
+    <!-- View Presets -->
+    <div class="control-section">
+      <h3>View Presets</h3>
+      <div class="preset-buttons" id="presets"></div>
+    </div>
+
+    <!-- Layers -->
+    <div class="control-section">
+      <h3>Layers</h3>
+      <div class="checkbox-group" id="layers"></div>
+    </div>
+
+    <!-- Connections -->
+    <div class="control-section">
+      <h3>Connections</h3>
+      <div class="checkbox-group" id="connections"></div>
+    </div>
+
+    <!-- Comments -->
+    <div class="control-section comments-section">
+      <h3>Comments (<span id="comment-count">0</span>)</h3>
+      <div class="comments-list" id="comments-list">
+        <div class="empty-state">Click an entity to add a comment</div>
+      </div>
+    </div>
+
+    <!-- Prompt Output -->
+    <div class="control-section prompt-section">
+      <h3>Prompt Output</h3>
+      <textarea class="prompt-textarea" id="prompt-output" readonly placeholder="Comments and observations will appear here..."></textarea>
+      <div class="action-buttons">
+        <button class="action-btn primary" onclick="copyPrompt()">
+          📋 Copy Prompt
+        </button>
+        <button class="action-btn secondary" onclick="clearComments()">
+          🗑️ Clear All
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================
+       MAIN CANVAS AREA
+       ============================================ -->
+  <div class="canvas-area">
+    <!-- Toolbar -->
+    <div class="canvas-toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Search entities by name or file..." oninput="handleSearch()">
+        <span class="search-count" id="search-count"></span>
+      </div>
+      <div class="toolbar-actions">
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
+          <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+          <div class="zoom-separator"></div>
+          <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">⟲</button>
+          <button class="zoom-btn" onclick="fitToScreen()" title="Fit to Screen">□</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SVG Container -->
+    <div class="svg-container" id="svg-container">
+      <!-- SVG injected from YAML data -->
+      <svg id="diagram" viewBox="0 0 1200 800" style="width: 100%; height: 100%;">
+        <text x="600" y="400" text-anchor="middle" fill="#999" font-size="16">
+          Loading diagram...
+        </text>
+      </svg>
+    </div>
+
+    <!-- Entity Details Panel -->
+    <div class="entity-panel" id="entity-panel">
+      <button class="panel-close" onclick="closeEntityPanel()">×</button>
+      <div class="entity-content">
+        <h2 id="entity-name">Entity Name</h2>
+        <div class="entity-meta" id="entity-meta">
+          <span class="entity-badge" id="entity-type">function</span>
+          <span class="entity-badge" id="entity-coverage">85% coverage</span>
+        </div>
+        <div class="entity-location">
+          <strong>File:</strong> <span id="entity-file">path/to/file.go</span><br>
+          <strong>Lines:</strong> <span id="entity-lines">45-120</span>
+        </div>
+        <div class="entity-signature">
+          <strong>Signature:</strong>
+          <code id="entity-signature">func walkNode(n *node.Node) error</code>
+        </div>
+        <div class="entity-stats">
+          <div class="stat-card">
+            <span class="stat-label">PageRank</span>
+            <span class="stat-value decimal" id="entity-pagerank">0.042</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">In-Degree</span>
+            <span class="stat-value" id="entity-indegree">23</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Out-Degree</span>
+            <span class="stat-value" id="entity-outdegree">8</span>
+          </div>
+        </div>
+        <div class="entity-actions">
+          <button class="action-btn primary" onclick="addCommentForEntity()">
+            💬 Add Comment
+          </button>
+          <button class="action-btn secondary" onclick="highlightPath()">
+            🔍 Trace Path
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // STATE MANAGEMENT
+    // ============================================
+    const state = {
+      // Layer visibility
+      layers: {},
+      // Connection visibility
+      connections: {},
+      // Viewport
+      zoom: 1,
+      pan: { x: 0, y: 0 },
+      isDragging: false,
+      dragStart: { x: 0, y: 0 },
+      // Comments
+      comments: [],
+      currentEntity: null,
+      // Search
+      searchQuery: '',
+      searchResults: [],
+    };
+
+    // ============================================
+    // REPORT DATA (injected from YAML)
+    // ============================================
+    const reportData = {
+      playground: {
+        enabled: true,
+        layers: [
+          // { id: 'core', label: 'Core', color: '#4a90d9', entity_count: 150, default_visible: true }
+        ],
+        connection_types: [
+          // { type: 'calls', label: 'Calls', color: '#3498db', count: 500, default_visible: true }
+        ],
+        view_presets: [
+          // { id: 'full', label: 'Full System', description: 'Show everything' }
+        ],
+        element_map: {
+          // 'sa-fn-abc123': 'node-walkNode'
+        }
+      },
+      entities: [
+        // { id: 'parser-walkNode', name: 'walkNode', type: 'function', layer: 'core', ... }
+      ],
+      diagrams: {
+        architecture: {
+          title: 'System Architecture',
+          svg: '<svg>...</svg>'
+        }
+      }
+    };
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    window.onload = function() {
+      initializeFromData();
+      initLayers();
+      initConnections();
+      initPresets();
+      setupDragAndZoom();
+      setupEntityClickHandlers();
+      generateInitialPrompt();
+    };
+
+    function initializeFromData() {
+      // Initialize state from report data
+      reportData.playground.layers.forEach(layer => {
+        state.layers[layer.id] = layer.default_visible;
+      });
+      reportData.playground.connection_types.forEach(conn => {
+        state.connections[conn.type] = conn.default_visible;
+      });
+    }
+
+    // ============================================
+    // CONTROLS INITIALIZATION
+    // ============================================
+    function initLayers() {
+      const container = document.getElementById('layers');
+      container.innerHTML = '';
+
+      reportData.playground.layers.forEach(layer => {
+        const item = document.createElement('label');
+        item.className = 'checkbox-item';
+        item.innerHTML = `
+          <input type="checkbox" ${layer.default_visible ? 'checked' : ''} 
+                 onchange="toggleLayer('${layer.id}')">
+          <span class="layer-indicator" style="background: ${layer.color}"></span>
+          <span class="checkbox-label">${layer.label}</span>
+          <span class="checkbox-count">${layer.entity_count}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function initConnections() {
+      const container = document.getElementById('connections');
+      container.innerHTML = '';
+
+      reportData.playground.connection_types.forEach(conn => {
+        const item = document.createElement('label');
+        item.className = 'checkbox-item';
+        item.innerHTML = `
+          <input type="checkbox" ${conn.default_visible ? 'checked' : ''} 
+                 onchange="toggleConnection('${conn.type}')">
+          <span class="conn-indicator ${conn.style || 'solid'}" style="border-color: ${conn.color}"></span>
+          <span class="checkbox-label">${conn.label}</span>
+          <span class="checkbox-count">${conn.count}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function initPresets() {
+      const container = document.getElementById('presets');
+      container.innerHTML = '';
+
+      reportData.playground.view_presets.forEach(preset => {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn';
+        btn.textContent = preset.label;
+        btn.title = preset.description;
+        btn.onclick = () => applyPreset(preset.id);
+        container.appendChild(btn);
+      });
+    }
+
+    // ============================================
+    // FILTERING
+    // ============================================
+    function toggleLayer(layerId) {
+      state.layers[layerId] = !state.layers[layerId];
+      applyLayerFilter(layerId);
+      generatePrompt();
+    }
+
+    function toggleConnection(connType) {
+      state.connections[connType] = !state.connections[connType];
+      applyConnectionFilter(connType);
+      generatePrompt();
+    }
+
+    function applyLayerFilter(layerId) {
+      const visible = state.layers[layerId];
+      document.querySelectorAll(`.layer-${layerId}`).forEach(el => {
+        el.style.display = visible ? '' : 'none';
+      });
+    }
+
+    function applyConnectionFilter(connType) {
+      const visible = state.connections[connType];
+      document.querySelectorAll(`.connection-${connType}`).forEach(el => {
+        el.style.display = visible ? '' : 'none';
+      });
+    }
+
+    function applyPreset(presetId) {
+      const preset = reportData.playground.view_presets.find(p => p.id === presetId);
+      if (!preset) return;
+
+      // Update active button
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === preset.label);
+      });
+
+      // Apply preset settings
+      if (preset.visible_layers) {
+        Object.keys(state.layers).forEach(layer => {
+          state.layers[layer] = preset.visible_layers.includes(layer);
+        });
+
+        // Update checkboxes
+        document.querySelectorAll('#layers input').forEach(cb => {
+          const layer = reportData.playground.layers.find(l => l.label === cb.parentElement.querySelector('.checkbox-label').textContent);
+          if (layer) cb.checked = state.layers[layer.id];
+        });
+
+        // Apply all layer filters
+        reportData.playground.layers.forEach(layer => applyLayerFilter(layer.id));
+      }
+
+      if (preset.visible_connections) {
+        Object.keys(state.connections).forEach(conn => {
+          state.connections[conn] = preset.visible_connections.includes(conn);
+        });
+
+        // Update checkboxes
+        document.querySelectorAll('#connections input').forEach(cb => {
+          const conn = reportData.playground.connection_types.find(c => c.label === cb.parentElement.querySelector('.checkbox-label').textContent);
+          if (conn) cb.checked = state.connections[conn.type];
+        });
+
+        // Apply all connection filters
+        reportData.playground.connection_types.forEach(conn => applyConnectionFilter(conn.type));
+      }
+
+      generatePrompt();
+    }
+
+    // ============================================
+    // ZOOM & PAN
+    // ============================================
+    function setupDragAndZoom() {
+      const container = document.getElementById('svg-container');
+      const svg = document.querySelector('#diagram');
+
+      // Pan with drag
+      container.addEventListener('mousedown', (e) => {
+        if (e.target === container || e.target.tagName === 'svg') {
+          state.isDragging = true;
+          state.dragStart = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
+          container.style.cursor = 'grabbing';
+        }
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (state.isDragging) {
+          state.pan.x = e.clientX - state.dragStart.x;
+          state.pan.y = e.clientY - state.dragStart.y;
+          updateTransform();
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        state.isDragging = false;
+        container.style.cursor = 'grab';
+      });
+
+      // Zoom with scroll
+      container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        state.zoom = Math.min(Math.max(state.zoom * delta, 0.1), 5);
+        updateTransform();
+      });
+    }
+
+    function zoomIn() {
+      state.zoom = Math.min(state.zoom * 1.2, 5);
+      updateTransform();
+    }
+
+    function zoomOut() {
+      state.zoom = Math.max(state.zoom / 1.2, 0.1);
+      updateTransform();
+    }
+
+    function resetZoom() {
+      state.zoom = 1;
+      state.pan = { x: 0, y: 0 };
+      updateTransform();
+    }
+
+    function fitToScreen() {
+      state.zoom = 1;
+      state.pan = { x: 20, y: 20 };
+      updateTransform();
+    }
+
+    function updateTransform() {
+      const svg = document.getElementById('diagram');
+      svg.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
+    }
+
+    // ============================================
+    // ENTITY INTERACTION
+    // ============================================
+    function setupEntityClickHandlers() {
+      if (!reportData.playground.element_map) return;
+
+      Object.entries(reportData.playground.element_map).forEach(([entityId, svgId]) => {
+        const el = document.getElementById(svgId);
+        if (el) {
+          el.style.cursor = 'pointer';
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const entity = reportData.entities.find(ent => ent.id === entityId);
+            if (entity) {
+              showEntityDetails(entity);
+            }
+          });
+        }
+      });
+    }
+
+    function showEntityDetails(entity) {
+      state.currentEntity = entity;
+
+      // Populate panel
+      document.getElementById('entity-name').textContent = entity.name;
+      document.getElementById('entity-type').textContent = entity.type;
+      
+      const badge = document.getElementById('entity-type');
+      badge.className = 'entity-badge ' + (entity.importance || 'normal');
+      
+      if (entity.coverage !== undefined) {
+        document.getElementById('entity-coverage').textContent = `${entity.coverage}% coverage`;
+        document.getElementById('entity-coverage').style.display = 'inline-block';
+      } else {
+        document.getElementById('entity-coverage').style.display = 'none';
+      }
+      
+      document.getElementById('entity-file').textContent = entity.file;
+      document.getElementById('entity-lines').textContent = `${entity.lines[0]}-${entity.lines[1]}`;
+      document.getElementById('entity-signature').textContent = entity.signature || 'N/A';
+      
+      const pagerank = entity.pagerank !== undefined ? entity.pagerank.toFixed(4) : 'N/A';
+      document.getElementById('entity-pagerank').textContent = pagerank;
+      document.getElementById('entity-indegree').textContent = entity.in_degree || 0;
+      document.getElementById('entity-outdegree').textContent = entity.out_degree || 0;
+
+      // Show panel
+      document.getElementById('entity-panel').classList.add('visible');
+
+      // Highlight node
+      highlightEntity(entity.id);
+    }
+
+    function closeEntityPanel() {
+      document.getElementById('entity-panel').classList.remove('visible');
+      clearHighlights();
+      state.currentEntity = null;
+    }
+
+    function highlightEntity(entityId) {
+      clearHighlights();
+      const svgId = reportData.playground.element_map[entityId];
+      const el = document.getElementById(svgId);
+      if (el) {
+        el.classList.add('highlighted');
+      }
+    }
+
+    function clearHighlights() {
+      document.querySelectorAll('.highlighted').forEach(el => {
+        el.classList.remove('highlighted');
+      });
+    }
+
+    function highlightPath() {
+      if (!state.currentEntity) return;
+      alert('Path tracing will be implemented in Phase 5!\n\nThis feature will show the call path from entry point to this entity.');
+    }
+
+    // ============================================
+    // SEARCH
+    // ============================================
+    function handleSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase();
+      state.searchQuery = query;
+      state.searchResults = [];
+
+      clearSearchHighlights();
+
+      if (query.length === 0) {
+        document.getElementById('search-count').textContent = '';
+        return;
+      }
+
+      // Find matching entities
+      reportData.entities.forEach(entity => {
+        if (entity.name.toLowerCase().includes(query) ||
+            entity.file.toLowerCase().includes(query)) {
+          state.searchResults.push(entity);
+        }
+      });
+
+      document.getElementById('search-count').textContent = `(${state.searchResults.length})`;
+      highlightSearchResults();
+    }
+
+    function highlightSearchResults() {
+      state.searchResults.forEach(entity => {
+        const svgId = reportData.playground.element_map[entity.id];
+        const el = document.getElementById(svgId);
+        if (el) {
+          el.classList.add('search-match');
+        }
+      });
+    }
+
+    function clearSearchHighlights() {
+      document.querySelectorAll('.search-match').forEach(el => {
+        el.classList.remove('search-match');
+      });
+    }
+
+    // ============================================
+    // COMMENTS
+    // ============================================
+    function addCommentForEntity() {
+      if (!state.currentEntity) return;
+
+      const text = prompt(`Add comment for ${state.currentEntity.name}:`);
+      if (!text) return;
+
+      const comment = {
+        id: Date.now(),
+        entityId: state.currentEntity.id,
+        entityName: state.currentEntity.name,
+        entityFile: state.currentEntity.file,
+        text: text,
+        timestamp: new Date().toISOString(),
+      };
+
+      state.comments.push(comment);
+      updateCommentsList();
+      generatePrompt();
+      addCommentIndicator(state.currentEntity.id);
+    }
+
+    function deleteComment(commentId) {
+      state.comments = state.comments.filter(c => c.id !== commentId);
+      updateCommentsList();
+      generatePrompt();
+    }
+
+    function clearComments() {
+      if (confirm('Clear all comments?')) {
+        state.comments = [];
+        updateCommentsList();
+        generatePrompt();
+        clearCommentIndicators();
+      }
+    }
+
+    function updateCommentsList() {
+      const list = document.getElementById('comments-list');
+      document.getElementById('comment-count').textContent = state.comments.length;
+
+      if (state.comments.length === 0) {
+        list.innerHTML = '<div class="empty-state">Click an entity to add a comment</div>';
+        return;
+      }
+
+      list.innerHTML = state.comments.map(comment => `
+        <div class="comment-item">
+          <div class="comment-header">
+            <span class="comment-entity">${comment.entityName}</span>
+            <button class="delete-btn" onclick="deleteComment(${comment.id})">×</button>
+          </div>
+          <div class="comment-text">${comment.text}</div>
+          <div class="comment-file">${comment.entityFile}</div>
+        </div>
+      `).join('');
+    }
+
+    function addCommentIndicator(entityId) {
+      const svgId = reportData.playground.element_map[entityId];
+      const el = document.getElementById(svgId);
+      if (el) {
+        el.classList.add('has-comment');
+      }
+    }
+
+    function clearCommentIndicators() {
+      document.querySelectorAll('.has-comment').forEach(el => {
+        el.classList.remove('has-comment');
+      });
+    }
+
+    // ============================================
+    // PROMPT GENERATION
+    // ============================================
+    function generateInitialPrompt() {
+      const prompt = `# Codebase Analysis Report
+
+Generated at: ${new Date().toISOString()}
+
+## Instructions
+- Click entities to view details
+- Use layer and connection filters to focus on specific areas
+- Add comments to request changes or ask questions
+- Copy this prompt to paste back into Claude Code
+
+## Current View
+- **Layers:** ${Object.entries(state.layers).filter(([, v]) => v).map(([k]) => k).join(', ') || 'none'}
+- **Connections:** ${Object.entries(state.connections).filter(([, v]) => v).map(([k]) => k).join(', ') || 'none'}
+
+`;
+      document.getElementById('prompt-output').value = prompt;
+    }
+
+    function generatePrompt() {
+      const visibleLayers = Object.entries(state.layers).filter(([, v]) => v).map(([k]) => k).join(', ') || 'none';
+      const visibleConnections = Object.entries(state.connections).filter(([, v]) => v).map(([k]) => k).join(', ') || 'none';
+
+      let prompt = `# Codebase Analysis Report
+
+Generated at: ${new Date().toISOString()}
+
+## Current View
+- **Visible Layers:** ${visibleLayers}
+- **Visible Connections:** ${visibleConnections}
+- **Applied Filters:** ${state.searchQuery ? `Search: "${state.searchQuery}"` : 'none'}
+
+## Comments & Observations
+`;
+
+      if (state.comments.length === 0) {
+        prompt += '\n(No comments added yet. Click entities to add comments.)\n';
+      } else {
+        prompt += '\n';
+        state.comments.forEach(comment => {
+          prompt += `### ${comment.entityName}
+**File:** ${comment.entityFile}
+**Comment:** ${comment.text}
+
+`;
+        });
+      }
+
+      prompt += `## Statistics
+- **Total Entities:** ${reportData.entities.length}
+- **Comments Added:** ${state.comments.length}
+- **Search Results:** ${state.searchResults.length}
+
+## Next Steps
+Based on the above observations and comments, please:
+1. Analyze the architecture patterns
+2. Identify potential improvements
+3. Address the specific comments and concerns
+4. Provide recommendations for refactoring
+`;
+
+      document.getElementById('prompt-output').value = prompt;
+    }
+
+    function copyPrompt() {
+      const textarea = document.getElementById('prompt-output');
+      textarea.select();
+      document.execCommand('copy');
+      
+      const btn = document.querySelector('.action-btn.primary');
+      const originalText = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.style.background = 'var(--success)';
+      
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

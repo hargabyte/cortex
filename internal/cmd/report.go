@@ -76,6 +76,7 @@ var (
 	reportInitSkill  bool   // --init-skill flag to output skill template
 	reportTheme      string // --theme flag for diagram theme
 	reportPlayground bool   // --playground flag for interactive playground mode
+	reportHTML       bool   // --html flag to generate visual HTML playground
 )
 
 // reportOverviewCmd generates overview report data
@@ -185,6 +186,7 @@ func init() {
 	reportCmd.PersistentFlags().StringVarP(&reportOutput, "output", "o", "", "Output file path (default: stdout)")
 	reportCmd.PersistentFlags().StringVar(&reportTheme, "theme", "", "Diagram color theme (use --themes to list)")
 	reportCmd.PersistentFlags().BoolVar(&reportPlayground, "playground", false, "Include playground metadata for interactive HTML generation")
+	reportCmd.PersistentFlags().BoolVar(&reportHTML, "html", false, "Generate visual HTML playground (requires --playground)")
 
 	// Skill template flag (local to report command, not inherited)
 	reportCmd.Flags().BoolVar(&reportInitSkill, "init-skill", false, "Output skill template for interactive report generation")
@@ -347,6 +349,11 @@ func formatAvailableThemes() string {
 
 // outputReportData outputs the report data in the requested format
 func outputReportData(data interface{}) error {
+	// If HTML playground mode, generate visual HTML
+	if reportHTML && reportPlayground {
+		return outputPlaygroundHTML(data)
+	}
+
 	// Determine output format
 	format, err := output.ParseFormat(outputFormat)
 	if err != nil {
@@ -383,5 +390,198 @@ func outputReportData(data interface{}) error {
 	default:
 		return fmt.Errorf("unsupported format for reports: %s (use yaml or json)", format)
 	}
+}
+
+// outputPlaygroundHTML generates a visual HTML playground with embedded diagram
+func outputPlaygroundHTML(data interface{}) error {
+	// Convert data to JSON for embedding
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal data to JSON: %w", err)
+	}
+
+	// Try to find an existing architecture SVG in the reports directory
+	svgContent := ""
+	svgPaths := []string{
+		"reports/architecture.svg",
+		".cx/cortex/reports/architecture.svg",
+	}
+	for _, path := range svgPaths {
+		content, err := os.ReadFile(path)
+		if err == nil {
+			svgContent = string(content)
+			break
+		}
+	}
+
+	// If no SVG, use a placeholder with instructions
+	if svgContent == "" {
+		svgContent = `<svg viewBox="0 0 800 400" style="background:#f8f8f8">
+			<text x="400" y="180" text-anchor="middle" fill="#666" font-size="16">Architecture diagram not rendered yet.</text>
+			<text x="400" y="210" text-anchor="middle" fill="#999" font-size="14">Run: cx report overview --data | cx render - -o reports/architecture.svg</text>
+			<text x="400" y="240" text-anchor="middle" fill="#999" font-size="14">Then regenerate this playground.</text>
+		</svg>`
+	}
+
+	// Generate the HTML
+	html := generatePlaygroundHTML(string(jsonData), svgContent)
+
+	// Determine output destination
+	var out *os.File
+	if reportOutput != "" {
+		out, err = os.Create(reportOutput)
+		if err != nil {
+			return fmt.Errorf("failed to create output file: %w", err)
+		}
+		defer out.Close()
+	} else {
+		out = os.Stdout
+	}
+
+	_, err = out.WriteString(html)
+	return err
+}
+
+// generatePlaygroundHTML creates the visual playground HTML
+func generatePlaygroundHTML(jsonData, svgContent string) string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cortex Architecture - Interactive Playground</title>
+  <style>
+    :root { --bg: #f5f5f5; --sidebar-bg: #fff; --text: #333; --text-muted: #666; --accent: #3498db; --border: #e0e0e0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+    .sidebar-header { padding: 1.25rem; border-bottom: 1px solid var(--border); }
+    .sidebar-header h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .sidebar-header p { font-size: 0.8rem; color: var(--text-muted); }
+    .info-box { background: #e3f2fd; border-left: 3px solid var(--accent); padding: 0.75rem; margin: 1rem; font-size: 0.8rem; color: #1565c0; border-radius: 0 4px 4px 0; }
+    .section { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+    .section h3 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .preset-btn { padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: #fff; cursor: pointer; font-size: 0.8rem; transition: all 0.15s; }
+    .preset-btn:hover { border-color: var(--accent); background: #f0f7ff; }
+    .preset-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .toggle-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .toggle-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; }
+    .toggle-item input { margin: 0; }
+    .toggle-color { width: 14px; height: 14px; border-radius: 3px; }
+    .legend { margin-top: 0.5rem; }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; margin-bottom: 0.4rem; }
+    .legend-line { width: 30px; height: 2px; }
+    .legend-line.solid { background: #3498db; }
+    .legend-line.dashed { background: repeating-linear-gradient(90deg, #2ecc71, #2ecc71 4px, transparent 4px, transparent 8px); }
+    .legend-line.dotted { background: repeating-linear-gradient(90deg, #e74c3c, #e74c3c 2px, transparent 2px, transparent 5px); }
+    .comments-section { flex: 1; padding: 1rem 1.25rem; overflow-y: auto; }
+    .comment-item { background: #f8f8f8; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; font-size: 0.85rem; }
+    .comment-entity { font-weight: 600; color: var(--accent); margin-bottom: 0.25rem; }
+    .prompt-section { padding: 1rem 1.25rem; border-top: 1px solid var(--border); background: #fafafa; }
+    .prompt-section textarea { width: 100%; height: 80px; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; font-family: monospace; font-size: 0.75rem; resize: none; margin-bottom: 0.5rem; }
+    .copy-btn { width: 100%; padding: 0.6rem; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+    .copy-btn:hover { background: #2980b9; }
+    .canvas { flex: 1; position: relative; overflow: hidden; background: white; }
+    .canvas-toolbar { position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; z-index: 10; }
+    .zoom-btn { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 6px; background: white; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+    .zoom-btn:hover { background: #f0f0f0; }
+    .svg-container { width: 100%; height: 100%; overflow: auto; cursor: grab; }
+    .svg-container:active { cursor: grabbing; }
+    .svg-container svg { display: block; min-width: 100%; min-height: 100%; }
+    .entity-panel { position: absolute; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); padding: 1.5rem; transform: translateY(100%); transition: transform 0.3s ease; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
+    .entity-panel.visible { transform: translateY(0); }
+    .entity-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .entity-panel h2 { font-size: 1.2rem; color: var(--accent); }
+    .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .entity-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+    .detail-card { background: #f8f8f8; padding: 0.75rem; border-radius: 6px; }
+    .detail-label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .detail-value { font-weight: 500; font-size: 0.9rem; }
+    .detail-value code { background: #e8e8e8; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.8rem; }
+    .comment-input-btn { margin-top: 1rem; padding: 0.5rem 1rem; background: #2ecc71; color: white; border: none; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="sidebar-header"><h1>Cortex Architecture</h1><p>Interactive Playground</p></div>
+    <div class="info-box">Click on any component to add comments. Your comments become part of the generated prompt.</div>
+    <div class="section"><h3>View Presets</h3><div class="preset-grid" id="presets"><button class="preset-btn active" onclick="applyPreset('full')">Full System</button><button class="preset-btn" onclick="applyPreset('core')">Core Only</button><button class="preset-btn" onclick="applyPreset('store')">Data Flow</button><button class="preset-btn" onclick="applyPreset('parser')">Parser</button></div></div>
+    <div class="section"><h3>Visible Layers</h3><div class="toggle-group" id="layers"></div></div>
+    <div class="section"><h3>Connection Types</h3><div class="legend"><div class="legend-item"><div class="legend-line solid"></div><span>Data Flow</span></div><div class="legend-item"><div class="legend-line dashed"></div><span>Type Dependencies</span></div><div class="legend-item"><div class="legend-line dotted"></div><span>Implements</span></div></div></div>
+    <div class="comments-section"><h3>Comments (<span id="comment-count">0</span>)</h3><div id="comments-list"><p style="font-size:0.8rem;color:#999">Click a component to add comments</p></div></div>
+    <div class="prompt-section"><textarea id="prompt-output" readonly placeholder="Your observations will appear here..."></textarea><button class="copy-btn" onclick="copyPrompt()">Copy Prompt</button></div>
+  </div>
+  <div class="canvas">
+    <div class="canvas-toolbar"><button class="zoom-btn" onclick="zoomIn()">+</button><button class="zoom-btn" onclick="zoomOut()">−</button><button class="zoom-btn" onclick="resetZoom()">⟲</button></div>
+    <div class="svg-container" id="svg-container">` + svgContent + `</div>
+    <div class="entity-panel" id="entity-panel"><div class="entity-panel-header"><h2 id="panel-title">Component Details</h2><button class="close-btn" onclick="closePanel()">×</button></div><div class="entity-details" id="entity-details"></div><button class="comment-input-btn" onclick="addComment()">💬 Add Comment</button></div>
+  </div>
+  <script>
+    const reportData = ` + jsonData + `;
+    const state = { layers: {}, zoom: 1, comments: [], selectedNode: null };
+    window.onload = function() { initLayers(); makeSVGInteractive(); generatePrompt(); };
+    function initLayers() {
+      const container = document.getElementById('layers');
+      if (!reportData.playground?.layers) return;
+      reportData.playground.layers.forEach(layer => {
+        state.layers[layer.id] = true;
+        const item = document.createElement('label');
+        item.className = 'toggle-item';
+        item.innerHTML = '<input type="checkbox" checked onchange="toggleLayer(\''+layer.id+'\')"><span class="toggle-color" style="background:'+layer.color+'"></span><span class="toggle-label">'+layer.label+'</span>';
+        container.appendChild(item);
+      });
+    }
+    function makeSVGInteractive() {
+      const svg = document.querySelector('#svg-container svg');
+      if (!svg) return;
+      const groups = svg.querySelectorAll('g');
+      groups.forEach(g => {
+        const rect = g.querySelector('rect');
+        const text = g.querySelector('text');
+        if (rect && text) {
+          g.style.cursor = 'pointer';
+          g.addEventListener('click', (e) => { e.stopPropagation(); selectNode(text.textContent, g); });
+          g.addEventListener('mouseenter', () => { rect.style.filter = 'brightness(1.1)'; });
+          g.addEventListener('mouseleave', () => { rect.style.filter = ''; });
+        }
+      });
+    }
+    function selectNode(name, element) {
+      state.selectedNode = { name, element };
+      document.getElementById('panel-title').textContent = name;
+      const entity = reportData.keystones?.find(k => k.name === name) || { name };
+      document.getElementById('entity-details').innerHTML = '<div class="detail-card"><div class="detail-label">Name</div><div class="detail-value">'+(entity.name||name)+'</div></div><div class="detail-card"><div class="detail-label">Type</div><div class="detail-value">'+(entity.entity_type||'component')+'</div></div><div class="detail-card"><div class="detail-label">File</div><div class="detail-value"><code>'+(entity.file||'N/A')+'</code></div></div><div class="detail-card"><div class="detail-label">Importance</div><div class="detail-value">'+(entity.importance||'normal')+'</div></div><div class="detail-card"><div class="detail-label">PageRank</div><div class="detail-value">'+(entity.pagerank?.toFixed(4)||'N/A')+'</div></div><div class="detail-card"><div class="detail-label">Connections</div><div class="detail-value">'+(entity.in_degree||0)+' inbound</div></div>';
+      document.getElementById('entity-panel').classList.add('visible');
+    }
+    function closePanel() { document.getElementById('entity-panel').classList.remove('visible'); state.selectedNode = null; }
+    function toggleLayer(id) { state.layers[id] = !state.layers[id]; generatePrompt(); }
+    function applyPreset(preset) { document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); generatePrompt(); }
+    function addComment() {
+      if (!state.selectedNode) return;
+      const text = prompt('Add comment for '+state.selectedNode.name+':');
+      if (text) { state.comments.push({ entity: state.selectedNode.name, text }); updateCommentsList(); generatePrompt(); }
+    }
+    function updateCommentsList() {
+      const list = document.getElementById('comments-list');
+      document.getElementById('comment-count').textContent = state.comments.length;
+      if (state.comments.length === 0) { list.innerHTML = '<p style="font-size:0.8rem;color:#999">Click a component to add comments</p>'; return; }
+      list.innerHTML = state.comments.map((c, i) => '<div class="comment-item"><div class="comment-entity">'+c.entity+'</div><div>'+c.text+'</div></div>').join('');
+    }
+    function generatePrompt() {
+      const visibleLayers = Object.entries(state.layers).filter(([,v])=>v).map(([k])=>k);
+      let p = '# Cortex Architecture Analysis\\n\\n**Generated:** '+(reportData.report?.generated_at||'Unknown')+'\\n**Visible Layers:** '+visibleLayers.join(', ')+'\\n\\n';
+      if (state.comments.length > 0) { p += '## Observations\\n\\n'; state.comments.forEach(c => { p += '### '+c.entity+'\\n'+c.text+'\\n\\n'; }); }
+      p += '## Top Components\\n'; (reportData.keystones||[]).slice(0,5).forEach(k => { p += '- **'+k.name+'** ('+k.entity_type+') - PR: '+k.pagerank?.toFixed(4)+'\\n'; });
+      document.getElementById('prompt-output').value = p;
+    }
+    function copyPrompt() { const t = document.getElementById('prompt-output'); t.select(); document.execCommand('copy'); event.target.textContent = '✓ Copied!'; setTimeout(() => event.target.textContent = 'Copy Prompt', 2000); }
+    function zoomIn() { state.zoom *= 1.2; applyZoom(); }
+    function zoomOut() { state.zoom /= 1.2; applyZoom(); }
+    function resetZoom() { state.zoom = 1; applyZoom(); }
+    function applyZoom() { const svg = document.querySelector('#svg-container svg'); if (svg) svg.style.transform = 'scale('+state.zoom+')'; }
+  </script>
+</body>
+</html>`
 }
 
