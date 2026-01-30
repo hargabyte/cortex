@@ -555,8 +555,52 @@ func generatePlaygroundHTML(jsonData, svgContent string) string {
       document.getElementById('entity-panel').classList.add('visible');
     }
     function closePanel() { document.getElementById('entity-panel').classList.remove('visible'); state.selectedNode = null; }
-    function toggleLayer(id) { state.layers[id] = !state.layers[id]; generatePrompt(); }
-    function applyPreset(preset) { document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); generatePrompt(); }
+    function toggleLayer(id) { 
+      state.layers[id] = !state.layers[id]; 
+      applyFilters();
+      generatePrompt(); 
+    }
+    function applyPreset(preset) { 
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active')); 
+      event.target.classList.add('active');
+      // Define preset configurations
+      const presets = {
+        'full': ['core', 'api', 'store', 'parser', 'graph', 'output'],
+        'core': ['core', 'parser'],
+        'store': ['store', 'core'],
+        'parser': ['parser', 'core']
+      };
+      const visibleLayers = presets[preset] || presets['full'];
+      // Update layer visibility
+      Object.keys(state.layers).forEach(id => {
+        state.layers[id] = visibleLayers.includes(id);
+      });
+      // Update checkboxes
+      document.querySelectorAll('#layers input[type=checkbox]').forEach((cb, i) => {
+        const layerId = reportData.playground?.layers?.[i]?.id;
+        if (layerId) cb.checked = state.layers[layerId];
+      });
+      applyFilters();
+      generatePrompt();
+    }
+    function applyFilters() {
+      // Try to filter SVG elements by module name
+      const svg = document.querySelector('#svg-container svg');
+      if (!svg) return;
+      const groups = svg.querySelectorAll('g[id]');
+      groups.forEach(g => {
+        const id = g.id || '';
+        // Check if this group matches any visible layer
+        let visible = true;
+        for (const [layer, isVisible] of Object.entries(state.layers)) {
+          if (id.toLowerCase().includes(layer.toLowerCase())) {
+            visible = isVisible;
+            break;
+          }
+        }
+        g.style.opacity = visible ? '1' : '0.15';
+      });
+    }
     function addComment() {
       if (!state.selectedNode) return;
       const text = prompt('Add comment for '+state.selectedNode.name+':');
