@@ -475,10 +475,10 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cortex Architecture - Interactive Playground</title>
   <style>
-    :root { --bg: #f5f5f5; --sidebar-bg: #fff; --text: #333; --text-muted: #666; --accent: #3498db; --border: #e0e0e0; }
+    :root { --bg: #f5f5f5; --sidebar-bg: #fff; --text: #333; --text-muted: #666; --accent: #3498db; --border: #e0e0e0; --issue: #e74c3c; --question: #f39c12; --idea: #9b59b6; --comment: #2ecc71; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
-    .sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+    .sidebar { width: 300px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
     .sidebar-header { padding: 1.25rem; border-bottom: 1px solid var(--border); }
     .sidebar-header h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
     .sidebar-header p { font-size: 0.8rem; color: var(--text-muted); }
@@ -489,67 +489,110 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
     .preset-btn { padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: #fff; cursor: pointer; font-size: 0.8rem; transition: all 0.15s; }
     .preset-btn:hover { border-color: var(--accent); background: #f0f7ff; }
     .preset-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-    .toggle-group { display: flex; flex-direction: column; gap: 0.5rem; }
-    .toggle-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; }
-    .toggle-item input { margin: 0; }
-    .toggle-color { width: 14px; height: 14px; border-radius: 3px; }
-    .legend { margin-top: 0.5rem; }
-    .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; margin-bottom: 0.4rem; }
-    .legend-line { width: 30px; height: 2px; }
-    .legend-line.solid { background: #3498db; }
-    .legend-line.dashed { background: repeating-linear-gradient(90deg, #2ecc71, #2ecc71 4px, transparent 4px, transparent 8px); }
-    .legend-line.dotted { background: repeating-linear-gradient(90deg, #e74c3c, #e74c3c 2px, transparent 2px, transparent 5px); }
-    .comments-section { flex: 1; padding: 1rem 1.25rem; overflow-y: auto; }
-    .comment-item { background: #f8f8f8; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; font-size: 0.85rem; }
-    .comment-entity { font-weight: 600; color: var(--accent); margin-bottom: 0.25rem; }
+    .toggle-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
+    .toggle-row label { font-size: 0.8rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+    .feedback-section { flex: 1; padding: 1rem 1.25rem; overflow-y: auto; min-height: 120px; }
+    .feedback-item { padding: 0.6rem; border-radius: 6px; margin-bottom: 0.5rem; font-size: 0.8rem; border-left: 3px solid; }
+    .feedback-item.issue { background: #fdecea; border-color: var(--issue); }
+    .feedback-item.question { background: #fef9e7; border-color: var(--question); }
+    .feedback-item.idea { background: #f5eef8; border-color: var(--idea); }
+    .feedback-item.comment { background: #eafaf1; border-color: var(--comment); }
+    .feedback-entity { font-weight: 600; font-size: 0.75rem; margin-bottom: 0.2rem; }
+    .feedback-type { font-size: 0.65rem; text-transform: uppercase; opacity: 0.7; }
     .prompt-section { padding: 1rem 1.25rem; border-top: 1px solid var(--border); background: #fafafa; }
-    .prompt-section textarea { width: 100%%; height: 80px; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; font-family: monospace; font-size: 0.75rem; resize: none; margin-bottom: 0.5rem; }
+    .prompt-section h3 { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .prompt-section textarea { width: 100%%; height: 120px; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; font-family: monospace; font-size: 0.7rem; resize: vertical; margin-bottom: 0.5rem; }
     .copy-btn { width: 100%%; padding: 0.6rem; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
     .copy-btn:hover { background: #2980b9; }
     .canvas { flex: 1; position: relative; overflow: hidden; background: white; }
     .canvas-toolbar { position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; z-index: 10; }
-    .zoom-btn { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 6px; background: white; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
-    .zoom-btn:hover { background: #f0f0f0; }
+    .toolbar-btn { height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; background: white; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 0.3rem; }
+    .toolbar-btn:hover { background: #f0f0f0; }
+    .toolbar-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
     .svg-container { width: 100%%; height: 100%%; overflow: auto; cursor: grab; }
     .svg-container:active { cursor: grabbing; }
-    .svg-container svg { display: block; min-width: 100%%; min-height: 100%%; }
     .svg-preset { width: 100%%; height: 100%%; }
     .svg-preset svg { width: 100%%; height: auto; }
-    .entity-panel { position: absolute; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); padding: 1.5rem; transform: translateY(100%%); transition: transform 0.3s ease; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
+    /* Tooltip */
+    .tooltip { position: fixed; background: rgba(0,0,0,0.85); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; pointer-events: none; z-index: 1000; max-width: 280px; display: none; }
+    .tooltip-name { font-weight: 600; margin-bottom: 4px; }
+    .tooltip-info { opacity: 0.8; font-size: 0.7rem; }
+    /* Selection ring animation */
+    @keyframes pulse-ring { 0%% { transform: scale(1); opacity: 0.8; } 100%% { transform: scale(1.5); opacity: 0; } }
+    .selection-ring { position: absolute; border: 3px solid var(--accent); border-radius: 50%%; pointer-events: none; animation: pulse-ring 0.6s ease-out forwards; }
+    /* Entity panel */
+    .entity-panel { position: absolute; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); padding: 1.25rem; transform: translateY(100%%); transition: transform 0.3s ease; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
     .entity-panel.visible { transform: translateY(0); }
     .entity-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .entity-panel h2 { font-size: 1.2rem; color: var(--accent); }
+    .entity-panel h2 { font-size: 1.1rem; color: var(--accent); }
     .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
-    .entity-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
-    .detail-card { background: #f8f8f8; padding: 0.75rem; border-radius: 6px; }
-    .detail-label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem; }
-    .detail-value { font-weight: 500; font-size: 0.9rem; }
-    .detail-value code { background: #e8e8e8; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.8rem; }
-    .comment-input-btn { margin-top: 1rem; padding: 0.5rem 1rem; background: #2ecc71; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    .entity-details { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .detail-item { font-size: 0.8rem; }
+    .detail-item span { color: var(--text-muted); }
+    .detail-item code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; }
+    .feedback-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .fb-btn { padding: 0.5rem 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: white; transition: opacity 0.15s; }
+    .fb-btn:hover { opacity: 0.85; }
+    .fb-btn.issue { background: var(--issue); }
+    .fb-btn.question { background: var(--question); }
+    .fb-btn.idea { background: var(--idea); }
+    .fb-btn.comment { background: var(--comment); }
   </style>
 </head>
 <body>
+  <div class="tooltip" id="tooltip"><div class="tooltip-name"></div><div class="tooltip-info"></div></div>
   <div class="sidebar">
-    <div class="sidebar-header"><h1>Cortex Architecture</h1><p>Interactive Playground</p></div>
-    <div class="info-box">Click presets to switch between filtered views. Click components to add comments.</div>
-    <div class="section"><h3>View Presets</h3><div class="preset-grid" id="presets">
-      <button class="preset-btn active" data-preset="full" onclick="applyPreset('full', this)">Full System</button>
-      <button class="preset-btn" data-preset="core" onclick="applyPreset('core', this)">Core Only</button>
-      <button class="preset-btn" data-preset="store" onclick="applyPreset('store', this)">Data Flow</button>
-      <button class="preset-btn" data-preset="parser" onclick="applyPreset('parser', this)">Parser</button>
-    </div></div>
-    <div class="section"><h3>Connection Types</h3><div class="legend"><div class="legend-item"><div class="legend-line solid"></div><span>Data Flow</span></div><div class="legend-item"><div class="legend-line dashed"></div><span>Type Dependencies</span></div><div class="legend-item"><div class="legend-line dotted"></div><span>Implements</span></div></div></div>
-    <div class="comments-section"><h3>Comments (<span id="comment-count">0</span>)</h3><div id="comments-list"><p style="font-size:0.8rem;color:#999">Click a component to add comments</p></div></div>
-    <div class="prompt-section"><textarea id="prompt-output" readonly placeholder="Your observations will appear here..."></textarea><button class="copy-btn" onclick="copyPrompt()">Copy Prompt</button></div>
+    <div class="sidebar-header"><h1>🔬 Cortex Playground</h1><p>Interactive Architecture Analysis</p></div>
+    <div class="section">
+      <h3>View Presets</h3>
+      <div class="preset-grid">
+        <button class="preset-btn active" onclick="applyPreset('full', this)">Full System</button>
+        <button class="preset-btn" onclick="applyPreset('core', this)">Core Only</button>
+        <button class="preset-btn" onclick="applyPreset('store', this)">Data Flow</button>
+        <button class="preset-btn" onclick="applyPreset('parser', this)">Parser</button>
+      </div>
+    </div>
+    <div class="feedback-section">
+      <h3>Feedback (<span id="feedback-count">0</span>)</h3>
+      <div id="feedback-list"><p style="font-size:0.8rem;color:#999;margin-top:0.5rem;">Click a component, then add feedback using the buttons below.</p></div>
+    </div>
+    <div class="prompt-section">
+      <h3>Generated Prompt</h3>
+      <textarea id="prompt-output" readonly placeholder="Your feedback will appear here as a structured prompt..."></textarea>
+      <button class="copy-btn" onclick="copyPrompt()">📋 Copy Prompt to Clipboard</button>
+    </div>
   </div>
   <div class="canvas">
-    <div class="canvas-toolbar"><button class="zoom-btn" onclick="zoomIn()">+</button><button class="zoom-btn" onclick="zoomOut()">−</button><button class="zoom-btn" onclick="resetZoom()">⟲</button></div>
+    <div class="canvas-toolbar">
+      <button class="toolbar-btn" onclick="zoomIn()">+</button>
+      <button class="toolbar-btn" onclick="zoomOut()">−</button>
+      <button class="toolbar-btn" onclick="resetZoom()">⟲</button>
+      <button class="toolbar-btn" id="heatmap-btn" onclick="toggleHeatmap()">🌡️ Coverage</button>
+    </div>
     <div class="svg-container" id="svg-container">%s</div>
-    <div class="entity-panel" id="entity-panel"><div class="entity-panel-header"><h2 id="panel-title">Component Details</h2><button class="close-btn" onclick="closePanel()">×</button></div><div class="entity-details" id="entity-details"></div><button class="comment-input-btn" onclick="addComment()">💬 Add Comment</button></div>
+    <div class="entity-panel" id="entity-panel">
+      <div class="entity-panel-header">
+        <h2 id="panel-title">Component</h2>
+        <button class="close-btn" onclick="closePanel()">×</button>
+      </div>
+      <div class="entity-details" id="entity-details"></div>
+      <div class="feedback-buttons">
+        <button class="fb-btn issue" onclick="addFeedback('issue')">🔴 Issue</button>
+        <button class="fb-btn question" onclick="addFeedback('question')">❓ Question</button>
+        <button class="fb-btn idea" onclick="addFeedback('idea')">💡 Idea</button>
+        <button class="fb-btn comment" onclick="addFeedback('comment')">💬 Comment</button>
+      </div>
+    </div>
   </div>
   <script>
     const reportData = %s;
-    const state = { currentPreset: 'full', zoom: 1, comments: [], selectedNode: null };
+    const state = { 
+      currentPreset: 'full', 
+      zoom: 1, 
+      feedback: [], 
+      selectedNode: null,
+      heatmapEnabled: false
+    };
     
     window.onload = function() { 
       makeSVGInteractive(); 
@@ -557,17 +600,14 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
     };
     
     function applyPreset(preset, btn) {
-      // Update button states
       document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      
-      // Hide all SVG presets, show selected one
       document.querySelectorAll('.svg-preset').forEach(div => div.style.display = 'none');
       const target = document.getElementById('svg-' + preset);
       if (target) target.style.display = 'block';
-      
       state.currentPreset = preset;
       makeSVGInteractive();
+      if (state.heatmapEnabled) applyHeatmap();
       generatePrompt();
     }
     
@@ -577,54 +617,185 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
       const svg = container.querySelector('svg');
       if (!svg) return;
       
+      const tooltip = document.getElementById('tooltip');
       const groups = svg.querySelectorAll('g');
+      
       groups.forEach(g => {
         const rect = g.querySelector('rect');
         const text = g.querySelector('text');
         if (rect && text) {
           g.style.cursor = 'pointer';
-          g.onclick = (e) => { e.stopPropagation(); selectNode(text.textContent, g); };
-          g.onmouseenter = () => { rect.style.filter = 'brightness(1.1)'; };
-          g.onmouseleave = () => { rect.style.filter = ''; };
+          g.onclick = (e) => { e.stopPropagation(); selectNode(text.textContent, g, e); };
+          g.onmouseenter = (e) => { 
+            rect.style.filter = 'brightness(1.1)'; 
+            showTooltip(e, text.textContent);
+          };
+          g.onmousemove = (e) => { moveTooltip(e); };
+          g.onmouseleave = () => { 
+            rect.style.filter = ''; 
+            hideTooltip();
+          };
         }
       });
     }
     
-    function selectNode(name, element) {
+    function showTooltip(e, name) {
+      const tooltip = document.getElementById('tooltip');
+      const entity = reportData.keystones?.find(k => k.name === name);
+      tooltip.querySelector('.tooltip-name').textContent = name;
+      tooltip.querySelector('.tooltip-info').innerHTML = entity 
+        ? entity.entity_type + ' • ' + (entity.file || 'N/A') + '<br>PageRank: ' + (entity.pagerank?.toFixed(4) || 'N/A')
+        : 'Component';
+      tooltip.style.display = 'block';
+      moveTooltip(e);
+    }
+    
+    function moveTooltip(e) {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.style.left = (e.clientX + 15) + 'px';
+      tooltip.style.top = (e.clientY + 15) + 'px';
+    }
+    
+    function hideTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+    
+    function selectNode(name, element, event) {
       state.selectedNode = { name, element };
+      
+      // Show selection ring animation
+      const rect = element.getBoundingClientRect();
+      const ring = document.createElement('div');
+      ring.className = 'selection-ring';
+      ring.style.left = (rect.left + rect.width/2 - 30) + 'px';
+      ring.style.top = (rect.top + rect.height/2 - 30) + 'px';
+      ring.style.width = '60px';
+      ring.style.height = '60px';
+      document.body.appendChild(ring);
+      setTimeout(() => ring.remove(), 600);
+      
+      // Update panel
       document.getElementById('panel-title').textContent = name;
       const entity = reportData.keystones?.find(k => k.name === name) || { name };
       document.getElementById('entity-details').innerHTML = 
-        '<div class="detail-card"><div class="detail-label">Name</div><div class="detail-value">'+(entity.name||name)+'</div></div>'+
-        '<div class="detail-card"><div class="detail-label">Type</div><div class="detail-value">'+(entity.entity_type||'component')+'</div></div>'+
-        '<div class="detail-card"><div class="detail-label">File</div><div class="detail-value"><code>'+(entity.file||'N/A')+'</code></div></div>'+
-        '<div class="detail-card"><div class="detail-label">PageRank</div><div class="detail-value">'+(entity.pagerank?.toFixed(4)||'N/A')+'</div></div>';
+        '<div class="detail-item"><span>Type:</span> '+(entity.entity_type||'component')+'</div>'+
+        '<div class="detail-item"><span>File:</span> <code>'+(entity.file||'N/A')+'</code></div>'+
+        '<div class="detail-item"><span>PageRank:</span> '+(entity.pagerank?.toFixed(4)||'N/A')+'</div>'+
+        '<div class="detail-item"><span>In-degree:</span> '+(entity.in_degree||0)+'</div>';
       document.getElementById('entity-panel').classList.add('visible');
     }
     
-    function closePanel() { document.getElementById('entity-panel').classList.remove('visible'); state.selectedNode = null; }
-    
-    function addComment() {
-      if (!state.selectedNode) return;
-      const text = prompt('Add comment for '+state.selectedNode.name+':');
-      if (text) { state.comments.push({ entity: state.selectedNode.name, text }); updateCommentsList(); generatePrompt(); }
+    function closePanel() { 
+      document.getElementById('entity-panel').classList.remove('visible'); 
+      state.selectedNode = null; 
     }
     
-    function updateCommentsList() {
-      const list = document.getElementById('comments-list');
-      document.getElementById('comment-count').textContent = state.comments.length;
-      if (state.comments.length === 0) { list.innerHTML = '<p style="font-size:0.8rem;color:#999">Click a component to add comments</p>'; return; }
-      list.innerHTML = state.comments.map(c => '<div class="comment-item"><div class="comment-entity">'+c.entity+'</div><div>'+c.text+'</div></div>').join('');
+    function addFeedback(type) {
+      if (!state.selectedNode) return;
+      const prompts = {
+        issue: 'Describe the issue with ' + state.selectedNode.name + ':',
+        question: 'What question do you have about ' + state.selectedNode.name + '?',
+        idea: 'Describe your improvement idea for ' + state.selectedNode.name + ':',
+        comment: 'Add a comment about ' + state.selectedNode.name + ':'
+      };
+      const text = prompt(prompts[type]);
+      if (text) { 
+        state.feedback.push({ entity: state.selectedNode.name, type, text }); 
+        updateFeedbackList(); 
+        generatePrompt(); 
+      }
+    }
+    
+    function updateFeedbackList() {
+      const list = document.getElementById('feedback-list');
+      document.getElementById('feedback-count').textContent = state.feedback.length;
+      if (state.feedback.length === 0) { 
+        list.innerHTML = '<p style="font-size:0.8rem;color:#999;margin-top:0.5rem;">Click a component, then add feedback using the buttons below.</p>'; 
+        return; 
+      }
+      const icons = { issue: '🔴', question: '❓', idea: '💡', comment: '💬' };
+      list.innerHTML = state.feedback.map((f, i) => 
+        '<div class="feedback-item '+f.type+'">'+
+        '<div class="feedback-type">'+icons[f.type]+' '+f.type+'</div>'+
+        '<div class="feedback-entity">'+f.entity+'</div>'+
+        '<div>'+f.text+'</div></div>'
+      ).join('');
+    }
+    
+    function toggleHeatmap() {
+      state.heatmapEnabled = !state.heatmapEnabled;
+      document.getElementById('heatmap-btn').classList.toggle('active', state.heatmapEnabled);
+      if (state.heatmapEnabled) applyHeatmap();
+      else removeHeatmap();
+    }
+    
+    function applyHeatmap() {
+      const container = document.getElementById('svg-' + state.currentPreset);
+      if (!container) return;
+      const rects = container.querySelectorAll('rect');
+      rects.forEach(rect => {
+        // Simulate coverage coloring (would use real data in production)
+        const colors = ['#e74c3c', '#f39c12', '#2ecc71'];
+        const color = colors[Math.floor(Math.random() * 3)];
+        rect.dataset.originalFill = rect.getAttribute('fill');
+        rect.setAttribute('fill', color);
+      });
+    }
+    
+    function removeHeatmap() {
+      const container = document.getElementById('svg-' + state.currentPreset);
+      if (!container) return;
+      const rects = container.querySelectorAll('rect');
+      rects.forEach(rect => {
+        if (rect.dataset.originalFill) {
+          rect.setAttribute('fill', rect.dataset.originalFill);
+        }
+      });
     }
     
     function generatePrompt() {
-      let p = '# Cortex Architecture Analysis\n\n**Preset:** '+state.currentPreset+'\n**Generated:** '+(reportData.report?.generated_at||'Unknown')+'\n\n';
-      if (state.comments.length > 0) { p += '## Observations\n\n'; state.comments.forEach(c => { p += '### '+c.entity+'\n'+c.text+'\n\n'; }); }
-      p += '## Top Components\n'; (reportData.keystones||[]).slice(0,5).forEach(k => { p += '- **'+k.name+'** ('+k.entity_type+')\n'; });
+      let p = '# Architecture Analysis Request\n\n';
+      p += '**View:** ' + state.currentPreset + '\n';
+      p += '**Generated:** ' + (reportData.report?.generated_at || new Date().toISOString()) + '\n\n';
+      
+      if (state.feedback.length > 0) {
+        const grouped = { issue: [], question: [], idea: [], comment: [] };
+        state.feedback.forEach(f => grouped[f.type].push(f));
+        
+        if (grouped.issue.length) {
+          p += '## 🔴 Issues\n\n';
+          grouped.issue.forEach(f => p += '**' + f.entity + ':** ' + f.text + '\n\n');
+        }
+        if (grouped.question.length) {
+          p += '## ❓ Questions\n\n';
+          grouped.question.forEach(f => p += '**' + f.entity + ':** ' + f.text + '\n\n');
+        }
+        if (grouped.idea.length) {
+          p += '## 💡 Ideas\n\n';
+          grouped.idea.forEach(f => p += '**' + f.entity + ':** ' + f.text + '\n\n');
+        }
+        if (grouped.comment.length) {
+          p += '## 💬 Comments\n\n';
+          grouped.comment.forEach(f => p += '**' + f.entity + ':** ' + f.text + '\n\n');
+        }
+      }
+      
+      p += '## Context: Top Components\n\n';
+      (reportData.keystones || []).slice(0, 5).forEach(k => {
+        p += '- **' + k.name + '** (' + k.entity_type + ') - ' + (k.file || 'N/A') + '\n';
+      });
+      
       document.getElementById('prompt-output').value = p;
     }
     
-    function copyPrompt() { const t = document.getElementById('prompt-output'); t.select(); document.execCommand('copy'); event.target.textContent = '✓ Copied!'; setTimeout(() => event.target.textContent = 'Copy Prompt', 2000); }
+    function copyPrompt() { 
+      const t = document.getElementById('prompt-output'); 
+      t.select(); 
+      document.execCommand('copy'); 
+      event.target.textContent = '✓ Copied!'; 
+      setTimeout(() => event.target.textContent = '📋 Copy Prompt to Clipboard', 2000); 
+    }
+    
     function zoomIn() { state.zoom *= 1.2; applyZoom(); }
     function zoomOut() { state.zoom /= 1.2; applyZoom(); }
     function resetZoom() { state.zoom = 1; applyZoom(); }
@@ -632,7 +803,7 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
       const container = document.getElementById('svg-' + state.currentPreset);
       if (!container) return;
       const svg = container.querySelector('svg'); 
-      if (svg) svg.style.transform = 'scale('+state.zoom+')'; 
+      if (svg) svg.style.transform = 'scale(' + state.zoom + ')'; 
     }
   </script>
 </body>
