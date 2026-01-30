@@ -1,0 +1,1676 @@
+report:
+  type: overview
+  generated_at: 2026-01-30T21:06:05.498107749Z
+metadata:
+  language_breakdown:
+    go: 3608
+    python: 151
+    typescript: 10
+  total_entities: 3809
+  active_entities: 3769
+  archived_entities: 40
+statistics:
+  by_type:
+    constant: 132
+    function: 746
+    method: 945
+    type: 297
+    variable: 1029
+  by_language:
+    go: 3608
+    python: 151
+    typescript: 10
+keystones:
+  - id: sa-fn-d1655fd7-189-walkNode
+    name: walkNode
+    entity_type: function
+    file: internal/parser/parser.go
+    lines:
+      - 189
+      - 199
+    signature: '(node: *sitter.Node, visitor: func(*sitter.Node) bool) -> bool'
+    importance: keystone
+    pagerank: 0.034345211853781116
+    coverage: -1
+    doc_comment: // walkNode is a helper for depth-first AST traversal.
+    in_degree: 118
+    layer: parser
+    css_classes: layer-parser entity-function importance-keystone
+  - id: sa-type-54bbffe9-17-Store
+    name: Store
+    entity_type: type
+    file: internal/store/db.go
+    lines:
+      - 17
+      - 20
+    signature: ()
+    importance: keystone
+    pagerank: 0.023398986733187566
+    coverage: -1
+    doc_comment: |-
+      // Store manages the .cx/cortex/ Dolt database for storing application state
+      // and metadata with version control capabilities.
+    in_degree: 171
+    layer: store
+    css_classes: layer-store entity-type importance-keystone
+  - id: sa-fn-71e0bf00-1227-nodeText
+    name: nodeText
+    entity_type: method
+    file: internal/extract/typescript.go
+    lines:
+      - 1227
+      - 1229
+    signature: '(node: *sitter.Node) -> string'
+    importance: keystone
+    pagerank: 0.02337063183903313
+    coverage: -1
+    doc_comment: // nodeText returns the source text for a node.
+    in_degree: 502
+    layer: core
+    css_classes: layer-core entity-method importance-keystone
+  - id: sa-fn-54bbffe9-84-Close
+    name: Close
+    entity_type: method
+    file: internal/store/db.go
+    lines:
+      - 84
+      - 89
+    signature: () -> error
+    importance: keystone
+    pagerank: 0.02193511462944736
+    coverage: -1
+    doc_comment: // Close closes the database connection.
+    in_degree: 244
+    layer: store
+    css_classes: layer-store entity-method importance-keystone
+  - id: sa-type-d1655fd7-52-ParseResult
+    name: ParseResult
+    entity_type: type
+    file: internal/parser/parser.go
+    lines:
+      - 52
+      - 63
+    signature: ()
+    importance: keystone
+    pagerank: 0.021147124962808145
+    coverage: -1
+    doc_comment: // ParseResult contains the parsed AST and metadata.
+    in_degree: 53
+    layer: parser
+    css_classes: layer-parser entity-type importance-keystone
+  - id: sa-type-bf4da8db-6-Entity
+    name: Entity
+    entity_type: type
+    file: internal/store/types.go
+    lines:
+      - 6
+      - 27
+    signature: ()
+    importance: keystone
+    pagerank: 0.01569073510827062
+    coverage: -1
+    doc_comment: // Entity represents a code entity (function, type, constant, etc.)
+    in_degree: 280
+    layer: store
+    css_classes: layer-store entity-type importance-keystone
+  - id: sa-fn-d1655fd7-221-NodeText
+    name: NodeText
+    entity_type: method
+    file: internal/parser/parser.go
+    lines:
+      - 221
+      - 226
+    signature: '(node: *sitter.Node) -> string'
+    importance: keystone
+    pagerank: 0.014978434996581632
+    coverage: -1
+    doc_comment: // NodeText returns the source text for a node.
+    in_degree: 24
+    layer: parser
+    css_classes: layer-parser entity-method importance-keystone
+  - id: sa-type-19f293f2-71-Density
+    name: Density
+    entity_type: type
+    file: internal/output/format.go
+    lines:
+      - 71
+      - 71
+    signature: ()
+    importance: keystone
+    pagerank: 0.012881480046349106
+    coverage: -1
+    doc_comment: |-
+      // Density represents the level of detail in output.
+      // Different density levels optimize for different use cases:
+      //   - Sparse: Minimal tokens for "find where" queries
+      //   - Medium: Balanced detail for most use cases (default)
+      //   - Dense: Full detail including hashes, metrics, timestamps
+      //   - Smart: Importance-based density (keystones expanded, leaves compact)
+    in_degree: 34
+    layer: output
+    css_classes: layer-output entity-type importance-keystone
+  - id: sa-type-71e0bf00-12-TypeScriptExtractor
+    name: TypeScriptExtractor
+    entity_type: type
+    file: internal/extract/typescript.go
+    lines:
+      - 12
+      - 16
+    signature: ()
+    importance: keystone
+    pagerank: 0.012681936086457445
+    coverage: -1
+    doc_comment: // TypeScriptExtractor extracts code entities from TypeScript/JavaScript AST.
+    in_degree: 43
+    layer: core
+    css_classes: layer-core entity-type importance-keystone
+  - id: sa-fn-89d04249-115-Client
+    name: Client
+    entity_type: method
+    file: internal/daemon/storeproxy.go
+    lines:
+      - 115
+      - 117
+    signature: () -> *Client
+    importance: keystone
+    pagerank: 0.010236277239846558
+    coverage: -1
+    doc_comment: |-
+      // Client returns the daemon client.
+      // Returns nil if using direct mode.
+    in_degree: 46
+    layer: core
+    css_classes: layer-core entity-method importance-keystone
+  - id: sa-fn-19f293f2-112-String
+    name: String
+    entity_type: method
+    file: internal/output/format.go
+    lines:
+      - 112
+      - 114
+    signature: () -> string
+    importance: bottleneck
+    pagerank: 0.009898418757687922
+    coverage: -1
+    doc_comment: // String returns the string representation of the density.
+    in_degree: 114
+    layer: output
+    css_classes: layer-output entity-method importance-bottleneck
+  - id: sa-const-26106598-34-Contains
+    name: Contains
+    entity_type: constant
+    file: internal/extract/callgraph.go
+    lines:
+      - 34
+      - 34
+    signature: ()
+    importance: bottleneck
+    pagerank: 0.007506090311751593
+    coverage: -1
+    doc_comment: // Contains represents a module containing a function/type
+    in_degree: 104
+    layer: core
+    css_classes: layer-core entity-constant importance-bottleneck
+  - id: sa-type-e4194d0c-15-TypeScriptCallGraphExtractor
+    name: TypeScriptCallGraphExtractor
+    entity_type: type
+    file: internal/extract/callgraph_typescript.go
+    lines:
+      - 15
+      - 20
+    signature: ()
+    importance: bottleneck
+    pagerank: 0.005433073779001616
+    coverage: -1
+    doc_comment: // TypeScriptCallGraphExtractor extracts dependencies from TypeScript/JavaScript AST
+    in_degree: 19
+    layer: core
+    css_classes: layer-core entity-type importance-bottleneck
+  - id: sa-type-89d04249-15-StoreProvider
+    name: StoreProvider
+    entity_type: type
+    file: internal/daemon/storeproxy.go
+    lines:
+      - 15
+      - 27
+    signature: ()
+    importance: normal
+    pagerank: 0.005392453066583038
+    coverage: -1
+    doc_comment: |-
+      // StoreProvider provides access to the code graph store.
+      // It abstracts whether access is via daemon or direct database.
+    in_degree: 8
+    layer: core
+    css_classes: layer-core entity-type importance-normal
+  - id: sa-type-a918a3cf-8-Graph
+    name: Graph
+    entity_type: type
+    file: internal/graph/graph.go
+    lines:
+      - 8
+      - 13
+    signature: ()
+    importance: bottleneck
+    pagerank: 0.005094940831528421
+    coverage: -1
+    doc_comment: // Graph represents an in-memory dependency graph.
+    in_degree: 38
+    layer: graph
+    css_classes: layer-graph entity-type importance-bottleneck
+  - id: sa-type-6ffd4115-30-CGFWriter
+    name: CGFWriter
+    entity_type: type
+    file: internal/output/cgf_writer.go
+    lines:
+      - 30
+      - 34
+    signature: ()
+    importance: bottleneck
+    pagerank: 0.004710585753452473
+    coverage: -1
+    doc_comment: |-
+      // CGFWriter outputs CGF format to an io.Writer (DEPRECATED)
+      // DEPRECATED: Use YAMLFormatter or JSONFormatter instead.
+    in_degree: 30
+    layer: output
+    css_classes: layer-output entity-type importance-bottleneck
+  - id: sa-fn-e7edeebf-764-itoa
+    name: itoa
+    entity_type: function
+    file: internal/extract/callgraph_java.go
+    lines:
+      - 764
+      - 777
+    signature: '(n: int) -> string'
+    importance: normal
+    pagerank: 0.004648414555550264
+    coverage: -1
+    doc_comment: // itoa is a simple int to string conversion to avoid importing strconv
+    in_degree: 6
+    layer: core
+    css_classes: layer-core entity-function importance-normal
+  - id: sa-fn-d1655fd7-214-FindNodesByType
+    name: FindNodesByType
+    entity_type: method
+    file: internal/parser/parser.go
+    lines:
+      - 214
+      - 218
+    signature: '(nodeType: string) -> []*sitter.Node'
+    importance: bottleneck
+    pagerank: 0.00462541992700867
+    coverage: -1
+    doc_comment: // FindNodesByType returns all nodes of the specified type.
+    in_degree: 148
+    layer: parser
+    css_classes: layer-parser entity-method importance-bottleneck
+  - id: sa-fn-3f85b170-281-Format
+    name: Format
+    entity_type: method
+    file: internal/output/formatter.go
+    lines:
+      - 281
+      - 289
+    signature: '(entity: interface{}, density: Density) -> (string, error)'
+    importance: bottleneck
+    pagerank: 0.004604577586302156
+    coverage: -1
+    doc_comment: // Format formats an entity as CGF (deprecated).
+    in_degree: 60
+    layer: output
+    css_classes: layer-output entity-method importance-bottleneck
+  - id: sa-fn-d1655fd7-113-Parse
+    name: Parse
+    entity_type: method
+    file: internal/parser/parser.go
+    lines:
+      - 113
+      - 127
+    signature: '(source: []byte) -> (*ParseResult, error)'
+    importance: bottleneck
+    pagerank: 0.004191244137674597
+    coverage: -1
+    doc_comment: // Parse parses source code and returns the AST.
+    in_degree: 54
+    layer: parser
+    css_classes: layer-parser entity-method importance-bottleneck
+modules:
+  - path: internal/extract
+    entities: 1251
+    functions: 695
+    types: 37
+  - path: internal/cmd
+    entities: 881
+    functions: 280
+    types: 63
+  - path: internal/store
+    entities: 238
+    functions: 91
+    types: 17
+  - path: internal/coverage
+    entities: 217
+    functions: 83
+    types: 26
+  - path: internal/output
+    entities: 206
+    functions: 92
+    types: 46
+  - path: internal/parser
+    entities: 122
+    functions: 63
+    types: 6
+  - path: internal/daemon
+    entities: 117
+    functions: 64
+    types: 13
+  - path: internal/graph
+    entities: 103
+    functions: 52
+    types: 11
+  - path: internal/diff
+    entities: 85
+    functions: 27
+    types: 15
+  - path: internal/bd
+    entities: 73
+    functions: 34
+    types: 9
+  - path: internal/cache
+    entities: 61
+    functions: 32
+    types: 4
+  - path: internal/mcp
+    entities: 50
+    functions: 30
+    types: 2
+  - path: internal/metrics
+    entities: 50
+    functions: 30
+    types: 8
+  - path: internal/integration
+    entities: 41
+    functions: 14
+    types: 7
+  - path: internal/context
+    entities: 37
+    functions: 15
+    types: 8
+  - path: ../../../tmp/py-test-repo/ch10-primer-on-oop
+    entities: 35
+    functions: 24
+    types: 11
+  - path: internal/semdiff
+    entities: 34
+    functions: 12
+    types: 5
+  - path: internal/config
+    entities: 32
+    functions: 15
+    types: 6
+  - path: ../../../tmp/py-test-repo/ch08-conditional-logic
+    entities: 27
+    functions: 7
+    types: 0
+  - path: ../../../tmp/py-test-repo/ch14-interact-with-pdf-files
+    entities: 26
+    functions: 4
+    types: 1
+diagrams:
+  architecture:
+    title: System Architecture
+    d2: |
+      vars: {
+        d2-config: {
+          theme-id: 8
+          layout-engine: elk
+        }
+      }
+
+      title: {
+        label: "System Architecture"
+        near: top-center
+        style: {
+          font-size: 24
+          bold: true
+        }
+      }
+
+      direction: right
+
+      # Module Layers
+      "internal/bd": {
+        label: "bd"
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1565c0"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-fn-898f819e-34-execBD: {
+          label: "execBD"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+      }
+
+      "internal/cache": {
+        label: "cache"
+        style: {
+          fill: "#f3e5f5"
+          stroke: "#6a1b9a"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-type-113f0a3d-16-Cache: {
+          label: "Cache"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+      }
+
+      "internal/cmd": {
+        label: "cmd"
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1565c0"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-fn-4a72a17f-78-Execute: {
+          label: "Execute"
+          shape: rectangle
+          style: {
+            fill: "#e3f2fd"
+            stroke: "#1976d2"
+            stroke-width: 1
+            border-radius: 4
+            font-size: 14
+          }
+        }
+      }
+
+      "internal/config": {
+        label: "config"
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1565c0"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-fn-54c7c1af-109-FindConfigDir: {
+          label: "FindConfigDir"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+      }
+
+      "internal/daemon": {
+        label: "daemon"
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1565c0"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-fn-1ae3e12f-300-Query: {
+          label: "Query"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-89d04249-115-Client: {
+          label: "Client"
+          shape: rectangle
+          style: {
+            fill: "#fff3e0"
+            stroke: "#e65100"
+            stroke-width: 3
+            border-radius: 4
+            shadow: true
+            font-size: 14
+          }
+        }
+        sa-type-59dd6a2f-120-Daemon: {
+          label: "Daemon"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-89d04249-15-StoreProvider: {
+          label: "StoreProvider"
+          shape: hexagon
+          style: {
+            fill: "#f3e5f5"
+            stroke: "#7b1fa2"
+            stroke-width: 1
+            border-radius: 4
+            font-size: 14
+          }
+        }
+      }
+
+      "internal/extract": {
+        label: "extract"
+        style: {
+          fill: "#f3e5f5"
+          stroke: "#6a1b9a"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-const-26106598-34-Contains: {
+          label: "Contains"
+          shape: oval
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-0ba4e74f-315-abbreviateType: {
+          label: "abbreviateType"
+          shape: rectangle
+          style: {
+            fill: "#e3f2fd"
+            stroke: "#1976d2"
+            stroke-width: 1
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-71e0bf00-1216-getFilePath: {
+          label: "getFilePath"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-71e0bf00-1227-nodeText: {
+          label: "nodeText"
+          shape: rectangle
+          style: {
+            fill: "#fff3e0"
+            stroke: "#e65100"
+            stroke-width: 3
+            border-radius: 4
+            shadow: true
+            font-size: 14
+          }
+        }
+        sa-fn-748715a3-165-findChildByType: {
+          label: "findChildByType"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-836fe4f1-434-ComputeHashes: {
+          label: "ComputeHashes"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-836fe4f1-534-NormalizePath: {
+          label: "NormalizePath"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-9763a4f7-890-phpItoa: {
+          label: "phpItoa"
+          shape: rectangle
+          style: {
+            fill: "#e3f2fd"
+            stroke: "#1976d2"
+            stroke-width: 1
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-e4194d0c-677-resolveTarget: {
+          label: "resolveTarget"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-e7edeebf-764-itoa: {
+          label: "itoa"
+          shape: rectangle
+          style: {
+            fill: "#e3f2fd"
+            stroke: "#1976d2"
+            stroke-width: 1
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-26106598-67-CallGraphEntity: {
+          label: "CallGraphEntity"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-3bd9f310-12-RustExtractor: {
+          label: "RustExtractor"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-61894326-12-CppExtractor: {
+          label: "CppExtractor"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-71e0bf00-12-TypeScriptExtractor: {
+          label: "TypeScriptExtractor"
+          shape: hexagon
+          style: {
+            fill: "#fff3e0"
+            stroke: "#e65100"
+            stroke-width: 3
+            border-radius: 4
+            shadow: true
+            font-size: 14
+          }
+        }
+        sa-type-836fe4f1-51-Visibility: {
+          label: "Visibility"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-89a25908-11-KotlinExtractor: {
+          label: "KotlinExtractor"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-9763a4f7-13-PHPCallGraphExtractor: {
+          label: "PHPCallGraphExtractor"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-ca134818-11-PHPExtractor: {
+          label: "PHPExtractor"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-e4194d0c-15-TypeScriptCallGraphExtractor: {
+          label: "TypeScriptCallGraphExtractor"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-e7edeebf-13-JavaCallGraphExtractor: {
+          label: "JavaCallGraphExtractor"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-f57fc3a5-13-CSharpCallGraphExtractor: {
+          label: "CSharpCallGraphExtractor"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+      }
+
+      "internal/graph": {
+        label: "graph"
+        style: {
+          fill: "#f3e5f5"
+          stroke: "#6a1b9a"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-type-a918a3cf-8-Graph: {
+          label: "Graph"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+      }
+
+      "internal/mcp": {
+        label: "mcp"
+        style: {
+          fill: "#f3e5f5"
+          stroke: "#6a1b9a"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-type-bd1206cc-28-Server: {
+          label: "Server"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+      }
+
+      "internal/output": {
+        label: "output"
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1565c0"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-fn-19f293f2-112-String: {
+          label: "String"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-3f85b170-281-Format: {
+          label: "Format"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-3f85b170-292-FormatToWriter: {
+          label: "FormatToWriter"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-19f293f2-71-Density: {
+          label: "Density"
+          shape: hexagon
+          style: {
+            fill: "#fff3e0"
+            stroke: "#e65100"
+            stroke-width: 3
+            border-radius: 4
+            shadow: true
+            font-size: 14
+          }
+        }
+        sa-type-3f85b170-271-CGFFormatter: {
+          label: "CGFFormatter"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-6ffd4115-30-CGFWriter: {
+          label: "CGFWriter"
+          shape: hexagon
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+      }
+
+      "internal/parser": {
+        label: "parser"
+        style: {
+          fill: "#e3f2fd"
+          stroke: "#1565c0"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-fn-d1655fd7-113-Parse: {
+          label: "Parse"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-d1655fd7-189-walkNode: {
+          label: "walkNode"
+          shape: rectangle
+          style: {
+            fill: "#fff3e0"
+            stroke: "#e65100"
+            stroke-width: 3
+            border-radius: 4
+            shadow: true
+            font-size: 14
+          }
+        }
+        sa-fn-d1655fd7-202-FindNodes: {
+          label: "FindNodes"
+          shape: rectangle
+          style: {
+            fill: "#e3f2fd"
+            stroke: "#1976d2"
+            stroke-width: 1
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-d1655fd7-214-FindNodesByType: {
+          label: "FindNodesByType"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-d1655fd7-221-NodeText: {
+          label: "NodeText"
+          shape: rectangle
+          style: {
+            fill: "#fff3e0"
+            stroke: "#e65100"
+            stroke-width: 3
+            border-radius: 4
+            shadow: true
+            font-size: 14
+          }
+        }
+        sa-fn-df240028-39-Error: {
+          label: "Error"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-d1655fd7-52-ParseResult: {
+          label: "ParseResult"
+          shape: hexagon
+          style: {
+            fill: "#fff3e0"
+            stroke: "#e65100"
+            stroke-width: 3
+            border-radius: 4
+            shadow: true
+            font-size: 14
+          }
+        }
+        sa-type-df240028-33-FileReadError: {
+          label: "FileReadError"
+          shape: hexagon
+          style: {
+            fill: "#f3e5f5"
+            stroke: "#7b1fa2"
+            stroke-width: 1
+            border-radius: 4
+            font-size: 14
+          }
+        }
+      }
+
+      "internal/store": {
+        label: "store"
+        style: {
+          fill: "#eceff1"
+          stroke: "#455a64"
+          stroke-width: 2
+          border-radius: 8
+        }
+        sa-fn-54bbffe9-25-Open: {
+          label: "Open"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-fn-54bbffe9-84-Close: {
+          label: "Close"
+          shape: rectangle
+          style: {
+            fill: "#fff3e0"
+            stroke: "#e65100"
+            stroke-width: 3
+            border-radius: 4
+            shadow: true
+            font-size: 14
+          }
+        }
+        sa-fn-54bbffe9-92-DB: {
+          label: "DB"
+          shape: rectangle
+          style: {
+            fill: "#fff8e1"
+            stroke: "#ff8f00"
+            stroke-width: 2
+            border-radius: 4
+            font-size: 14
+          }
+        }
+        sa-type-54bbffe9-17-Store: {
+          label: "Store"
+          shape: hexagon
+          style: {
+            fill: "#fff3e0"
+            stroke: "#e65100"
+            stroke-width: 3
+            border-radius: 4
+            shadow: true
+            font-size: 14
+          }
+        }
+        sa-type-bf4da8db-6-Entity: {
+          label: "Entity"
+          shape: hexagon
+          style: {
+            fill: "#fff3e0"
+            stroke: "#e65100"
+            stroke-width: 3
+            border-radius: 4
+            shadow: true
+            font-size: 14
+          }
+        }
+      }
+
+
+      # Flow Connections
+      "internal/parser".sa-fn-d1655fd7-189-walkNode -> "internal/parser".sa-fn-d1655fd7-189-walkNode {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/extract".sa-fn-71e0bf00-1227-nodeText -> "internal/parser".sa-fn-d1655fd7-221-NodeText {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/extract".sa-fn-71e0bf00-1227-nodeText -> "internal/parser".sa-fn-d1655fd7-221-NodeText {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/extract".sa-fn-71e0bf00-1227-nodeText -> "internal/extract".sa-type-71e0bf00-12-TypeScriptExtractor {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/extract".sa-fn-71e0bf00-1227-nodeText -> "internal/extract".sa-type-71e0bf00-12-TypeScriptExtractor {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-84-Close -> "internal/store".sa-fn-54bbffe9-84-Close {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-84-Close -> "internal/store".sa-fn-54bbffe9-84-Close {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-84-Close -> "internal/store".sa-type-54bbffe9-17-Store {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-84-Close -> "internal/store".sa-type-54bbffe9-17-Store {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-221-NodeText -> "internal/parser".sa-type-d1655fd7-52-ParseResult {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-221-NodeText -> "internal/parser".sa-type-d1655fd7-52-ParseResult {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/daemon".sa-fn-89d04249-115-Client -> "internal/daemon".sa-fn-89d04249-115-Client {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/daemon".sa-fn-89d04249-115-Client -> "internal/daemon".sa-type-89d04249-15-StoreProvider {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/daemon".sa-fn-89d04249-115-Client -> "internal/daemon".sa-type-89d04249-15-StoreProvider {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/output".sa-fn-19f293f2-112-String -> "internal/output".sa-type-19f293f2-71-Density {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/output".sa-fn-19f293f2-112-String -> "internal/output".sa-type-19f293f2-71-Density {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/extract".sa-fn-e7edeebf-764-itoa -> "internal/extract".sa-fn-e7edeebf-764-itoa {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-214-FindNodesByType -> "internal/parser".sa-fn-d1655fd7-202-FindNodes {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-214-FindNodesByType -> "internal/parser".sa-fn-d1655fd7-202-FindNodes {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-214-FindNodesByType -> "internal/parser".sa-type-d1655fd7-52-ParseResult {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-214-FindNodesByType -> "internal/parser".sa-type-d1655fd7-52-ParseResult {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/output".sa-fn-3f85b170-281-Format -> "internal/output".sa-fn-19f293f2-112-String {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/output".sa-fn-3f85b170-281-Format -> "internal/output".sa-fn-19f293f2-112-String {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/output".sa-fn-3f85b170-281-Format -> "internal/output".sa-fn-3f85b170-292-FormatToWriter {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/output".sa-fn-3f85b170-281-Format -> "internal/output".sa-fn-3f85b170-292-FormatToWriter {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/output".sa-fn-3f85b170-281-Format -> "internal/output".sa-type-19f293f2-71-Density {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/output".sa-fn-3f85b170-281-Format -> "internal/output".sa-type-3f85b170-271-CGFFormatter {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/output".sa-fn-3f85b170-281-Format -> "internal/output".sa-type-3f85b170-271-CGFFormatter {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-113-Parse -> "internal/parser".sa-fn-df240028-39-Error {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-113-Parse -> "internal/parser".sa-fn-df240028-39-Error {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-113-Parse -> "internal/parser".sa-type-d1655fd7-52-ParseResult {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/extract".sa-fn-71e0bf00-1216-getFilePath -> "internal/extract".sa-fn-836fe4f1-534-NormalizePath {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/extract".sa-fn-71e0bf00-1216-getFilePath -> "internal/extract".sa-type-71e0bf00-12-TypeScriptExtractor {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/extract".sa-fn-71e0bf00-1216-getFilePath -> "internal/extract".sa-type-71e0bf00-12-TypeScriptExtractor {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/extract".sa-fn-836fe4f1-434-ComputeHashes -> "internal/store".sa-type-bf4da8db-6-Entity {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/extract".sa-fn-836fe4f1-434-ComputeHashes -> "internal/store".sa-type-bf4da8db-6-Entity {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/bd".sa-fn-898f819e-34-execBD -> "internal/output".sa-fn-19f293f2-112-String {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/bd".sa-fn-898f819e-34-execBD -> "internal/output".sa-fn-19f293f2-112-String {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/bd".sa-fn-898f819e-34-execBD -> "internal/daemon".sa-fn-89d04249-115-Client {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/bd".sa-fn-898f819e-34-execBD -> "internal/daemon".sa-fn-89d04249-115-Client {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-92-DB -> "internal/store".sa-fn-54bbffe9-92-DB {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-92-DB -> "internal/store".sa-type-54bbffe9-17-Store {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-92-DB -> "internal/store".sa-type-54bbffe9-17-Store {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/daemon".sa-fn-1ae3e12f-300-Query -> "internal/daemon".sa-fn-89d04249-115-Client {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/daemon".sa-fn-1ae3e12f-300-Query -> "internal/daemon".sa-fn-89d04249-115-Client {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/extract".sa-fn-0ba4e74f-315-abbreviateType -> "internal/extract".sa-fn-0ba4e74f-315-abbreviateType {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/cmd".sa-fn-4a72a17f-78-Execute -> "internal/cmd".sa-fn-4a72a17f-78-Execute {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/cmd".sa-fn-4a72a17f-78-Execute -> "internal/cmd".sa-fn-4a72a17f-78-Execute {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-202-FindNodes -> "internal/parser".sa-type-d1655fd7-52-ParseResult {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/parser".sa-fn-d1655fd7-202-FindNodes -> "internal/parser".sa-type-d1655fd7-52-ParseResult {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-25-Open -> "internal/store".sa-fn-54bbffe9-25-Open {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-25-Open -> "internal/store".sa-fn-54bbffe9-25-Open {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-25-Open -> "internal/store".sa-fn-54bbffe9-84-Close {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-25-Open -> "internal/store".sa-fn-54bbffe9-84-Close {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/store".sa-fn-54bbffe9-25-Open -> "internal/store".sa-type-54bbffe9-17-Store {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/output".sa-fn-3f85b170-292-FormatToWriter -> "internal/output".sa-type-19f293f2-71-Density {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/output".sa-fn-3f85b170-292-FormatToWriter -> "internal/output".sa-type-3f85b170-271-CGFFormatter {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/output".sa-fn-3f85b170-292-FormatToWriter -> "internal/output".sa-type-3f85b170-271-CGFFormatter {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/extract".sa-fn-9763a4f7-890-phpItoa -> "internal/extract".sa-fn-9763a4f7-890-phpItoa {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/parser".sa-fn-df240028-39-Error -> "internal/parser".sa-type-df240028-33-FileReadError {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/parser".sa-fn-df240028-39-Error -> "internal/parser".sa-type-df240028-33-FileReadError {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/extract".sa-fn-e4194d0c-677-resolveTarget -> "internal/extract".sa-const-26106598-34-Contains {
+        style: {
+          stroke: "#424242"
+          stroke-width: 1
+        }
+      }
+      "internal/extract".sa-fn-e4194d0c-677-resolveTarget -> "internal/extract".sa-const-26106598-34-Contains {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/extract".sa-fn-e4194d0c-677-resolveTarget -> "internal/extract".sa-type-26106598-67-CallGraphEntity {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+      "internal/extract".sa-fn-e4194d0c-677-resolveTarget -> "internal/extract".sa-type-e4194d0c-15-TypeScriptCallGraphExtractor {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+        }
+      }
+      "internal/extract".sa-fn-e4194d0c-677-resolveTarget -> "internal/extract".sa-type-e4194d0c-15-TypeScriptCallGraphExtractor {
+        style: {
+          stroke: "#757575"
+          stroke-width: 1
+          stroke-dash: 3
+        }
+      }
+health:
+  coverage_overall: 0
+  untested_keystones: 50
+  circular_dependencies: 0
+  dead_code_candidates: 0
+playground:
+  enabled: true
+  layers:
+    - id: core
+      label: Core
+      color: '#4a90d9'
+      entity_count: 2136
+      default_visible: true
+    - id: api
+      label: Api
+      color: '#50c878'
+      entity_count: 881
+      default_visible: true
+    - id: store
+      label: Store
+      color: '#9b59b6'
+      entity_count: 238
+      default_visible: true
+    - id: output
+      label: Output
+      color: '#f39c12'
+      entity_count: 206
+      default_visible: true
+    - id: parser
+      label: Parser
+      color: '#e67e22'
+      entity_count: 122
+      default_visible: true
+    - id: graph
+      label: Graph
+      color: '#1abc9c'
+      entity_count: 103
+      default_visible: true
+  connection_types:
+    - type: calls
+      label: Calls
+      color: '#3498db'
+      count: 0
+      default_visible: true
+    - type: uses_type
+      label: Uses Type
+      color: '#2ecc71'
+      count: 0
+      default_visible: true
+    - type: implements
+      label: Implements
+      color: '#9b59b6'
+      count: 0
+      default_visible: true
+    - type: extends
+      label: Extends
+      color: '#e74c3c'
+      count: 0
+      default_visible: true
+    - type: imports
+      label: Imports
+      color: '#95a5a6'
+      count: 0
+      default_visible: false
+  element_map:
+    sa-const-26106598-34-Contains: node-Contains
+    sa-fn-3f85b170-281-Format: node-Format
+    sa-fn-19f293f2-112-String: node-String
+    sa-fn-54bbffe9-84-Close: node-Close
+    sa-fn-71e0bf00-1227-nodeText: node-nodeText
+    sa-fn-89d04249-115-Client: node-Client
+    sa-fn-d1655fd7-113-Parse: node-Parse
+    sa-fn-d1655fd7-189-walkNode: node-walkNode
+    sa-fn-d1655fd7-214-FindNodesByType: node-FindNodesByType
+    sa-fn-d1655fd7-221-NodeText: node-NodeText
+    sa-fn-e7edeebf-764-itoa: node-itoa
+    sa-type-6ffd4115-30-CGFWriter: node-CGFWriter
+    sa-type-19f293f2-71-Density: node-Density
+    sa-type-54bbffe9-17-Store: node-Store
+    sa-type-71e0bf00-12-TypeScriptExtractor: node-TypeScriptExtractor
+    sa-type-89d04249-15-StoreProvider: node-StoreProvider
+    sa-type-a918a3cf-8-Graph: node-Graph
+    sa-type-bf4da8db-6-Entity: node-Entity
+    sa-type-d1655fd7-52-ParseResult: node-ParseResult
+    sa-type-e4194d0c-15-TypeScriptCallGraphExtractor: node-TypeScriptCallGraphExtractor
+  view_presets:
+    - id: full
+      label: Full System
+      description: Show all layers and connections
+      visible_layers:
+        - core
+        - api
+        - store
+        - parser
+        - graph
+        - output
+      visible_connections:
+        - calls
+        - uses_type
+        - implements
+    - id: keystones
+      label: Keystones Only
+      description: Show only keystone entities and their connections
+      visible_layers:
+        - core
+        - api
+        - store
+        - parser
+        - graph
+        - output
+      visible_connections:
+        - calls
+        - uses_type
+      importance_filter:
+        - keystone
+    - id: core
+      label: Core Architecture
+      description: Focus on core, store, and parser modules
+      visible_layers:
+        - core
+        - store
+        - parser
+      visible_connections:
+        - calls
+        - uses_type
+    - id: api
+      label: API Layer
+      description: Focus on API and output modules
+      visible_layers:
+        - api
+        - output
+      visible_connections:
+        - calls
