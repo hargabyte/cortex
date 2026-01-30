@@ -57,9 +57,9 @@ func TestD2Generator_Generate_ThemeConfig(t *testing.T) {
 		wantID   string
 		wantLang string
 	}{
-		{"default theme", "default", "theme-id: 8", "layout-engine: elk"},        // Colorblind Clear
-		{"dark theme", "dark", "theme-id: 200", "layout-engine: elk"},            // Dark Mauve
-		{"neutral theme", "neutral", "theme-id: 0", "layout-engine: elk"},        // Neutral Default
+		{"default theme", "default", "theme-id: 8", "layout-engine: elk"}, // Colorblind Clear
+		{"dark theme", "dark", "theme-id: 200", "layout-engine: elk"},     // Dark Mauve
+		{"neutral theme", "neutral", "theme-id: 0", "layout-engine: elk"}, // Neutral Default
 		{"invalid theme falls back to default", "invalid", "theme-id: 8", "layout-engine: elk"},
 	}
 
@@ -265,33 +265,33 @@ func TestD2Generator_Generate_CoverageDiagram(t *testing.T) {
 
 func TestD2Generator_NodeStyling(t *testing.T) {
 	tests := []struct {
-		name       string
-		entity     DiagramEntity
-		wantShape  string
+		name        string
+		entity      DiagramEntity
+		wantShape   string
 		wantInStyle string
 	}{
 		{
-			name:       "function type",
-			entity:     DiagramEntity{ID: "fn", Type: "function"},
-			wantShape:  "shape: rectangle",
+			name:        "function type",
+			entity:      DiagramEntity{ID: "fn", Type: "function"},
+			wantShape:   "shape: rectangle",
 			wantInStyle: "fill:",
 		},
 		{
-			name:       "database type",
-			entity:     DiagramEntity{ID: "db", Type: "database"},
-			wantShape:  "shape: cylinder",
+			name:        "database type",
+			entity:      DiagramEntity{ID: "db", Type: "database"},
+			wantShape:   "shape: cylinder",
 			wantInStyle: "fill:",
 		},
 		{
-			name:       "keystone importance",
-			entity:     DiagramEntity{ID: "key", Type: "function", Importance: "keystone"},
+			name:        "keystone importance",
+			entity:      DiagramEntity{ID: "key", Type: "function", Importance: "keystone"},
 			wantInStyle: "shadow: true",
 		},
 		{
 			// Icons are disabled due to Terrastruct service returning 403
 			// Language icon would normally appear here; testing that entity renders without icon
-			name:       "with language (icon disabled)",
-			entity:     DiagramEntity{ID: "fn", Type: "function", Language: "go"},
+			name:        "with language (icon disabled)",
+			entity:      DiagramEntity{ID: "fn", Type: "function", Language: "go"},
 			wantInStyle: "fill:", // Still has styling even without icon
 		},
 	}

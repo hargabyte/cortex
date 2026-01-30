@@ -23,9 +23,9 @@ func newJavaScriptParser() (*sitter.Parser, error) {
 // TypeScriptNodeTypes maps tree-sitter node types to semantic entity types for TypeScript.
 var TypeScriptNodeTypes = map[string]string{
 	// Functions
-	"function_declaration":       "function",
-	"function_expression":        "function",
-	"arrow_function":             "function",
+	"function_declaration":           "function",
+	"function_expression":            "function",
+	"arrow_function":                 "function",
 	"generator_function_declaration": "function",
 
 	// Methods
@@ -36,18 +36,18 @@ var TypeScriptNodeTypes = map[string]string{
 	"class_expression":  "class",
 
 	// Interfaces and types
-	"interface_declaration":   "interface",
-	"type_alias_declaration":  "type",
-	"enum_declaration":        "enum",
+	"interface_declaration":  "interface",
+	"type_alias_declaration": "type",
+	"enum_declaration":       "enum",
 
 	// Variables and constants
-	"lexical_declaration": "variable", // const, let
+	"lexical_declaration":  "variable", // const, let
 	"variable_declaration": "variable", // var
 
 	// Imports and exports
-	"import_statement":   "import",
-	"export_statement":   "export",
-	"export_clause":      "export",
+	"import_statement": "import",
+	"export_statement": "export",
+	"export_clause":    "export",
 }
 
 // IsTypeScriptEntityNode checks if a tree-sitter node represents a code entity.

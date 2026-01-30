@@ -73,18 +73,18 @@ type CatchupBefore struct {
 
 // CatchupScan shows scan results
 type CatchupScan struct {
-	FilesProcessed  int    `yaml:"files_processed" json:"files_processed"`
-	EntitiesFound   int    `yaml:"entities_found" json:"entities_found"`
-	DepsFound       int    `yaml:"dependencies_found" json:"dependencies_found"`
-	Duration        string `yaml:"duration" json:"duration"`
+	FilesProcessed int    `yaml:"files_processed" json:"files_processed"`
+	EntitiesFound  int    `yaml:"entities_found" json:"entities_found"`
+	DepsFound      int    `yaml:"dependencies_found" json:"dependencies_found"`
+	Duration       string `yaml:"duration" json:"duration"`
 }
 
 // CatchupChanges shows what changed
 type CatchupChanges struct {
-	EntitiesAdded    int                `yaml:"entities_added" json:"entities_added"`
-	EntitiesModified int                `yaml:"entities_modified" json:"entities_modified"`
-	EntitiesRemoved  int                `yaml:"entities_removed" json:"entities_removed"`
-	KeystonesChanged int                `yaml:"keystones_changed" json:"keystones_changed"`
+	EntitiesAdded    int                 `yaml:"entities_added" json:"entities_added"`
+	EntitiesModified int                 `yaml:"entities_modified" json:"entities_modified"`
+	EntitiesRemoved  int                 `yaml:"entities_removed" json:"entities_removed"`
+	KeystonesChanged int                 `yaml:"keystones_changed" json:"keystones_changed"`
 	ByFile           []CatchupFileChange `yaml:"by_file,omitempty" json:"by_file,omitempty"`
 }
 
@@ -164,10 +164,10 @@ func runCatchup(cmd *cobra.Command, args []string) error {
 	}
 
 	catchupOut.Scan = &CatchupScan{
-		FilesProcessed:  scanResult.filesProcessed,
-		EntitiesFound:   scanResult.entitiesFound,
-		DepsFound:       scanResult.depsFound,
-		Duration:        time.Since(scanStart).Round(time.Millisecond).String(),
+		FilesProcessed: scanResult.filesProcessed,
+		EntitiesFound:  scanResult.entitiesFound,
+		DepsFound:      scanResult.depsFound,
+		Duration:       time.Since(scanStart).Round(time.Millisecond).String(),
 	}
 
 	// Get changes after scan

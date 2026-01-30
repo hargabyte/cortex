@@ -78,7 +78,7 @@ func TestStoreProviderWithDaemonFallback(t *testing.T) {
 	// Should fallback to direct mode
 	opts := StoreProviderOptions{
 		CXDir:         cxDir,
-		UseDaemon:     true, // Try daemon first
+		UseDaemon:     true,  // Try daemon first
 		RequireDaemon: false, // Allow fallback
 	}
 

@@ -120,10 +120,10 @@ func TestTagsExportImport(t *testing.T) {
 		// Create YAML with some new and some existing tags
 		importData := TagExport{
 			Tags: []ExportedTag{
-				{EntityID: "fn-login", Tag: "auth", Note: "Updated note"},      // exists
-				{EntityID: "fn-login", Tag: "important", Note: "New tag"},      // new
-				{EntityID: "tp-user", Tag: "core", Note: "Updated core note"},  // exists
-				{EntityID: "tp-user", Tag: "model", Note: "Model tag"},         // new
+				{EntityID: "fn-login", Tag: "auth", Note: "Updated note"},     // exists
+				{EntityID: "fn-login", Tag: "important", Note: "New tag"},     // new
+				{EntityID: "tp-user", Tag: "core", Note: "Updated core note"}, // exists
+				{EntityID: "tp-user", Tag: "model", Note: "Model tag"},        // new
 			},
 		}
 

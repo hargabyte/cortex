@@ -129,12 +129,12 @@ func ExportStaleToBeads(report *StaleEntityReport) (string, error) {
 
 // DiscoveredWorkReport contains work discovered during analysis.
 type DiscoveredWorkReport struct {
-	Title         string
-	Description   string
-	Type          string // bug, task, feature
-	Priority      int
+	Title          string
+	Description    string
+	Type           string // bug, task, feature
+	Priority       int
 	DiscoveredFrom string // Entity ID that led to this discovery
-	Labels        []string
+	Labels         []string
 }
 
 // ExportDiscoveredWork creates a bead for discovered work with a discovered-from dependency.

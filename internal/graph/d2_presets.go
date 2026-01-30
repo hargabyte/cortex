@@ -30,11 +30,11 @@ func ArchitecturePreset() *DiagramConfig {
 		Theme:      "default",
 		Layout:     "elk", // ELK handles containers well and is bundled with D2
 		Direction:  "right",
-		MaxNodes:   50,     // Architecture diagrams can be larger
-		Collapse:   true,   // Auto-collapse dense modules
-		ShowLabels: true,   // Show edge labels for dependency types
-		ShowIcons:  true,   // Show entity type icons
-		Title:      "",     // Set by caller
+		MaxNodes:   50,   // Architecture diagrams can be larger
+		Collapse:   true, // Auto-collapse dense modules
+		ShowLabels: true, // Show edge labels for dependency types
+		ShowIcons:  true, // Show entity type icons
+		Title:      "",   // Set by caller
 	}
 }
 
@@ -47,9 +47,9 @@ func CallFlowPreset() *DiagramConfig {
 		Layout:     "elk", // ELK handles linear flow well
 		Direction:  "down",
 		MaxNodes:   30,
-		Collapse:   false,  // Show full flow
-		ShowLabels: true,   // Show call labels
-		ShowIcons:  false,  // Simpler visual for flow
+		Collapse:   false, // Show full flow
+		ShowLabels: true,  // Show call labels
+		ShowIcons:  false, // Simpler visual for flow
 		Title:      "",
 	}
 }

@@ -771,13 +771,13 @@ func (e *RustExtractor) extractUseDeclaration(node *sitter.Node) []Entity {
 
 		if pathText != "" {
 			entity := Entity{
-				Kind:        ImportEntity,
-				Name:        extractRustImportName(pathText),
-				File:        e.getFilePath(),
-				StartLine:   startLine,
-				EndLine:     startLine,
-				ImportPath:  pathText,
-				Visibility:  visibility,
+				Kind:       ImportEntity,
+				Name:       extractRustImportName(pathText),
+				File:       e.getFilePath(),
+				StartLine:  startLine,
+				EndLine:    startLine,
+				ImportPath: pathText,
+				Visibility: visibility,
 			}
 			entities = append(entities, entity)
 		}

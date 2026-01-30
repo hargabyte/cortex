@@ -55,11 +55,11 @@ func init() {
 
 // HistoryEntry represents a single commit in the history output
 type HistoryEntry struct {
-	Commit    string         `yaml:"commit" json:"commit"`
-	Date      string         `yaml:"date" json:"date"`
-	Message   string         `yaml:"message" json:"message"`
-	Committer string         `yaml:"committer,omitempty" json:"committer,omitempty"`
-	Stats     *HistoryStats  `yaml:"stats,omitempty" json:"stats,omitempty"`
+	Commit    string        `yaml:"commit" json:"commit"`
+	Date      string        `yaml:"date" json:"date"`
+	Message   string        `yaml:"message" json:"message"`
+	Committer string        `yaml:"committer,omitempty" json:"committer,omitempty"`
+	Stats     *HistoryStats `yaml:"stats,omitempty" json:"stats,omitempty"`
 }
 
 // HistoryStats contains entity/dependency counts at a commit

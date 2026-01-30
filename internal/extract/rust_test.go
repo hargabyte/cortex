@@ -106,18 +106,18 @@ func TestRustExtractor_ExtractAll(t *testing.T) {
 
 	// Verify we found expected entity types
 	var (
-		hasFunction     bool
-		hasMethod       bool
-		hasStruct       bool
-		hasTrait        bool
-		hasEnum         bool
-		hasConst        bool
-		hasStatic       bool
-		hasImport       bool
-		hasTypeAlias    bool
-		hasAsyncFunc    bool
-		hasConstFunc    bool
-		hasTraitImpl    bool
+		hasFunction  bool
+		hasMethod    bool
+		hasStruct    bool
+		hasTrait     bool
+		hasEnum      bool
+		hasConst     bool
+		hasStatic    bool
+		hasImport    bool
+		hasTypeAlias bool
+		hasAsyncFunc bool
+		hasConstFunc bool
+		hasTraitImpl bool
 	)
 
 	for _, e := range entities {

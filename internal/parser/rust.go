@@ -15,18 +15,18 @@ func newRustParser() (*sitter.Parser, error) {
 // RustNodeTypes maps tree-sitter node types to semantic entity types.
 // This is used to identify code entities when traversing the AST.
 var RustNodeTypes = map[string]string{
-	"function_item":            "function",
-	"function_signature_item":  "function", // extern fn declarations
-	"impl_item":                "impl",
-	"struct_item":              "struct",
-	"enum_item":                "enum",
-	"trait_item":               "trait",
-	"type_item":                "type",
-	"const_item":               "constant",
-	"static_item":              "static",
-	"use_declaration":          "import",
-	"mod_item":                 "module",
-	"macro_definition":         "macro",
+	"function_item":           "function",
+	"function_signature_item": "function", // extern fn declarations
+	"impl_item":               "impl",
+	"struct_item":             "struct",
+	"enum_item":               "enum",
+	"trait_item":              "trait",
+	"type_item":               "type",
+	"const_item":              "constant",
+	"static_item":             "static",
+	"use_declaration":         "import",
+	"mod_item":                "module",
+	"macro_definition":        "macro",
 }
 
 // IsRustEntityNode checks if a tree-sitter node represents a code entity

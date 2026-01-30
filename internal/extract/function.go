@@ -286,17 +286,17 @@ func (e *Extractor) extractReturnTypes(node *sitter.Node) []string {
 // isTypeNode checks if a node type represents a Go type.
 func isTypeNode(nodeType string) bool {
 	typeNodes := map[string]bool{
-		"type_identifier":   true,
-		"pointer_type":      true,
-		"slice_type":        true,
-		"array_type":        true,
-		"map_type":          true,
-		"channel_type":      true,
-		"function_type":     true,
-		"interface_type":    true,
-		"struct_type":       true,
-		"qualified_type":    true,
-		"generic_type":      true,
+		"type_identifier":    true,
+		"pointer_type":       true,
+		"slice_type":         true,
+		"array_type":         true,
+		"map_type":           true,
+		"channel_type":       true,
+		"function_type":      true,
+		"interface_type":     true,
+		"struct_type":        true,
+		"qualified_type":     true,
+		"generic_type":       true,
 		"parenthesized_type": true,
 	}
 	return typeNodes[nodeType]

@@ -394,7 +394,7 @@ func TestGraph_ShortestPath_SameNode(t *testing.T) {
 func TestGraph_ShortestPath_NoPath(t *testing.T) {
 	g := newTestGraph()
 	g.addEdge("a", "b")
-	g.Edges["c"] = []string{}       // isolated node
+	g.Edges["c"] = []string{} // isolated node
 	g.ReverseEdges["c"] = []string{}
 
 	path := g.ShortestPath("a", "c", "forward")

@@ -616,9 +616,9 @@ func (g *DataGatherer) gatherArchitectureDiagram(data *OverviewReportData) error
 	// In playground mode, generate additional filtered diagrams for presets
 	if g.playgroundMode {
 		presets := map[string][]string{
-			"architecture_core":   {"core", "api", "graph"},      // Core infrastructure
-			"architecture_store":  {"store", "core", "graph"},    // Data flow
-			"architecture_parser": {"parser", "core", "output"},  // Parser pipeline
+			"architecture_core":   {"core", "api", "graph"},     // Core infrastructure
+			"architecture_store":  {"store", "core", "graph"},   // Data flow
+			"architecture_parser": {"parser", "core", "output"}, // Parser pipeline
 		}
 
 		for key, layers := range presets {

@@ -154,9 +154,9 @@ func TestIsPythonTestFunction(t *testing.T) {
 	}{
 		{"test_foo", true},
 		{"test_bar_baz", true},
-		{"testFoo", true},  // unittest style
-		{"testBar", true},  // unittest style
-		{"test", false},    // just "test" alone
+		{"testFoo", true},   // unittest style
+		{"testBar", true},   // unittest style
+		{"test", false},     // just "test" alone
 		{"foo_test", false}, // suffix not valid for function names
 		{"tests", false},
 		{"testing", false},

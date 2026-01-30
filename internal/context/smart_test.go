@@ -86,23 +86,23 @@ func TestExtractIntent(t *testing.T) {
 
 func TestExtractIntent_EntityMentions(t *testing.T) {
 	tests := []struct {
-		name        string
-		description string
+		name         string
+		description  string
 		wantMentions []string
 	}{
 		{
-			name:        "snake case entity",
-			description: "fix user_service authentication",
+			name:         "snake case entity",
+			description:  "fix user_service authentication",
 			wantMentions: []string{"user_service"},
 		},
 		{
-			name:        "multiple snake case",
-			description: "refactor auth_handler and process_request",
+			name:         "multiple snake case",
+			description:  "refactor auth_handler and process_request",
 			wantMentions: []string{"auth_handler", "process_request"},
 		},
 		{
-			name:        "no entities",
-			description: "add new feature",
+			name:         "no entities",
+			description:  "add new feature",
 			wantMentions: []string{},
 		},
 	}
@@ -507,10 +507,10 @@ func TestHybridScore(t *testing.T) {
 	maxPageRank := 0.5 // Normalize against this
 
 	tests := []struct {
-		name      string
-		ep        *EntryPoint
-		wantMin   float64
-		wantMax   float64
+		name    string
+		ep      *EntryPoint
+		wantMin float64
+		wantMax float64
 	}{
 		{
 			name: "hybrid match - both scores",
@@ -603,34 +603,34 @@ func TestApplyHybridScoring(t *testing.T) {
 // because FTS5's implicit AND required all terms to match.
 func TestExtractIntentMultiWord(t *testing.T) {
 	tests := []struct {
-		name           string
-		description    string
-		wantKeywords   []string
-		minKeywords    int
+		name         string
+		description  string
+		wantKeywords []string
+		minKeywords  int
 	}{
 		{
-			name:           "natural language with generic terms",
-			description:    "parsing source code in the codebase",
-			wantKeywords:   []string{"parsing", "codebase"},
-			minKeywords:    1,
+			name:         "natural language with generic terms",
+			description:  "parsing source code in the codebase",
+			wantKeywords: []string{"parsing", "codebase"},
+			minKeywords:  1,
 		},
 		{
-			name:           "task with action and stopwords",
-			description:    "add rate limiting to the API endpoints",
-			wantKeywords:   []string{"rate", "limiting", "api", "endpoints"},
-			minKeywords:    3,
+			name:         "task with action and stopwords",
+			description:  "add rate limiting to the API endpoints",
+			wantKeywords: []string{"rate", "limiting", "api", "endpoints"},
+			minKeywords:  3,
 		},
 		{
-			name:           "query with domain terms",
-			description:    "fix authentication bug in login flow",
-			wantKeywords:   []string{"authentication", "bug", "login", "flow"},
-			minKeywords:    3,
+			name:         "query with domain terms",
+			description:  "fix authentication bug in login flow",
+			wantKeywords: []string{"authentication", "bug", "login", "flow"},
+			minKeywords:  3,
 		},
 		{
-			name:           "mostly generic terms",
-			description:    "implement new feature in the system",
-			wantKeywords:   []string{}, // Most words are stopwords/action words
-			minKeywords:    0,
+			name:         "mostly generic terms",
+			description:  "implement new feature in the system",
+			wantKeywords: []string{}, // Most words are stopwords/action words
+			minKeywords:  0,
 		},
 	}
 

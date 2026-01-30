@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/anthropics/cx/internal/parser"
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 // Sample TypeScript source for testing call graph extraction

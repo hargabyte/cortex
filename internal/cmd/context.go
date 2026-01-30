@@ -137,9 +137,9 @@ var (
 	contextSmart        string
 	contextDepth        int
 	contextWithCoverage bool
-	contextFull         bool // For session recovery mode (--full)
-	contextDiff         bool // For diff-based context (uncommitted changes)
-	contextStaged       bool // For staged-only diff context
+	contextFull         bool   // For session recovery mode (--full)
+	contextDiff         bool   // For diff-based context (uncommitted changes)
+	contextStaged       bool   // For staged-only diff context
 	contextCommitRange  string // For commit range diff context (e.g., HEAD~3)
 )
 
@@ -775,13 +775,13 @@ func runSmartContext(cmd *cobra.Command, taskDescription string) error {
 
 // SmartContextOutput represents the output structure for smart context.
 type SmartContextOutput struct {
-	Intent       *SmartContextIntent            `yaml:"intent" json:"intent"`
-	EntryPoints  map[string]*output.EntryPoint  `yaml:"entry_points" json:"entry_points"`
+	Intent       *SmartContextIntent               `yaml:"intent" json:"intent"`
+	EntryPoints  map[string]*output.EntryPoint     `yaml:"entry_points" json:"entry_points"`
 	Relevant     map[string]*output.RelevantEntity `yaml:"relevant_entities" json:"relevant_entities"`
-	Excluded     map[string]string              `yaml:"excluded,omitempty" json:"excluded,omitempty"`
-	TokensUsed   int                            `yaml:"tokens_used" json:"tokens_used"`
-	TokensBudget int                            `yaml:"tokens_budget" json:"tokens_budget"`
-	Warnings     []string                       `yaml:"warnings,omitempty" json:"warnings,omitempty"`
+	Excluded     map[string]string                 `yaml:"excluded,omitempty" json:"excluded,omitempty"`
+	TokensUsed   int                               `yaml:"tokens_used" json:"tokens_used"`
+	TokensBudget int                               `yaml:"tokens_budget" json:"tokens_budget"`
+	Warnings     []string                          `yaml:"warnings,omitempty" json:"warnings,omitempty"`
 }
 
 // SmartContextIntent represents the extracted intent for output.
@@ -1156,4 +1156,3 @@ func runDiffContext(cmd *cobra.Command) error {
 
 	return formatter.FormatToWriter(cmd.OutOrStdout(), result, density)
 }
-

@@ -29,15 +29,16 @@ func (b *CoverageBlock) IsCovered() bool {
 
 // CoverageData represents parsed coverage data from a coverage.out file.
 type CoverageData struct {
-	Mode   string           // Coverage mode: set, count, or atomic
-	Blocks []CoverageBlock  // All coverage blocks
+	Mode   string          // Coverage mode: set, count, or atomic
+	Blocks []CoverageBlock // All coverage blocks
 }
 
 // ParseCoverageFile parses a Go coverage.out file and returns structured coverage data.
 // The coverage.out format is:
-//   mode: set|count|atomic
-//   path/to/file.go:startLine.startCol,endLine.endCol numStmt count
-//   ...
+//
+//	mode: set|count|atomic
+//	path/to/file.go:startLine.startCol,endLine.endCol numStmt count
+//	...
 func ParseCoverageFile(path string) (*CoverageData, error) {
 	file, err := os.Open(path)
 	if err != nil {

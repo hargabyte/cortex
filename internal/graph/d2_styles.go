@@ -102,12 +102,12 @@ var D2EntityColors = map[string]D2Color{
 
 // D2ImportanceColors maps importance levels to colors.
 var D2ImportanceColors = map[string]D2Color{
-	"keystone":    {Fill: "#fff3e0", Stroke: "#e65100"}, // Warm orange
-	"bottleneck":  {Fill: "#fff8e1", Stroke: "#ff8f00"}, // Amber
-	"high-fan-in": {Fill: "#e3f2fd", Stroke: "#1565c0"}, // Blue
-	"high-fan-out":{Fill: "#fce4ec", Stroke: "#c2185b"}, // Pink
-	"normal":      {Fill: "#ffffff", Stroke: "#757575"}, // White/gray
-	"leaf":        {Fill: "#fafafa", Stroke: "#bdbdbd"}, // Off white
+	"keystone":     {Fill: "#fff3e0", Stroke: "#e65100"}, // Warm orange
+	"bottleneck":   {Fill: "#fff8e1", Stroke: "#ff8f00"}, // Amber
+	"high-fan-in":  {Fill: "#e3f2fd", Stroke: "#1565c0"}, // Blue
+	"high-fan-out": {Fill: "#fce4ec", Stroke: "#c2185b"}, // Pink
+	"normal":       {Fill: "#ffffff", Stroke: "#757575"}, // White/gray
+	"leaf":         {Fill: "#fafafa", Stroke: "#bdbdbd"}, // Off white
 }
 
 // D2CoverageColors maps coverage levels to colors.

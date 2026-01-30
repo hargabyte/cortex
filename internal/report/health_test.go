@@ -116,15 +116,15 @@ func TestHealthReportSetCoverage(t *testing.T) {
 	coverage := &CoverageData{
 		Overall: 78.5,
 		ByEntity: map[string]float64{
-			"LoginUser":      85.5,
-			"ValidateToken":  92.0,
-			"SessionCache":   45.0,
+			"LoginUser":     85.5,
+			"ValidateToken": 92.0,
+			"SessionCache":  45.0,
 		},
 		ByImportance: map[string]float64{
-			"keystone":     85.0,
-			"bottleneck":   72.0,
-			"normal":       78.0,
-			"leaf":         65.0,
+			"keystone":   85.0,
+			"bottleneck": 72.0,
+			"normal":     78.0,
+			"leaf":       65.0,
 		},
 	}
 
@@ -146,8 +146,8 @@ func TestHealthReportSetComplexity(t *testing.T) {
 		Hotspots: []ComplexityHotspot{
 			{
 				Entity:     "ComplexParser",
-				OutDegree: 45,
-				Lines:     234,
+				OutDegree:  45,
+				Lines:      234,
 				Cyclomatic: 23,
 			},
 		},
@@ -447,15 +447,15 @@ func TestHealthReportJSONUnmarshal(t *testing.T) {
 func TestComplexityAnalysis(t *testing.T) {
 	hotspots := []ComplexityHotspot{
 		{
-			Entity:      "ComplexParser",
+			Entity:     "ComplexParser",
 			OutDegree:  45,
 			Lines:      234,
 			Cyclomatic: 23,
 		},
 		{
 			Entity:     "DataTransformer",
-			OutDegree: 32,
-			Lines:     189,
+			OutDegree:  32,
+			Lines:      189,
 			Cyclomatic: 18,
 		},
 	}

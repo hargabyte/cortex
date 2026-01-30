@@ -441,12 +441,12 @@ type DeadCodeCandidate struct {
 
 // HealthIssueType constants for health report issues.
 const (
-	IssueTypeUntestedKeystone    = "untested_keystone"
-	IssueTypeCircularDependency  = "circular_dependency"
-	IssueTypeLowCoverageBottle   = "low_coverage_bottleneck"
-	IssueTypeDeadCodeCandidate   = "dead_code_candidate"
-	IssueTypeComplexityHotspot   = "complexity_hotspot"
-	IssueTypeDeadCodeGroup       = "dead_code_group"
+	IssueTypeUntestedKeystone   = "untested_keystone"
+	IssueTypeCircularDependency = "circular_dependency"
+	IssueTypeLowCoverageBottle  = "low_coverage_bottleneck"
+	IssueTypeDeadCodeCandidate  = "dead_code_candidate"
+	IssueTypeComplexityHotspot  = "complexity_hotspot"
+	IssueTypeDeadCodeGroup      = "dead_code_group"
 )
 
 // HealthIssues groups health issues by severity.

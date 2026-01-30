@@ -415,7 +415,7 @@ func TestCalculateRiskScore(t *testing.T) {
 			coveragePercent: 0,
 			pageRank:        0.5,
 			inDegree:        10,
-			expectedMin:     5.0,  // (1-0) * 0.5 * (10+1) = 5.5
+			expectedMin:     5.0, // (1-0) * 0.5 * (10+1) = 5.5
 			expectedMax:     6.0,
 		},
 		{

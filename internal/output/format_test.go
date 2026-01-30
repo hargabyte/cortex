@@ -317,10 +317,10 @@ func TestDensityIncludesExtendedContext(t *testing.T) {
 
 func TestGetEffectiveDensity(t *testing.T) {
 	tests := []struct {
-		name      string
-		density   Density
-		inDegree  int
-		expected  Density
+		name     string
+		density  Density
+		inDegree int
+		expected Density
 	}{
 		// Non-smart modes return same density
 		{"sparse stays sparse", DensitySparse, 5, DensitySparse},

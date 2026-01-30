@@ -589,9 +589,9 @@ func runSemanticFind(cmd *cobra.Command, storeDB *store.Store, query string, for
 	}
 
 	type SemanticOutput struct {
-		Query   string                      `yaml:"query" json:"query"`
+		Query   string                     `yaml:"query" json:"query"`
 		Results map[string]*SemanticResult `yaml:"results" json:"results"`
-		Count   int                         `yaml:"count" json:"count"`
+		Count   int                        `yaml:"count" json:"count"`
 	}
 
 	semanticOutput := &SemanticOutput{

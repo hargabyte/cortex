@@ -71,10 +71,10 @@ type ScanInfo struct {
 
 // GitStatus contains git comparison info
 type GitStatus struct {
-	HeadChanged  bool   `yaml:"head_changed" json:"head_changed"`
-	ScanCommit   string `yaml:"scan_commit" json:"scan_commit"`
-	CurrentHead  string `yaml:"current_head" json:"current_head"`
-	CommitsBehind int   `yaml:"commits_behind,omitempty" json:"commits_behind,omitempty"`
+	HeadChanged   bool   `yaml:"head_changed" json:"head_changed"`
+	ScanCommit    string `yaml:"scan_commit" json:"scan_commit"`
+	CurrentHead   string `yaml:"current_head" json:"current_head"`
+	CommitsBehind int    `yaml:"commits_behind,omitempty" json:"commits_behind,omitempty"`
 }
 
 // FilesChanged contains file modification info

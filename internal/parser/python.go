@@ -15,14 +15,14 @@ func newPythonParser() (*sitter.Parser, error) {
 // PythonNodeTypes maps tree-sitter node types to semantic entity types.
 // This is used to identify code entities when traversing the AST.
 var PythonNodeTypes = map[string]string{
-	"function_definition":       "function",
-	"class_definition":          "class",
-	"decorated_definition":      "decorated",
-	"import_statement":          "import",
-	"import_from_statement":     "import",
-	"assignment":                "variable",
-	"expression_statement":      "expression",
-	"module":                    "module",
+	"function_definition":   "function",
+	"class_definition":      "class",
+	"decorated_definition":  "decorated",
+	"import_statement":      "import",
+	"import_from_statement": "import",
+	"assignment":            "variable",
+	"expression_statement":  "expression",
+	"module":                "module",
 }
 
 // IsPythonEntityNode checks if a tree-sitter node represents a code entity

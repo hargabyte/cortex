@@ -40,7 +40,7 @@ type TestSuggestion struct {
 	PriorityScore float64 `json:"priority_score"` // Raw score for sorting
 
 	// Signature analysis
-	Signature    string   `json:"signature,omitempty"`
+	Signature     string   `json:"signature,omitempty"`
 	TestScenarios []string `json:"test_scenarios,omitempty"` // Suggested test scenarios
 }
 
@@ -60,22 +60,22 @@ type SuggestionOptions struct {
 
 // SuggestionResult contains the generated suggestions and summary statistics.
 type SuggestionResult struct {
-	Suggestions []TestSuggestion       `json:"suggestions"`
-	Summary     SuggestionSummary      `json:"summary"`
+	Suggestions []TestSuggestion            `json:"suggestions"`
+	Summary     SuggestionSummary           `json:"summary"`
 	ByPriority  map[string][]TestSuggestion `json:"by_priority,omitempty"`
 }
 
 // SuggestionSummary provides aggregate statistics about test suggestions.
 type SuggestionSummary struct {
-	TotalEntities      int     `json:"total_entities"`
-	EntitiesWithGaps   int     `json:"entities_with_gaps"`
-	KeystonesWithGaps  int     `json:"keystones_with_gaps"`
-	CriticalCount      int     `json:"critical_count"`
-	HighCount          int     `json:"high_count"`
-	MediumCount        int     `json:"medium_count"`
-	LowCount           int     `json:"low_count"`
-	AverageCoverage    float64 `json:"average_coverage"`
-	Recommendation     string  `json:"recommendation"`
+	TotalEntities     int     `json:"total_entities"`
+	EntitiesWithGaps  int     `json:"entities_with_gaps"`
+	KeystonesWithGaps int     `json:"keystones_with_gaps"`
+	CriticalCount     int     `json:"critical_count"`
+	HighCount         int     `json:"high_count"`
+	MediumCount       int     `json:"medium_count"`
+	LowCount          int     `json:"low_count"`
+	AverageCoverage   float64 `json:"average_coverage"`
+	Recommendation    string  `json:"recommendation"`
 }
 
 // GenerateSuggestions creates prioritized test suggestions combining coverage and importance.

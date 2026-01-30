@@ -4,21 +4,21 @@ import "time"
 
 // Entity represents a code entity (function, type, constant, etc.)
 type Entity struct {
-	ID         string    `json:"id"`          // sa-fn-a7f9b2-LoginUser
+	ID         string    `json:"id"` // sa-fn-a7f9b2-LoginUser
 	Name       string    `json:"name"`
 	EntityType string    `json:"entity_type"` // function, type, constant, enum, var, import
 	Kind       string    `json:"kind"`        // struct, interface, alias (for types)
 	FilePath   string    `json:"file_path"`
 	LineStart  int       `json:"line_start"`
 	LineEnd    *int      `json:"line_end,omitempty"`
-	Signature  string    `json:"signature,omitempty"`  // (email:str,pass:str)->(*User,err)
-	SigHash    string    `json:"sig_hash,omitempty"`   // 8-char hash
-	BodyHash   string    `json:"body_hash,omitempty"`  // 8-char hash
-	Receiver   string    `json:"receiver,omitempty"`   // *Server (for methods)
-	Visibility string    `json:"visibility"`           // pub, priv
-	Fields     string    `json:"fields,omitempty"`     // JSON for type fields
-	Language   string    `json:"language"`             // go, typescript, python, rust, java
-	Status     string    `json:"status"`               // active, archived
+	Signature  string    `json:"signature,omitempty"`   // (email:str,pass:str)->(*User,err)
+	SigHash    string    `json:"sig_hash,omitempty"`    // 8-char hash
+	BodyHash   string    `json:"body_hash,omitempty"`   // 8-char hash
+	Receiver   string    `json:"receiver,omitempty"`    // *Server (for methods)
+	Visibility string    `json:"visibility"`            // pub, priv
+	Fields     string    `json:"fields,omitempty"`      // JSON for type fields
+	Language   string    `json:"language"`              // go, typescript, python, rust, java
+	Status     string    `json:"status"`                // active, archived
 	BodyText   string    `json:"body_text,omitempty"`   // Function body for FTS search
 	DocComment string    `json:"doc_comment,omitempty"` // Doc comment for FTS search
 	Skeleton   string    `json:"skeleton,omitempty"`    // signature + doc comment + { ... } placeholder

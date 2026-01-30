@@ -15,18 +15,18 @@ func newCppParser() (*sitter.Parser, error) {
 // CppNodeTypes maps tree-sitter node types to semantic entity types.
 // This is used to identify code entities when traversing the AST.
 var CppNodeTypes = map[string]string{
-	"function_definition":    "function",
-	"declaration":            "declaration",
-	"class_specifier":        "class",
-	"struct_specifier":       "struct",
-	"enum_specifier":         "enum",
-	"namespace_definition":   "namespace",
-	"template_declaration":   "template",
-	"type_definition":        "typedef",
-	"using_declaration":      "using",
-	"alias_declaration":      "alias",
-	"preproc_def":            "macro",
-	"preproc_function_def":   "macro_function",
+	"function_definition":  "function",
+	"declaration":          "declaration",
+	"class_specifier":      "class",
+	"struct_specifier":     "struct",
+	"enum_specifier":       "enum",
+	"namespace_definition": "namespace",
+	"template_declaration": "template",
+	"type_definition":      "typedef",
+	"using_declaration":    "using",
+	"alias_declaration":    "alias",
+	"preproc_def":          "macro",
+	"preproc_function_def": "macro_function",
 }
 
 // IsCppEntityNode checks if a tree-sitter node represents a code entity

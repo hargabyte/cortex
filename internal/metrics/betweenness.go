@@ -40,9 +40,9 @@ func ComputeBetweenness(graph map[string][]string) map[string]float64 {
 	for source := range graph {
 		// Single-source shortest paths
 		stack := make([]string, 0)
-		pred := make(map[string][]string)  // predecessors on shortest paths
-		sigma := make(map[string]float64)  // number of shortest paths
-		dist := make(map[string]int)       // distance from source
+		pred := make(map[string][]string) // predecessors on shortest paths
+		sigma := make(map[string]float64) // number of shortest paths
+		dist := make(map[string]int)      // distance from source
 
 		for node := range graph {
 			pred[node] = make([]string, 0)

@@ -92,17 +92,17 @@ func init() {
 
 // scanStats tracks scan statistics for summary output
 type scanStats struct {
-	filesScanned   int
-	entitiesTotal  int
-	created        int
-	updated        int
-	unchanged      int
-	archived       int
-	skipped        int
-	errors         int
-	depsExtracted  int
-	depsResolved   int
-	depsPersisted  int
+	filesScanned  int
+	entitiesTotal int
+	created       int
+	updated       int
+	unchanged     int
+	archived      int
+	skipped       int
+	errors        int
+	depsExtracted int
+	depsResolved  int
+	depsPersisted int
 }
 
 // fileScanResult holds the results from scanning a single file.

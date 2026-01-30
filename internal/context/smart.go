@@ -45,18 +45,18 @@ const (
 
 // EntryPoint represents a discovered entry point for the task.
 type EntryPoint struct {
-	Entity          *store.Entity    `yaml:"-" json:"-"`
-	ID              string           `yaml:"id" json:"id"`
-	Name            string           `yaml:"name" json:"name"`
-	Type            string           `yaml:"type" json:"type"`
-	Location        string           `yaml:"location" json:"location"`
-	Relevance       float64          `yaml:"relevance" json:"relevance"`
-	Reason          string           `yaml:"reason" json:"reason"`
-	PageRank        float64          `yaml:"pagerank,omitempty" json:"pagerank,omitempty"`
-	IsKeystone      bool             `yaml:"is_keystone,omitempty" json:"is_keystone,omitempty"`
-	Source          EntryPointSource `yaml:"source,omitempty" json:"source,omitempty"`
-	SemanticScore   float64          `yaml:"semantic_score,omitempty" json:"semantic_score,omitempty"`
-	KeywordScore    float64          `yaml:"keyword_score,omitempty" json:"keyword_score,omitempty"`
+	Entity        *store.Entity    `yaml:"-" json:"-"`
+	ID            string           `yaml:"id" json:"id"`
+	Name          string           `yaml:"name" json:"name"`
+	Type          string           `yaml:"type" json:"type"`
+	Location      string           `yaml:"location" json:"location"`
+	Relevance     float64          `yaml:"relevance" json:"relevance"`
+	Reason        string           `yaml:"reason" json:"reason"`
+	PageRank      float64          `yaml:"pagerank,omitempty" json:"pagerank,omitempty"`
+	IsKeystone    bool             `yaml:"is_keystone,omitempty" json:"is_keystone,omitempty"`
+	Source        EntryPointSource `yaml:"source,omitempty" json:"source,omitempty"`
+	SemanticScore float64          `yaml:"semantic_score,omitempty" json:"semantic_score,omitempty"`
+	KeywordScore  float64          `yaml:"keyword_score,omitempty" json:"keyword_score,omitempty"`
 }
 
 // RelevantEntity represents an entity relevant to the task context.

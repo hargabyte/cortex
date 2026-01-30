@@ -150,9 +150,9 @@ func createTestMetrics(t *testing.T, s *store.Store) {
 		inDegree  int
 		outDegree int
 	}{
-		{"sa-fn-test1", 0.05, 10, 3},  // Keystone
-		{"sa-fn-test2", 0.001, 1, 5},  // Normal
-		{"sa-fn-test3", 0.02, 6, 2},   // Bottleneck
+		{"sa-fn-test1", 0.05, 10, 3}, // Keystone
+		{"sa-fn-test2", 0.001, 1, 5}, // Normal
+		{"sa-fn-test3", 0.02, 6, 2},  // Bottleneck
 	}
 
 	for _, m := range metrics {
@@ -417,4 +417,3 @@ func TestEntityRecommendations(t *testing.T) {
 		})
 	}
 }
-

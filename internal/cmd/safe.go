@@ -2022,8 +2022,8 @@ func runSafeTrend(cmd *cobra.Command, target string) error {
 		last := trendOut.History[0].ImpactRadius
 
 		// 20% growth/shrink thresholds
-		growthThreshold := first + first/5  // first * 1.2
-		shrinkThreshold := first - first/5  // first * 0.8
+		growthThreshold := first + first/5 // first * 1.2
+		shrinkThreshold := first - first/5 // first * 0.8
 
 		if first > 0 && last > growthThreshold {
 			trendOut.Trend = "growing"

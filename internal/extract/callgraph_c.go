@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/anthropics/cx/internal/parser"
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 // CCallGraphExtractor extracts dependencies from C AST

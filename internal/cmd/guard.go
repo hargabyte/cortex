@@ -74,44 +74,44 @@ func init() {
 
 // GuardOutput represents the guard check results
 type GuardOutput struct {
-	Summary       *GuardSummary        `yaml:"summary" json:"summary"`
-	Errors        []GuardIssue         `yaml:"errors,omitempty" json:"errors,omitempty"`
-	Warnings      []GuardIssue         `yaml:"warnings,omitempty" json:"warnings,omitempty"`
-	FilesChecked  []string             `yaml:"files_checked" json:"files_checked"`
-	Recommendations []string           `yaml:"recommendations,omitempty" json:"recommendations,omitempty"`
+	Summary         *GuardSummary `yaml:"summary" json:"summary"`
+	Errors          []GuardIssue  `yaml:"errors,omitempty" json:"errors,omitempty"`
+	Warnings        []GuardIssue  `yaml:"warnings,omitempty" json:"warnings,omitempty"`
+	FilesChecked    []string      `yaml:"files_checked" json:"files_checked"`
+	Recommendations []string      `yaml:"recommendations,omitempty" json:"recommendations,omitempty"`
 }
 
 // GuardSummary contains aggregate statistics
 type GuardSummary struct {
-	FilesChecked      int  `yaml:"files_checked" json:"files_checked"`
-	EntitiesAffected  int  `yaml:"entities_affected" json:"entities_affected"`
-	ErrorCount        int  `yaml:"error_count" json:"error_count"`
-	WarningCount      int  `yaml:"warning_count" json:"warning_count"`
-	DriftDetected     bool `yaml:"drift_detected" json:"drift_detected"`
-	CoverageIssues    int  `yaml:"coverage_issues" json:"coverage_issues"`
-	SignatureChanges  int  `yaml:"signature_changes" json:"signature_changes"`
-	PassStatus        string `yaml:"pass_status" json:"pass_status"` // pass, warnings, fail
+	FilesChecked     int    `yaml:"files_checked" json:"files_checked"`
+	EntitiesAffected int    `yaml:"entities_affected" json:"entities_affected"`
+	ErrorCount       int    `yaml:"error_count" json:"error_count"`
+	WarningCount     int    `yaml:"warning_count" json:"warning_count"`
+	DriftDetected    bool   `yaml:"drift_detected" json:"drift_detected"`
+	CoverageIssues   int    `yaml:"coverage_issues" json:"coverage_issues"`
+	SignatureChanges int    `yaml:"signature_changes" json:"signature_changes"`
+	PassStatus       string `yaml:"pass_status" json:"pass_status"` // pass, warnings, fail
 }
 
 // GuardIssue represents a single error or warning
 type GuardIssue struct {
-	Type        string `yaml:"type" json:"type"`               // coverage_regression, untested_code, signature_change, drift
-	Entity      string `yaml:"entity" json:"entity"`
-	File        string `yaml:"file" json:"file"`
-	Message     string `yaml:"message" json:"message"`
-	Suggestion  string `yaml:"suggestion,omitempty" json:"suggestion,omitempty"`
+	Type       string `yaml:"type" json:"type"` // coverage_regression, untested_code, signature_change, drift
+	Entity     string `yaml:"entity" json:"entity"`
+	File       string `yaml:"file" json:"file"`
+	Message    string `yaml:"message" json:"message"`
+	Suggestion string `yaml:"suggestion,omitempty" json:"suggestion,omitempty"`
 }
 
 // guardEntity holds entity info during guard analysis
 type guardEntity struct {
-	entity        *store.Entity
-	metrics       *store.Metrics
-	coverage      *coverage.EntityCoverage
-	drifted       bool
-	driftType     string
-	isNew         bool
-	sigChanged    bool
-	callerCount   int
+	entity      *store.Entity
+	metrics     *store.Metrics
+	coverage    *coverage.EntityCoverage
+	drifted     bool
+	driftType   string
+	isNew       bool
+	sigChanged  bool
+	callerCount int
 }
 
 func runGuard(cmd *cobra.Command, args []string) error {

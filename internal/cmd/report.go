@@ -1042,4 +1042,3 @@ func generatePlaygroundHTML(jsonData string, svgMap map[string]string) string {
 </body>
 </html>`, svgContainers, jsonData)
 }
-

@@ -341,16 +341,16 @@ func (s *Store) DoltLogStats(commitHash string) (*DoltLogStatsResult, error) {
 
 // EntityHistoryEntry represents a single historical state of an entity.
 type EntityHistoryEntry struct {
-	CommitHash  string  // Dolt commit hash
-	CommitDate  string  // When the commit was made
-	Committer   string  // Who made the commit
-	FilePath    string  // File path at this commit
-	LineStart   int     // Line start at this commit
-	LineEnd     *int    // Line end at this commit
-	Signature   *string // Signature at this commit
-	SigHash     *string // Signature hash at this commit
-	BodyHash    *string // Body hash at this commit
-	ChangeType  string  // "added", "modified", "unchanged" (vs previous)
+	CommitHash string  // Dolt commit hash
+	CommitDate string  // When the commit was made
+	Committer  string  // Who made the commit
+	FilePath   string  // File path at this commit
+	LineStart  int     // Line start at this commit
+	LineEnd    *int    // Line end at this commit
+	Signature  *string // Signature at this commit
+	SigHash    *string // Signature hash at this commit
+	BodyHash   *string // Body hash at this commit
+	ChangeType string  // "added", "modified", "unchanged" (vs previous)
 }
 
 // EntityHistoryOptions specifies options for entity history queries.

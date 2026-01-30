@@ -72,13 +72,13 @@ func TestGetCoverageColor(t *testing.T) {
 		coverage   float64
 		wantStroke string
 	}{
-		{95, "#4caf50"},  // high
-		{80, "#4caf50"},  // high
-		{79, "#fbc02d"},  // medium
-		{50, "#fbc02d"},  // medium
-		{49, "#f44336"},  // low
-		{1, "#f44336"},   // low
-		{0, "#9e9e9e"},   // none
+		{95, "#4caf50"}, // high
+		{80, "#4caf50"}, // high
+		{79, "#fbc02d"}, // medium
+		{50, "#fbc02d"}, // medium
+		{49, "#f44336"}, // low
+		{1, "#f44336"},  // low
+		{0, "#9e9e9e"},  // none
 	}
 
 	for _, tt := range tests {

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/anthropics/cx/internal/parser"
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 func parsePHPCode(t *testing.T, code string) *parser.ParseResult {

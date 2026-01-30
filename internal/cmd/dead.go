@@ -74,9 +74,9 @@ func init() {
 
 // deadCodeItem represents a dead code entity
 type deadCodeItem struct {
-	entity   *store.Entity
-	metrics  *store.Metrics
-	reason   string
+	entity  *store.Entity
+	metrics *store.Metrics
+	reason  string
 }
 
 func runDead(cmd *cobra.Command, args []string) error {

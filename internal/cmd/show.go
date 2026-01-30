@@ -100,8 +100,8 @@ var (
 	showCoverage       bool
 	showRelated        bool
 	showGraph          bool
-	showHistory        bool   // Show commit history for the entity
-	showHistoryLimit   int    // Number of history entries to show
+	showHistory        bool // Show commit history for the entity
+	showHistoryLimit   int  // Number of history entries to show
 	showDepth          int
 	showHops           int
 	showDirection      string

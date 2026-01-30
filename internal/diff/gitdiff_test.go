@@ -16,8 +16,8 @@ func TestParseNameStatus(t *testing.T) {
 		expected []FileChange
 	}{
 		{
-			name:  "empty input",
-			input: "",
+			name:     "empty input",
+			input:    "",
 			expected: nil,
 		},
 		{
@@ -60,8 +60,8 @@ D	src/old.go`,
 			},
 		},
 		{
-			name:  "non-source file filtered out",
-			input: "M\tREADME.md",
+			name:     "non-source file filtered out",
+			input:    "M\tREADME.md",
 			expected: nil,
 		},
 		{

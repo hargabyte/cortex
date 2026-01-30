@@ -5,8 +5,8 @@ package extract
 import (
 	"strings"
 
-	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/anthropics/cx/internal/parser"
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 // JavaCallGraphExtractor extracts dependencies from Java AST
