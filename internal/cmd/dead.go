@@ -21,13 +21,12 @@ Dead code is defined as private/unexported symbols with zero callers in the
 dependency graph. This command is designed to be safe for AI agents - only
 reporting code that can be definitively identified as dead.
 
-Algorithm:
-  Dead Code = Private/Unexported + Zero In-Degree
+Confidence Tiers:
+  Tier 1 (definite):   Private/unexported + zero callers. Safe to delete.
+  Tier 2 (probable):   Exported + zero internal callers. May be used externally.
+  Tier 3 (suspicious): All callers are themselves dead/suspicious. Dead in practice.
 
-This conservative approach means:
-  - Only private/unexported symbols are considered by default
-  - Must have zero callers (in_degree = 0)
-  - No heuristics or confidence levels
+Default: --tier 1 (only definite dead code). Use --tier 2 or --tier 3 for more.
 
 Output Structure:
   dead_code:
@@ -42,8 +41,11 @@ Filtering Modes:
   --type F           Filter by entity type (F=function, T=type, M=method, C=constant)
 
 Examples:
-  cx dead                        # Find dead private code
-  cx dead --include-exports      # Include unused exports
+  cx dead                        # Find dead private code (tier 1)
+  cx dead --tier 2               # Include unused exports (probable)
+  cx dead --tier 3               # Include suspicious (all callers dead)
+  cx dead --chains               # Group dead chains together
+  cx dead --include-exports      # Include unused exports (legacy, same as --tier 2)
   cx dead --by-file              # Group by file
   cx dead --type F               # Only functions
   cx dead --format json          # JSON output
@@ -61,6 +63,8 @@ var (
 	deadByFile         bool
 	deadCreateTask     bool
 	deadTypeFilter     string
+	deadTier           int  // 1=definite, 2=probable, 3=suspicious
+	deadChains         bool // group dead chains together
 )
 
 func init() {
@@ -70,13 +74,18 @@ func init() {
 	deadCmd.Flags().BoolVar(&deadByFile, "by-file", false, "Group results by file path")
 	deadCmd.Flags().BoolVar(&deadCreateTask, "create-task", false, "Print bd create commands for cleanup")
 	deadCmd.Flags().StringVar(&deadTypeFilter, "type", "", "Filter by entity type (F=function, T=type, M=method, C=constant)")
+	deadCmd.Flags().IntVar(&deadTier, "tier", 1, "Confidence tier: 1=definite, 2=+probable, 3=+suspicious")
+	deadCmd.Flags().BoolVar(&deadChains, "chains", false, "Group dead chains together")
 }
 
 // deadCodeItem represents a dead code entity
 type deadCodeItem struct {
-	entity  *store.Entity
-	metrics *store.Metrics
-	reason  string
+	entity     *store.Entity
+	metrics    *store.Metrics
+	reason     string
+	confidence string // "definite", "probable", "suspicious"
+	tier       int    // 1, 2, or 3
+	chainID    int    // chain group ID (0 = no chain)
 }
 
 func runDead(cmd *cobra.Command, args []string) error {
@@ -113,60 +122,159 @@ func runDead(cmd *cobra.Command, args []string) error {
 	// Normalize type filter
 	typeFilter := normalizeDeadTypeFilter(deadTypeFilter)
 
-	// Build list of dead code
+	// Validate tier
+	if deadTier < 1 || deadTier > 3 {
+		return fmt.Errorf("invalid --tier %d: must be 1, 2, or 3", deadTier)
+	}
+
+	// Build metrics map and entity map for graph analysis
+	entityMap := make(map[string]*store.Entity)
+	metricsMap := make(map[string]*store.Metrics)
+	for _, e := range entities {
+		entityMap[e.ID] = e
+		if m, err := storeDB.GetMetrics(e.ID); err == nil && m != nil {
+			metricsMap[e.ID] = m
+		}
+	}
+
+	// Build list of dead code across all tiers
 	var deadItems []deadCodeItem
 
+	// Track dead/suspicious entity IDs for tier 3 analysis
+	deadIDs := make(map[string]bool)
+
+	// --- Tier 1: Definite — private, zero callers ---
 	for _, e := range entities {
-		// Skip imports - they're not code
-		if e.EntityType == "import" {
+		if e.EntityType == "import" || isKnownEntryPoint(e) {
 			continue
 		}
-
-		// Skip known false positives
-		if isKnownEntryPoint(e) {
-			continue
-		}
-
-		// Apply type filter if specified
 		if typeFilter != "" && !matchesDeadTypeFilter(e.EntityType, typeFilter) {
 			continue
 		}
 
-		// Check visibility
 		isPrivate := e.Visibility == "private" || e.Visibility == "priv"
-		isPublic := e.Visibility == "public" || e.Visibility == "pub"
-
-		// By default, only include private symbols
-		// With --include-exports, also include public symbols
-		if !isPrivate && !deadIncludeExports {
+		if !isPrivate {
 			continue
 		}
 
-		// Get metrics
-		m, err := storeDB.GetMetrics(e.ID)
-		if err != nil || m == nil {
+		m := metricsMap[e.ID]
+		if m == nil || m.InDegree > 0 {
 			continue
-		}
-
-		// Dead code = zero in-degree (no callers)
-		if m.InDegree > 0 {
-			continue
-		}
-
-		// Build reason based on visibility
-		var reason string
-		if isPrivate {
-			reason = "Private symbol with no callers"
-		} else if isPublic {
-			reason = "Unused export (may be used externally)"
 		}
 
 		deadItems = append(deadItems, deadCodeItem{
-			entity:  e,
-			metrics: m,
-			reason:  reason,
+			entity:     e,
+			metrics:    m,
+			reason:     "Private, zero callers",
+			confidence: "definite",
+			tier:       1,
 		})
+		deadIDs[e.ID] = true
 	}
+
+	// --- Tier 2: Probable — exported, zero internal callers ---
+	if deadTier >= 2 || deadIncludeExports {
+		for _, e := range entities {
+			if e.EntityType == "import" || isKnownEntryPoint(e) {
+				continue
+			}
+			if typeFilter != "" && !matchesDeadTypeFilter(e.EntityType, typeFilter) {
+				continue
+			}
+			if deadIDs[e.ID] {
+				continue
+			}
+
+			isPublic := e.Visibility == "public" || e.Visibility == "pub"
+			if !isPublic {
+				continue
+			}
+
+			m := metricsMap[e.ID]
+			if m == nil || m.InDegree > 0 {
+				continue
+			}
+
+			deadItems = append(deadItems, deadCodeItem{
+				entity:     e,
+				metrics:    m,
+				reason:     "Exported, zero internal callers",
+				confidence: "probable",
+				tier:       2,
+			})
+			deadIDs[e.ID] = true
+		}
+	}
+
+	// --- Tier 3: Suspicious — only called by dead/suspicious code ---
+	if deadTier >= 3 {
+		// Fixpoint iteration: mark entities whose ALL callers are dead/suspicious
+		changed := true
+		for changed {
+			changed = false
+			for _, e := range entities {
+				if e.EntityType == "import" || isKnownEntryPoint(e) {
+					continue
+				}
+				if deadIDs[e.ID] {
+					continue
+				}
+				if typeFilter != "" && !matchesDeadTypeFilter(e.EntityType, typeFilter) {
+					continue
+				}
+
+				m := metricsMap[e.ID]
+				if m == nil || m.InDegree == 0 {
+					continue // already caught by tier 1/2
+				}
+
+				// Check if ALL callers are dead/suspicious
+				deps, err := storeDB.GetDependencies(store.DependencyFilter{ToID: e.ID})
+				if err != nil || len(deps) == 0 {
+					continue
+				}
+
+				allCallersDead := true
+				for _, d := range deps {
+					if !deadIDs[d.FromID] {
+						allCallersDead = false
+						break
+					}
+				}
+
+				if allCallersDead {
+					deadItems = append(deadItems, deadCodeItem{
+						entity:     e,
+						metrics:    m,
+						reason:     "All callers are dead/suspicious",
+						confidence: "suspicious",
+						tier:       3,
+					})
+					deadIDs[e.ID] = true
+					changed = true
+				}
+			}
+		}
+	}
+
+	// --- Dead Chain Detection ---
+	if deadChains {
+		assignDeadChains(deadItems, deadIDs, storeDB)
+	}
+
+	// Filter items by effective tier
+	// --include-exports implies at least tier 2
+	effectiveTier := deadTier
+	if deadIncludeExports && effectiveTier < 2 {
+		effectiveTier = 2
+	}
+	var filtered []deadCodeItem
+	for _, item := range deadItems {
+		if item.tier <= effectiveTier {
+			filtered = append(filtered, item)
+		}
+	}
+	deadItems = filtered
 
 	if len(deadItems) == 0 {
 		fmt.Fprintf(os.Stderr, "No dead code found! All symbols have callers or are exports.\n")
@@ -308,6 +416,69 @@ func isCommonLocalVarName(name string) bool {
 	return commonNames[name]
 }
 
+// assignDeadChains groups dead items into chains based on call relationships.
+// A chain is a connected subgraph of dead entities linked by dependencies.
+func assignDeadChains(items []deadCodeItem, deadIDs map[string]bool, storeDB *store.Store) {
+	// Build adjacency among dead entities
+	idToIdx := make(map[string]int)
+	for i, item := range items {
+		idToIdx[item.entity.ID] = i
+	}
+
+	// Union-Find for connected components
+	parent := make([]int, len(items))
+	for i := range parent {
+		parent[i] = i
+	}
+	var find func(int) int
+	find = func(x int) int {
+		if parent[x] != x {
+			parent[x] = find(parent[x])
+		}
+		return parent[x]
+	}
+	union := func(a, b int) {
+		ra, rb := find(a), find(b)
+		if ra != rb {
+			parent[ra] = rb
+		}
+	}
+
+	// Connect dead entities that have call relationships
+	for _, item := range items {
+		deps, err := storeDB.GetDependencies(store.DependencyFilter{FromID: item.entity.ID})
+		if err != nil {
+			continue
+		}
+		for _, d := range deps {
+			if j, ok := idToIdx[d.ToID]; ok {
+				union(idToIdx[item.entity.ID], j)
+			}
+		}
+	}
+
+	// Assign chain IDs (only for groups of size > 1)
+	rootToChain := make(map[int]int)
+	rootMembers := make(map[int]int)
+	for i := range items {
+		r := find(i)
+		rootMembers[r]++
+	}
+
+	chainID := 1
+	for i := range items {
+		r := find(i)
+		if rootMembers[r] <= 1 {
+			continue // solo items don't get a chain ID
+		}
+		if _, ok := rootToChain[r]; !ok {
+			rootToChain[r] = chainID
+			chainID++
+		}
+		items[i].chainID = rootToChain[r]
+	}
+}
+
 // buildDeadOutput constructs the output data structure
 func buildDeadOutput(items []deadCodeItem, byFile bool) map[string]interface{} {
 	// Count by type
@@ -380,6 +551,10 @@ func buildDeadItemData(item deadCodeItem) map[string]interface{} {
 		"in_degree":  item.metrics.InDegree,
 		"out_degree": item.metrics.OutDegree,
 		"reason":     item.reason,
+		"confidence": item.confidence,
+	}
+	if item.chainID > 0 {
+		data["chain"] = item.chainID
 	}
 	return data
 }
