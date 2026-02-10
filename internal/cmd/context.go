@@ -161,7 +161,7 @@ func init() {
 	contextCmd.Flags().StringSliceVar(&contextInclude, "include", nil, "What to expand (deps,callers,types)")
 	contextCmd.Flags().StringSliceVar(&contextExclude, "exclude", nil, "What to skip (tests,mocks)")
 	contextCmd.Flags().StringVar(&contextForTask, "for-task", "", "Bead/task ID to get context for (requires beads integration)")
-	contextCmd.Flags().StringVar(&contextFor, "for", "", "File path, entity ID, or directory for targeted context (pure graph traversal)")
+	contextCmd.Flags().StringVar(&contextFor, "for", "", "File path, entity ID (sa-...), or directory for targeted context (pure graph, no search)")
 
 	// Smart context flags
 	contextCmd.Flags().StringVar(&contextSmart, "smart", "", "Natural language task description for intent-aware context assembly")
