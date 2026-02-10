@@ -27,6 +27,7 @@ var contextCmd = &cobra.Command{
 Modes:
   cx context                      Session recovery (workflow context)
   cx context --smart "<task>"     Intent-aware context assembly
+  cx context --for <path>         File-targeted context (pure graph, no search)
   cx context --diff               Context for uncommitted changes
   cx context --staged             Context for staged changes only
   cx context <target>             Entity/file/bead context
@@ -119,6 +120,10 @@ Examples:
   cx context --smart "add rate limiting to API"    # Smart context assembly
   cx context --smart "task" --with-coverage        # Include coverage data
   cx context <entity> --with-coverage              # Entity context with coverage
+  cx context --for src/parser/walk.go              # Full neighborhood for file
+  cx context --for sa-fn-abc123                    # Full neighborhood for entity
+  cx context --for src/parser/ --budget 4000       # Context for directory
+  cx context --for 'src/parser/*.go'               # Glob pattern matching
   cx context --diff                                # Context for uncommitted changes
   cx context --staged                              # Context for staged changes only
   cx context --commit-range HEAD~5                 # Context for recent commits`,
@@ -134,6 +139,7 @@ var (
 	contextInclude      []string
 	contextExclude      []string
 	contextForTask      string
+	contextFor          string // --for <file|entity|dir>: file-targeted context (pure graph)
 	contextSmart        string
 	contextDepth        int
 	contextWithCoverage bool
@@ -155,6 +161,7 @@ func init() {
 	contextCmd.Flags().StringSliceVar(&contextInclude, "include", nil, "What to expand (deps,callers,types)")
 	contextCmd.Flags().StringSliceVar(&contextExclude, "exclude", nil, "What to skip (tests,mocks)")
 	contextCmd.Flags().StringVar(&contextForTask, "for-task", "", "Bead/task ID to get context for (requires beads integration)")
+	contextCmd.Flags().StringVar(&contextFor, "for", "", "File path, entity ID, or directory for targeted context (pure graph traversal)")
 
 	// Smart context flags
 	contextCmd.Flags().StringVar(&contextSmart, "smart", "", "Natural language task description for intent-aware context assembly")
@@ -188,6 +195,11 @@ type contextEntry struct {
 }
 
 func runContext(cmd *cobra.Command, args []string) error {
+	// Handle --for mode (file-targeted context, pure graph traversal)
+	if contextFor != "" {
+		return runForContext(cmd, contextFor)
+	}
+
 	// Handle --smart mode (intent-aware context assembly)
 	if contextSmart != "" {
 		return runSmartContext(cmd, contextSmart)
@@ -714,6 +726,351 @@ func filterEntries(entries []*contextEntry, pred func(*contextEntry) bool) []*co
 		}
 	}
 	return result
+}
+
+// runForContext handles the --for flag for file-targeted context gathering.
+// Pure graph traversal — no semantic/embedding search. Returns full neighborhood:
+// entities in target, direct callers, direct callees, related tests, sibling files, coverage.
+func runForContext(cmd *cobra.Command, target string) error {
+	format, err := output.ParseFormat(outputFormat)
+	if err != nil {
+		return fmt.Errorf("invalid format: %w", err)
+	}
+
+	density, err := output.ParseDensity(outputDensity)
+	if err != nil {
+		return fmt.Errorf("invalid density: %w", err)
+	}
+
+	cxDir, err := config.FindConfigDir(".")
+	if err != nil {
+		return fmt.Errorf("cx not initialized: run 'cx scan' first")
+	}
+
+	storeDB, err := store.Open(cxDir)
+	if err != nil {
+		return fmt.Errorf("failed to open store: %w", err)
+	}
+	defer storeDB.Close()
+
+	g, err := graph.BuildFromStore(storeDB)
+	if err != nil {
+		return fmt.Errorf("failed to build graph: %w", err)
+	}
+
+	// Resolve target entities based on type: file path, directory, entity ID, or glob
+	rootEntities, err := resolveForTarget(storeDB, target)
+	if err != nil {
+		return err
+	}
+	if len(rootEntities) == 0 {
+		return fmt.Errorf("no entities found for target: %s", target)
+	}
+
+	// Collect root entity IDs
+	rootIDs := make(map[string]bool, len(rootEntities))
+	for _, e := range rootEntities {
+		rootIDs[e.ID] = true
+	}
+
+	// Priority buckets for neighborhood expansion
+	type bucketEntry struct {
+		entity   *store.Entity
+		reason   string
+		priority int // 1=root, 2=callers, 3=callees, 4=tests, 5=siblings
+	}
+
+	var entries []bucketEntry
+
+	// Priority 1: entities in the target
+	for _, e := range rootEntities {
+		entries = append(entries, bucketEntry{entity: e, reason: "Target entity", priority: 1})
+	}
+
+	seen := make(map[string]bool)
+	for _, e := range rootEntities {
+		seen[e.ID] = true
+	}
+
+	// Priority 2: direct callers (predecessors — what calls into these entities)
+	for _, e := range rootEntities {
+		for _, callerID := range g.Predecessors(e.ID) {
+			if seen[callerID] {
+				continue
+			}
+			seen[callerID] = true
+			caller, err := storeDB.GetEntity(callerID)
+			if err != nil || caller == nil || caller.Status != "active" {
+				continue
+			}
+			entries = append(entries, bucketEntry{entity: caller, reason: fmt.Sprintf("Calls %s", e.Name), priority: 2})
+		}
+	}
+
+	// Priority 3: direct callees (successors — what these entities call)
+	for _, e := range rootEntities {
+		for _, calleeID := range g.Successors(e.ID) {
+			if seen[calleeID] {
+				continue
+			}
+			seen[calleeID] = true
+			callee, err := storeDB.GetEntity(calleeID)
+			if err != nil || callee == nil || callee.Status != "active" {
+				continue
+			}
+			entries = append(entries, bucketEntry{entity: callee, reason: fmt.Sprintf("Called by %s", e.Name), priority: 3})
+		}
+	}
+
+	// Priority 4: related tests — find test entities in the same or _test file
+	for _, e := range rootEntities {
+		testEntities := findRelatedTests(storeDB, e)
+		for _, te := range testEntities {
+			if seen[te.ID] {
+				continue
+			}
+			seen[te.ID] = true
+			entries = append(entries, bucketEntry{entity: te, reason: fmt.Sprintf("Tests %s", e.Name), priority: 4})
+		}
+	}
+
+	// Priority 5: sibling context — other entities in same package/directory sharing types
+	siblingFiles := make(map[string]bool)
+	for _, e := range rootEntities {
+		dir := filepath.Dir(e.FilePath)
+		siblingFiles[dir] = true
+	}
+	for dir := range siblingFiles {
+		siblings, err := storeDB.QueryEntities(store.EntityFilter{
+			FilePath: dir + "/",
+			Status:   "active",
+		})
+		if err != nil {
+			continue
+		}
+		for _, sib := range siblings {
+			if seen[sib.ID] {
+				continue
+			}
+			seen[sib.ID] = true
+			entries = append(entries, bucketEntry{entity: sib, reason: "Sibling in same package", priority: 5})
+		}
+	}
+
+	// Apply token budget with priority ordering
+	tokensUsed := 0
+	var kept []bucketEntry
+	var warnings []string
+
+	// Sort by priority
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].priority != entries[j].priority {
+			return entries[i].priority < entries[j].priority
+		}
+		return entries[i].entity.Name < entries[j].entity.Name
+	})
+
+	dropped := 0
+	for _, be := range entries {
+		tokens := estimateTokensForEntity(be.entity, density)
+		if tokensUsed+tokens > contextMaxTokens && be.priority > 1 {
+			dropped++
+			continue
+		}
+		tokensUsed += tokens
+		kept = append(kept, be)
+	}
+	if dropped > 0 {
+		warnings = append(warnings, fmt.Sprintf("Dropped %d entries to fit budget (%d tokens)", dropped, contextMaxTokens))
+	}
+
+	// Build output
+	contextOut := &output.ContextOutput{
+		Context: &output.ContextMetadata{
+			Target:     target,
+			Budget:     contextMaxTokens,
+			TokensUsed: tokensUsed,
+		},
+		EntryPoints: make(map[string]*output.EntryPoint),
+		Relevant:    make(map[string]*output.RelevantEntity),
+		Excluded:    make(map[string]string),
+	}
+
+	for _, be := range kept {
+		location := formatStoreLocation(be.entity)
+		entType := mapStoreEntityTypeToString(be.entity.EntityType)
+
+		if be.priority == 1 {
+			contextOut.EntryPoints[be.entity.Name] = &output.EntryPoint{
+				Type:     entType,
+				Location: location,
+			}
+		}
+
+		relevance := "medium"
+		if be.priority <= 2 {
+			relevance = "high"
+		} else if be.priority >= 5 {
+			relevance = "low"
+		}
+
+		relEntity := &output.RelevantEntity{
+			Type:      entType,
+			Location:  location,
+			Relevance: relevance,
+			Reason:    be.reason,
+		}
+
+		if contextWithCoverage {
+			m, _ := storeDB.GetMetrics(be.entity.ID)
+			pr := 0.0
+			if m != nil {
+				pr = m.PageRank
+			}
+			addCoverageToRelevantEntity(relEntity, be.entity.ID, pr, storeDB)
+		}
+
+		contextOut.Relevant[be.entity.Name] = relEntity
+	}
+
+	for _, w := range warnings {
+		contextOut.Excluded["[budget-pruned]"] = w
+	}
+
+	formatter, err := output.GetFormatter(format)
+	if err != nil {
+		return fmt.Errorf("failed to get formatter: %w", err)
+	}
+
+	return formatter.FormatToWriter(cmd.OutOrStdout(), contextOut, density)
+}
+
+// resolveForTarget resolves a --for target to a list of entities.
+// Accepts file paths, directory paths (with trailing /), entity IDs, and globs.
+func resolveForTarget(storeDB *store.Store, target string) ([]*store.Entity, error) {
+	// Check if it's an entity ID
+	if strings.HasPrefix(target, "sa-") {
+		e, err := storeDB.GetEntity(target)
+		if err != nil {
+			return nil, fmt.Errorf("entity not found: %s", target)
+		}
+		return []*store.Entity{e}, nil
+	}
+
+	// Check if it's a directory (ends with / or is a directory)
+	isDir := strings.HasSuffix(target, "/")
+	if !isDir {
+		info, err := os.Stat(target)
+		if err == nil && info.IsDir() {
+			isDir = true
+			target = target + "/"
+		}
+	}
+
+	// Check for glob pattern
+	if strings.ContainsAny(target, "*?[") {
+		return resolveGlobTarget(storeDB, target)
+	}
+
+	// File or directory path query
+	entities, err := storeDB.QueryEntities(store.EntityFilter{
+		FilePath: target,
+		Status:   "active",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query entities: %w", err)
+	}
+
+	// If no entities found with prefix match, try suffix match
+	if len(entities) == 0 && !isDir {
+		entities, err = storeDB.QueryEntities(store.EntityFilter{
+			FilePathSuffix: target,
+			Status:         "active",
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to query entities: %w", err)
+		}
+	}
+
+	return entities, nil
+}
+
+// resolveGlobTarget resolves glob patterns to entities.
+func resolveGlobTarget(storeDB *store.Store, pattern string) ([]*store.Entity, error) {
+	// Get all file entries and match against glob
+	files, err := storeDB.GetAllFileEntries()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file entries: %w", err)
+	}
+
+	var allEntities []*store.Entity
+	for _, f := range files {
+		matched, _ := filepath.Match(pattern, f.FilePath)
+		if !matched {
+			continue
+		}
+		entities, err := storeDB.QueryEntities(store.EntityFilter{
+			FilePath: f.FilePath,
+			Status:   "active",
+		})
+		if err != nil {
+			continue
+		}
+		allEntities = append(allEntities, entities...)
+	}
+	return allEntities, nil
+}
+
+// findRelatedTests finds test entities related to a given entity.
+func findRelatedTests(storeDB *store.Store, e *store.Entity) []*store.Entity {
+	// Look for _test file in same directory
+	dir := filepath.Dir(e.FilePath)
+	base := filepath.Base(e.FilePath)
+	ext := filepath.Ext(base)
+	nameNoExt := strings.TrimSuffix(base, ext)
+
+	testFile := filepath.Join(dir, nameNoExt+"_test"+ext)
+
+	testEntities, err := storeDB.QueryEntities(store.EntityFilter{
+		FilePath: testFile,
+		Status:   "active",
+	})
+	if err != nil || len(testEntities) == 0 {
+		// Try broader: any _test file in same directory
+		allInDir, err := storeDB.QueryEntities(store.EntityFilter{
+			FilePath: dir + "/",
+			Status:   "active",
+		})
+		if err != nil {
+			return nil
+		}
+		var tests []*store.Entity
+		for _, ent := range allInDir {
+			if strings.Contains(ent.FilePath, "_test") &&
+				strings.Contains(strings.ToLower(ent.Name), strings.ToLower(e.Name)) {
+				tests = append(tests, ent)
+			}
+		}
+		return tests
+	}
+
+	return testEntities
+}
+
+// estimateTokensForEntity estimates tokens for a single entity at given density.
+func estimateTokensForEntity(e *store.Entity, density output.Density) int {
+	base := 10
+	nameTokens := len(strings.Fields(e.Name)) + 2
+	switch density {
+	case output.DensitySparse:
+		return base + nameTokens + 5
+	case output.DensityDense:
+		sigTokens := len(strings.Fields(e.Signature))
+		return base + nameTokens + sigTokens + 35
+	default: // medium, smart
+		sigTokens := len(strings.Fields(e.Signature)) + 5
+		return base + nameTokens + sigTokens + 10
+	}
 }
 
 // runSmartContext handles the --smart flag for intent-aware context assembly.
