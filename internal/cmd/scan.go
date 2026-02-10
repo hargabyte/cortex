@@ -50,6 +50,7 @@ Auto-excludes dependency directories (disable with --no-auto-exclude):
 Examples:
   cx scan                    # Scan current directory (auto-init if needed)
   cx scan ./src              # Scan specific directory
+  cx scan --incremental      # Skip unchanged files (fast inner loop)
   cx scan --force            # Force full rescan
   cx scan --overview         # Scan + show project overview
   cx scan --lang go          # Scan only Go files
@@ -68,6 +69,7 @@ var (
 	scanExclude       []string
 	scanDryRun        bool
 	scanForce         bool
+	scanIncremental   bool
 	scanOverview      bool
 	scanNoAutoExclude bool
 	scanDiff          bool
@@ -82,7 +84,8 @@ func init() {
 	scanCmd.Flags().StringVar(&scanLang, "lang", "", "Language (default: auto-detect from extensions)")
 	scanCmd.Flags().StringSliceVar(&scanExclude, "exclude", nil, "Exclude patterns (comma-separated globs)")
 	scanCmd.Flags().BoolVar(&scanDryRun, "dry-run", false, "Show what would be created")
-	scanCmd.Flags().BoolVar(&scanForce, "force", false, "Rescan even if file unchanged")
+	scanCmd.Flags().BoolVar(&scanForce, "force", false, "Rescan all files, even when --incremental is enabled")
+	scanCmd.Flags().BoolVar(&scanIncremental, "incremental", false, "Skip unchanged files using the file index")
 	scanCmd.Flags().BoolVar(&scanOverview, "overview", false, "Show project overview after scan (replaces quickstart)")
 	scanCmd.Flags().BoolVar(&scanNoAutoExclude, "no-auto-exclude", false, "Disable automatic exclusion of dependency directories")
 	scanCmd.Flags().BoolVar(&scanDiff, "diff", false, "Show what changed since previous scan")
@@ -679,7 +682,7 @@ func scanFilePass1(path, basePath string, p *parser.Parser, storeDB *store.Store
 	fileHash := extract.ComputeFileHash(content)
 	relPath := getRelativePath(path, basePath)
 
-	if storeDB != nil && !scanForce {
+	if storeDB != nil && scanIncremental && !scanForce {
 		changed, err := storeDB.IsFileChanged(relPath, fileHash)
 		if err == nil && !changed {
 			stats.skipped++
