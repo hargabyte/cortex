@@ -17,6 +17,10 @@ jobs:
             goos: linux
             goarch: amd64
             artifact: cx-linux-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            artifact: cx-linux-arm64
           - os: windows-latest
             goos: windows
             goarch: amd64
@@ -25,6 +29,10 @@ jobs:
             goos: darwin
             goarch: amd64
             artifact: cx-darwin-amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            artifact: cx-darwin-arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -41,7 +49,7 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 1
+          CGO_ENABLED: 0
         shell: bash
         run: |
           VERSION=${GITHUB_REF_NAME}
@@ -68,6 +76,8 @@ jobs:
         with:
           files: |
             artifacts/cx-linux-amd64/cx-linux-amd64
+            artifacts/cx-linux-arm64/cx-linux-arm64
             artifacts/cx-windows-amd64.exe/cx-windows-amd64.exe
             artifacts/cx-darwin-amd64/cx-darwin-amd64
+            artifacts/cx-darwin-arm64/cx-darwin-arm64
           generate_release_notes: true

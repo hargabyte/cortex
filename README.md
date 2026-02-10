@@ -18,7 +18,10 @@ Every AI coding assistant faces the same challenge: **context windows are finite
 |----------|---------------|-------------|
 | "What's important here?" | Read 20+ files, guess | `cx find --keystones` |
 | "What code relates to this task?" | Grep, explore, hope | `cx context --smart "task"` |
-| "What breaks if I change this?" | No idea | `cx safe <file>` |
+| "What's the full context for this file?" | Read it + guess deps | `cx context --for <file>` |
+| "What breaks if I change this?" | No idea | `cx impact <file>` |
+| "Is this safe to edit?" | Hope for the best | `cx safe <file>` |
+| "What's dead code?" | Manual audit | `cx dead --tier 3 --chains` |
 | "What calls this function?" | Grep for the name | `cx show <entity> --related` |
 | "Where should I start?" | Ask you, or guess | `cx map` |
 
@@ -82,6 +85,36 @@ cx safe src/api/handler.go
 ```
 
 Before I modify any file, I check the blast radius: impact radius, risk level, keystone involvement, and graph drift.
+
+### Targeted Context: `cx context --for`
+
+```bash
+cx context --for src/auth/handler.go              # Full neighborhood for a file
+cx context --for src/auth/ --budget 4000           # All entities in a directory
+cx context --for 'src/auth/*.go'                   # Glob pattern
+cx context --for sa-fn-abc123                      # Specific entity by ID
+```
+
+Skip semantic search entirely. Pure graph traversal returns callers, callees, tests, and siblings — ideal when you already know which file you're editing.
+
+### Blast Radius: `cx impact`
+
+```bash
+cx impact src/auth/handler.go                     # What breaks if I change this?
+cx impact --depth 3 src/core/db.go                # Deeper traversal
+```
+
+Forward BFS through the dependency graph. Shows direct/transitive dependents, affected tests, risk level, and a suggested test command.
+
+### Dead Code: `cx dead`
+
+```bash
+cx dead                                           # Conservative: private + zero callers
+cx dead --tier 2                                  # Include unused exports
+cx dead --tier 3 --chains                         # Full analysis with chain grouping
+```
+
+Three confidence tiers (definite → probable → suspicious) with dead chain detection for atomic cleanup of connected dead subgraphs.
 
 ### Understanding Code: `cx show`
 

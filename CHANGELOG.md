@@ -5,6 +5,81 @@ All notable changes to Cortex (cx) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-10
+
+### Added - Targeted Context, Blast Radius Analysis, and Dead Code Intelligence
+
+This release adds three new commands for precise codebase analysis, plus improvements to the scan pipeline and release infrastructure.
+
+#### Targeted Context: `cx context --for`
+
+Get the full neighborhood of a file, entity, or directory without semantic search overhead. Pure graph traversal returns callers, callees, related tests, and sibling context — fast and deterministic.
+
+```bash
+cx context --for src/parser/walk.go              # Full neighborhood for file
+cx context --for sa-fn-abc123                    # Context for specific entity
+cx context --for src/parser/ --budget 4000       # Context for directory
+cx context --for 'src/parser/*.go'               # Glob pattern matching
+```
+
+**Priority ordering:** Target entities → direct callers → direct callees → related tests → sibling context. Respects `--budget` for token limiting. Broad targets (directories, globs) are optimized to avoid combinatorial expansion.
+
+#### Blast Radius Analysis: `cx impact`
+
+Answer "if I change this, what breaks?" before making changes. Forward BFS through the dependency graph finds all downstream dependents.
+
+```bash
+cx impact src/parser/walk.go              # What depends on this file?
+cx impact sa-fn-abc123                    # Impact of changing this entity
+cx impact --depth 3 src/parser/walk.go    # Deeper traversal (default: 2)
+```
+
+**Output includes:**
+- Direct and transitive dependents with hop distance
+- Affected test functions
+- Risk assessment (low/medium/high) based on keystone status and coverage
+- Suggested test commands for validation
+
+#### Dead Code Intelligence: `cx dead --tier` and `--chains`
+
+Enhanced dead code detection with three confidence tiers and dead chain grouping.
+
+**Confidence tiers:**
+- **Tier 1 (definite):** Private + zero callers. Safe to delete. *(default)*
+- **Tier 2 (probable):** Exported + zero internal callers. May be used externally.
+- **Tier 3 (suspicious):** All callers are themselves dead/suspicious. Dead in practice.
+
+```bash
+cx dead                        # Tier 1 only (safe, conservative)
+cx dead --tier 2               # Include unused exports
+cx dead --tier 3               # Include suspicious (transitive dead)
+cx dead --tier 3 --chains      # Group connected dead code for atomic cleanup
+cx dead --tier 2 --type F      # Filter to functions only
+```
+
+**Dead chain detection** uses union-find to group connected dead entities, so you can clean up entire dead subgraphs atomically instead of one symbol at a time.
+
+#### Incremental Scanning: `cx scan --incremental`
+
+Skip unchanged files during scan using file content hashing. Dramatically speeds up repeated scans on large codebases.
+
+```bash
+cx scan --incremental          # Skip files that haven't changed
+cx scan --force                # Override: rescan everything
+```
+
+### Changed
+
+- Release workflow now builds for **5 platforms**: Linux (amd64/arm64), macOS (amd64/arm64), Windows (amd64)
+- Release builds use `CGO_ENABLED=0` for reliable cross-compilation
+- `--include-exports` flag on `cx dead` now implies tier 2 (backward compatible)
+
+### Fixed
+
+- `cx context --for` with directory/glob targets no longer hangs on large codebases (was O(N²), now O(N) with capped expansion)
+
+---
+
 ## [0.3.0] - 2026-01-20
 
 ### Added - AI-Powered Reports, Semantic Search, and MCP Server
