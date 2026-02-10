@@ -773,6 +773,10 @@ func runForContext(cmd *cobra.Command, target string) error {
 		rootIDs[e.ID] = true
 	}
 
+	// Detect if this is a broad target (directory/glob with many entities)
+	// For broad targets, skip expensive per-entity expansion and just return roots
+	isBroadTarget := len(rootEntities) > 50
+
 	// Priority buckets for neighborhood expansion
 	type bucketEntry struct {
 		entity   *store.Entity
@@ -792,8 +796,24 @@ func runForContext(cmd *cobra.Command, target string) error {
 		seen[e.ID] = true
 	}
 
+	// For broad targets, limit neighborhood expansion to the most important root entities
+	expandEntities := rootEntities
+	if isBroadTarget {
+		// Only expand neighborhood for top 20 entities by name (functions/methods, not imports/constants)
+		var significant []*store.Entity
+		for _, e := range rootEntities {
+			if e.EntityType == "function" || e.EntityType == "method" || e.EntityType == "type" {
+				significant = append(significant, e)
+			}
+		}
+		if len(significant) > 20 {
+			significant = significant[:20]
+		}
+		expandEntities = significant
+	}
+
 	// Priority 2: direct callers (predecessors — what calls into these entities)
-	for _, e := range rootEntities {
+	for _, e := range expandEntities {
 		for _, callerID := range g.Predecessors(e.ID) {
 			if seen[callerID] {
 				continue
@@ -808,7 +828,7 @@ func runForContext(cmd *cobra.Command, target string) error {
 	}
 
 	// Priority 3: direct callees (successors — what these entities call)
-	for _, e := range rootEntities {
+	for _, e := range expandEntities {
 		for _, calleeID := range g.Successors(e.ID) {
 			if seen[calleeID] {
 				continue
@@ -823,37 +843,43 @@ func runForContext(cmd *cobra.Command, target string) error {
 	}
 
 	// Priority 4: related tests — find test entities in the same or _test file
-	for _, e := range rootEntities {
-		testEntities := findRelatedTests(storeDB, e)
-		for _, te := range testEntities {
-			if seen[te.ID] {
-				continue
+	// Skip for broad targets (tests are likely already in the root set)
+	if !isBroadTarget {
+		for _, e := range expandEntities {
+			testEntities := findRelatedTests(storeDB, e)
+			for _, te := range testEntities {
+				if seen[te.ID] {
+					continue
+				}
+				seen[te.ID] = true
+				entries = append(entries, bucketEntry{entity: te, reason: fmt.Sprintf("Tests %s", e.Name), priority: 4})
 			}
-			seen[te.ID] = true
-			entries = append(entries, bucketEntry{entity: te, reason: fmt.Sprintf("Tests %s", e.Name), priority: 4})
 		}
 	}
 
 	// Priority 5: sibling context — other entities in same package/directory sharing types
-	siblingFiles := make(map[string]bool)
-	for _, e := range rootEntities {
-		dir := filepath.Dir(e.FilePath)
-		siblingFiles[dir] = true
-	}
-	for dir := range siblingFiles {
-		siblings, err := storeDB.QueryEntities(store.EntityFilter{
-			FilePath: dir + "/",
-			Status:   "active",
-		})
-		if err != nil {
-			continue
+	// Skip for broad targets (siblings are already in the root set)
+	if !isBroadTarget {
+		siblingFiles := make(map[string]bool)
+		for _, e := range rootEntities {
+			dir := filepath.Dir(e.FilePath)
+			siblingFiles[dir] = true
 		}
-		for _, sib := range siblings {
-			if seen[sib.ID] {
+		for dir := range siblingFiles {
+			siblings, err := storeDB.QueryEntities(store.EntityFilter{
+				FilePath: dir + "/",
+				Status:   "active",
+			})
+			if err != nil {
 				continue
 			}
-			seen[sib.ID] = true
-			entries = append(entries, bucketEntry{entity: sib, reason: "Sibling in same package", priority: 5})
+			for _, sib := range siblings {
+				if seen[sib.ID] {
+					continue
+				}
+				seen[sib.ID] = true
+				entries = append(entries, bucketEntry{entity: sib, reason: "Sibling in same package", priority: 5})
+			}
 		}
 	}
 
