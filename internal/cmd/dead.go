@@ -360,8 +360,8 @@ func isKnownEntryPoint(e *store.Entity) bool {
 	name := e.Name
 	entityType := strings.ToLower(e.EntityType)
 
-	// init() functions are Go runtime entry points
-	if name == "init" && (entityType == "function" || entityType == "func") {
+	// init() and main() functions are runtime entry points
+	if (name == "init" || name == "main") && (entityType == "function" || entityType == "func") {
 		return true
 	}
 

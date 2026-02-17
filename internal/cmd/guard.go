@@ -31,7 +31,8 @@ Checks performed:
   1. Coverage regression - Did coverage decrease for modified keystones?
   2. New untested code - Are there new entities with 0% coverage?
   3. Breaking changes - Are there signature changes with unchecked callers?
-  4. Graph drift - Is the cx database out of sync with code?
+  4. Dead on arrival - Are there new private entities with zero callers?
+  5. Graph drift - Is the cx database out of sync with code?
 
 Exit codes:
   0 = pass (no errors, warnings allowed if --fail-on-warnings is false)
@@ -61,6 +62,7 @@ var (
 	guardAll            bool
 	guardFailOnWarnings bool
 	guardMinCoverage    float64
+	guardNoDeadCheck    bool
 )
 
 func init() {
@@ -70,6 +72,7 @@ func init() {
 	guardCmd.Flags().BoolVar(&guardAll, "all", false, "Check all modified files (staged + unstaged)")
 	guardCmd.Flags().BoolVar(&guardFailOnWarnings, "fail-on-warnings", false, "Exit with error code on warnings")
 	guardCmd.Flags().Float64Var(&guardMinCoverage, "min-coverage", 50.0, "Minimum coverage threshold for keystones (%)")
+	guardCmd.Flags().BoolVar(&guardNoDeadCheck, "no-dead-check", false, "Skip dead-on-arrival check for new entities")
 }
 
 // GuardOutput represents the guard check results
@@ -90,6 +93,7 @@ type GuardSummary struct {
 	DriftDetected    bool   `yaml:"drift_detected" json:"drift_detected"`
 	CoverageIssues   int    `yaml:"coverage_issues" json:"coverage_issues"`
 	SignatureChanges int    `yaml:"signature_changes" json:"signature_changes"`
+	DeadCodeCount    int    `yaml:"dead_code_count" json:"dead_code_count"`
 	PassStatus       string `yaml:"pass_status" json:"pass_status"` // pass, warnings, fail
 }
 
@@ -302,6 +306,7 @@ func analyzeFiles(files []string, storeDB *store.Store, g *graph.Graph, cfg *con
 	driftCount := 0
 	signatureChanges := 0
 	coverageIssues := 0
+	deadCodeCount := 0
 
 	for _, filePath := range files {
 		absPath := filePath
@@ -426,6 +431,7 @@ func analyzeFiles(files []string, storeDB *store.Store, g *graph.Graph, cfg *con
 						EntityType: string(currentEnt.Kind),
 						FilePath:   filePath,
 						LineStart:  int(currentEnt.StartLine),
+						Visibility: string(currentEnt.Visibility),
 					},
 					isNew: true,
 				}
@@ -463,6 +469,24 @@ func analyzeFiles(files []string, storeDB *store.Store, g *graph.Graph, cfg *con
 				Message:    fmt.Sprintf("New entity %s has no test coverage", ge.entity.Name),
 				Suggestion: "Consider adding tests",
 			})
+
+			// WARNING: Dead on arrival (new private entity with zero callers)
+			if !guardNoDeadCheck && (ge.entity.Visibility == "priv" || ge.entity.Visibility == "private") {
+				// Filter out known entry points (init, main, cobra handlers)
+				if !isKnownEntryPoint(ge.entity) {
+					// Check for callers in the graph
+					if len(g.Predecessors(ge.entity.ID)) == 0 {
+						output.Warnings = append(output.Warnings, GuardIssue{
+							Type:       "dead_on_arrival",
+							Entity:     ge.entity.Name,
+							File:       ge.entity.FilePath,
+							Message:    fmt.Sprintf("New entity %s has no callers - dead on arrival?", ge.entity.Name),
+							Suggestion: "Add a caller or remove the unused code",
+						})
+						deadCodeCount++
+					}
+				}
+			}
 		}
 
 		// WARNING: Signature change with callers
@@ -490,6 +514,7 @@ func analyzeFiles(files []string, storeDB *store.Store, g *graph.Graph, cfg *con
 
 	output.Summary.DriftDetected = driftCount > 0
 	output.Summary.CoverageIssues = coverageIssues
+	output.Summary.DeadCodeCount = deadCodeCount
 	output.Summary.ErrorCount = len(output.Errors)
 	output.Summary.WarningCount = len(output.Warnings)
 
@@ -519,6 +544,9 @@ func analyzeFiles(files []string, storeDB *store.Store, g *graph.Graph, cfg *con
 	}
 	if signatureChanges > 0 {
 		output.Recommendations = append(output.Recommendations, "Review callers of changed signatures")
+	}
+	if deadCodeCount > 0 {
+		output.Recommendations = append(output.Recommendations, "Wire up or remove new entities with no callers")
 	}
 
 	return output
