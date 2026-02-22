@@ -79,8 +79,8 @@ type EnsureDaemonResult struct {
 // EnsureDaemon ensures a daemon is running and returns a connected client.
 // If no daemon is running, it starts one in the background and waits for it to be ready.
 //
-// DISABLED: Auto-spawning is disabled due to spawn storm bug. Always returns fallback.
-// See: cortex-6uc
+// The CX_DAEMON_CHILD=1 env var prevents re-entrant spawning (spawn storm guard).
+// Child processes that have this env var set will always return fallback immediately.
 //
 // If WithFallback is true and the daemon cannot be started/connected,
 // it returns a result with UsingFallback=true instead of an error.
@@ -101,13 +101,83 @@ type EnsureDaemonResult struct {
 //	    resp, _ := result.Client.Query(...)
 //	}
 func EnsureDaemon(opts EnsureDaemonOptions) (*EnsureDaemonResult, error) {
-	// DISABLED: Daemon auto-spawn causes spawn storms. Always use fallback.
-	// When re-enabling, restore the original implementation from git history.
-	// See: cortex-6uc
-	if opts.WithFallback {
-		return &EnsureDaemonResult{UsingFallback: true}, nil
+	// Spawn storm guard: if we're a daemon child process, never re-spawn.
+	if os.Getenv("CX_DAEMON_CHILD") == "1" {
+		if opts.WithFallback {
+			return &EnsureDaemonResult{UsingFallback: true}, nil
+		}
+		return nil, fmt.Errorf("daemon spawn blocked: running inside daemon child process")
 	}
-	return nil, fmt.Errorf("daemon auto-spawn disabled (spawn storm bug)")
+
+	// Fill defaults for any empty fields
+	defaults := DefaultEnsureDaemonOptions()
+	if opts.SocketPath == "" {
+		opts.SocketPath = defaults.SocketPath
+	}
+	if opts.PIDPath == "" {
+		opts.PIDPath = defaults.PIDPath
+	}
+	if opts.IdleTimeout == 0 {
+		opts.IdleTimeout = defaults.IdleTimeout
+	}
+	if opts.StartTimeout == 0 {
+		opts.StartTimeout = defaults.StartTimeout
+	}
+
+	// Try connecting to an existing daemon first
+	client, err := ConnectToDaemon(opts.SocketPath)
+	if err == nil {
+		// Already running — get PID from health response
+		pid := 0
+		if resp, hErr := client.Health(); hErr == nil && resp.Data != nil {
+			if p, ok := resp.Data["pid"].(float64); ok {
+				pid = int(p)
+			}
+		}
+		return &EnsureDaemonResult{
+			Client: client,
+			PID:    pid,
+		}, nil
+	}
+
+	// No daemon running — try to start one
+	if spawnErr := startDaemonProcess(opts); spawnErr != nil {
+		if opts.WithFallback {
+			return &EnsureDaemonResult{UsingFallback: true}, nil
+		}
+		return nil, fmt.Errorf("start daemon: %w", spawnErr)
+	}
+
+	// Wait for the spawned daemon to become ready
+	waiter := NewClient(opts.SocketPath)
+	if waitErr := waiter.WaitForDaemon(opts.StartTimeout); waitErr != nil {
+		if opts.WithFallback {
+			return &EnsureDaemonResult{UsingFallback: true}, nil
+		}
+		return nil, fmt.Errorf("daemon did not become ready: %w", waitErr)
+	}
+
+	// Connect to the now-running daemon
+	client, err = ConnectToDaemon(opts.SocketPath)
+	if err != nil {
+		if opts.WithFallback {
+			return &EnsureDaemonResult{UsingFallback: true}, nil
+		}
+		return nil, fmt.Errorf("connect after start: %w", err)
+	}
+
+	pid := 0
+	if resp, hErr := client.Health(); hErr == nil && resp.Data != nil {
+		if p, ok := resp.Data["pid"].(float64); ok {
+			pid = int(p)
+		}
+	}
+
+	return &EnsureDaemonResult{
+		Client:     client,
+		WasStarted: true,
+		PID:        pid,
+	}, nil
 }
 
 // startDaemonProcess starts the daemon in the background.
@@ -144,6 +214,9 @@ func startDaemonProcess(opts EnsureDaemonOptions) error {
 
 	// Start the daemon process
 	cmd := exec.Command(cxPath, args...)
+
+	// Tag child process so it cannot re-spawn daemons (prevents spawn storms)
+	cmd.Env = append(os.Environ(), "CX_DAEMON_CHILD=1")
 
 	// Detach from parent process
 	cmd.Stdin = nil

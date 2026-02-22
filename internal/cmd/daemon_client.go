@@ -28,12 +28,22 @@ var globalDaemonClient *daemon.Client
 //	    ...
 //	}
 func ensureDaemon() *daemon.Client {
-	// DISABLED: Daemon auto-start is disabled due to memory issues.
-	// The daemon loads the full dependency graph into memory which can
-	// cause OOM on large codebases. Commands use direct DB mode instead.
-	// To re-enable, restore the original implementation.
-	// See: https://github.com/anthropics/cx/issues/XXX
-	return nil
+	// Return cached client if available
+	if globalDaemonClient != nil {
+		return globalDaemonClient
+	}
+
+	result, err := daemon.EnsureDaemon(daemon.DefaultEnsureDaemonOptions())
+	if err != nil {
+		return nil
+	}
+	if result.UsingFallback {
+		return nil
+	}
+
+	// Cache for subsequent calls
+	globalDaemonClient = result.Client
+	return globalDaemonClient
 }
 
 // useDaemon returns true if daemon mode is available.

@@ -155,7 +155,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(daemonControlCmd)
-	daemonControlCmd.Hidden = true // Daemon is currently broken and should not be invoked
+	// Daemon is safe to use — spawn storm guard (CX_DAEMON_CHILD) prevents recursive spawning
 	daemonControlCmd.AddCommand(daemonControlStatusCmd)
 	daemonControlCmd.AddCommand(daemonControlStopCmd)
 	daemonControlCmd.AddCommand(daemonControlStartCmd)
