@@ -185,6 +185,211 @@ func (s *Server) ListTools() []string {
 	return tools
 }
 
+// ToolSchema describes a tool's name, description, and parameters.
+type ToolSchema struct {
+	Name        string            `json:"name" yaml:"name"`
+	Description string            `json:"description" yaml:"description"`
+	Parameters  []ParameterSchema `json:"parameters" yaml:"parameters"`
+}
+
+// ParameterSchema describes a single tool parameter.
+type ParameterSchema struct {
+	Name        string `json:"name" yaml:"name"`
+	Type        string `json:"type" yaml:"type"`
+	Description string `json:"description" yaml:"description"`
+	Required    bool   `json:"required" yaml:"required"`
+}
+
+// toolSchemaRegistry holds the schema definitions for all tools.
+// These mirror the mcp.NewTool() definitions in the register*Tool() functions.
+var toolSchemaRegistry = map[string]ToolSchema{
+	"cx_diff": {
+		Name:        "cx_diff",
+		Description: "Show changes since last scan. Returns added, modified, and removed entities.",
+		Parameters: []ParameterSchema{
+			{Name: "file", Type: "string", Description: "Filter to specific file or directory path"},
+			{Name: "detailed", Type: "boolean", Description: "Include hash values for modified entities"},
+		},
+	},
+	"cx_impact": {
+		Name:        "cx_impact",
+		Description: "Analyze blast radius of changes to a file or entity. Shows what code would be affected.",
+		Parameters: []ParameterSchema{
+			{Name: "target", Type: "string", Description: "File path or entity name to analyze", Required: true},
+			{Name: "depth", Type: "number", Description: "Transitive depth (default: 3)"},
+			{Name: "threshold", Type: "number", Description: "Minimum importance threshold (PageRank score)"},
+		},
+	},
+	"cx_context": {
+		Name:        "cx_context",
+		Description: "Assemble task-relevant context within a token budget. Use for smart context gathering.",
+		Parameters: []ParameterSchema{
+			{Name: "smart", Type: "string", Description: "Natural language task description for intent-aware context"},
+			{Name: "target", Type: "string", Description: "Entity ID, file path, or bead ID for direct context"},
+			{Name: "budget", Type: "number", Description: "Token budget (default: 4000)"},
+			{Name: "depth", Type: "number", Description: "Max hops from entry points (default: 2)"},
+		},
+	},
+	"cx_show": {
+		Name:        "cx_show",
+		Description: "Show detailed information about a code entity.",
+		Parameters: []ParameterSchema{
+			{Name: "name", Type: "string", Description: "Entity name or ID to look up", Required: true},
+			{Name: "density", Type: "string", Description: "Detail level: sparse, medium, dense (default: medium)"},
+			{Name: "coverage", Type: "boolean", Description: "Include test coverage information"},
+		},
+	},
+	"cx_find": {
+		Name:        "cx_find",
+		Description: "Search for entities by name pattern.",
+		Parameters: []ParameterSchema{
+			{Name: "pattern", Type: "string", Description: "Name pattern to search for", Required: true},
+			{Name: "type", Type: "string", Description: "Filter by type: F (function), T (type), M (method)"},
+			{Name: "limit", Type: "number", Description: "Maximum results (default: 20)"},
+		},
+	},
+	"cx_gaps": {
+		Name:        "cx_gaps",
+		Description: "Find coverage gaps in critical code.",
+		Parameters: []ParameterSchema{
+			{Name: "keystones_only", Type: "boolean", Description: "Only show gaps in keystone (high-importance) entities"},
+			{Name: "threshold", Type: "number", Description: "Coverage threshold percentage (default: 50)"},
+		},
+	},
+	"cx_safe": {
+		Name:        "cx_safe",
+		Description: "Pre-flight safety check before modifying code. Returns risk level, impact radius, coverage gaps, and recommendations.",
+		Parameters: []ParameterSchema{
+			{Name: "target", Type: "string", Description: "File path or entity name to check", Required: true},
+			{Name: "quick", Type: "boolean", Description: "Quick mode: just blast radius (impact analysis only)"},
+			{Name: "depth", Type: "number", Description: "Transitive impact depth (default: 3)"},
+		},
+	},
+	"cx_map": {
+		Name:        "cx_map",
+		Description: "Project skeleton overview showing function signatures and type definitions. Useful for codebase orientation.",
+		Parameters: []ParameterSchema{
+			{Name: "path", Type: "string", Description: "Subdirectory to map (default: project root)"},
+			{Name: "filter", Type: "string", Description: "Filter by entity type: F (function), T (type), M (method), C (constant)"},
+			{Name: "lang", Type: "string", Description: "Filter by language (go, typescript, python, rust, java)"},
+		},
+	},
+}
+
+// GetToolSchemas returns schemas for all registered tools.
+func (s *Server) GetToolSchemas() []ToolSchema {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	schemas := make([]ToolSchema, 0, len(s.tools))
+	for name := range s.tools {
+		if schema, ok := toolSchemaRegistry[name]; ok {
+			schemas = append(schemas, schema)
+		}
+	}
+	return schemas
+}
+
+// CallTool dispatches a tool call by name with the given arguments.
+// Returns the JSON result string or an error.
+func (s *Server) CallTool(name string, args map[string]interface{}) (string, error) {
+	s.mu.RLock()
+	registered := s.tools[name]
+	s.mu.RUnlock()
+
+	if !registered {
+		return "", fmt.Errorf("unknown tool: %s (run 'cx call --list' to see available tools)", name)
+	}
+
+	switch name {
+	case "cx_diff":
+		file, _ := args["file"].(string)
+		detailed, _ := args["detailed"].(bool)
+		return s.executeDiff(file, detailed)
+
+	case "cx_impact":
+		target, _ := args["target"].(string)
+		if target == "" {
+			return "", fmt.Errorf("target parameter is required")
+		}
+		depth := 3
+		if d, ok := args["depth"].(float64); ok {
+			depth = int(d)
+		}
+		threshold := 0.0
+		if t, ok := args["threshold"].(float64); ok {
+			threshold = t
+		}
+		return s.executeImpact(target, depth, threshold)
+
+	case "cx_context":
+		smart, _ := args["smart"].(string)
+		target, _ := args["target"].(string)
+		budget := 4000
+		if b, ok := args["budget"].(float64); ok {
+			budget = int(b)
+		}
+		depth := 2
+		if d, ok := args["depth"].(float64); ok {
+			depth = int(d)
+		}
+		return s.executeContext(smart, target, budget, depth)
+
+	case "cx_show":
+		name, _ := args["name"].(string)
+		if name == "" {
+			return "", fmt.Errorf("name parameter is required")
+		}
+		density, _ := args["density"].(string)
+		if density == "" {
+			density = "medium"
+		}
+		coverage, _ := args["coverage"].(bool)
+		return s.executeShow(name, density, coverage)
+
+	case "cx_find":
+		pattern, _ := args["pattern"].(string)
+		if pattern == "" {
+			return "", fmt.Errorf("pattern parameter is required")
+		}
+		typeFilter, _ := args["type"].(string)
+		limit := 20
+		if l, ok := args["limit"].(float64); ok {
+			limit = int(l)
+		}
+		return s.executeFind(pattern, typeFilter, limit)
+
+	case "cx_gaps":
+		keystonesOnly, _ := args["keystones_only"].(bool)
+		threshold := 50.0
+		if t, ok := args["threshold"].(float64); ok {
+			threshold = t
+		}
+		return s.executeGaps(keystonesOnly, threshold)
+
+	case "cx_safe":
+		target, _ := args["target"].(string)
+		if target == "" {
+			return "", fmt.Errorf("target parameter is required")
+		}
+		quick, _ := args["quick"].(bool)
+		depth := 3
+		if d, ok := args["depth"].(float64); ok {
+			depth = int(d)
+		}
+		return s.executeSafe(target, quick, depth)
+
+	case "cx_map":
+		path, _ := args["path"].(string)
+		filter, _ := args["filter"].(string)
+		lang, _ := args["lang"].(string)
+		return s.executeMap(path, filter, lang)
+
+	default:
+		return "", fmt.Errorf("unknown tool: %s", name)
+	}
+}
+
 // registerDiffTool registers the cx_diff tool
 func (s *Server) registerDiffTool() error {
 	tool := mcp.NewTool("cx_diff",
