@@ -6,10 +6,12 @@ import (
 )
 
 func TestGetToolSchemas(t *testing.T) {
-	// Verify the schema registry has all 8 tools
+	// Verify the schema registry has all 14 tools
 	expectedTools := []string{
 		"cx_diff", "cx_impact", "cx_context", "cx_show",
 		"cx_find", "cx_gaps", "cx_safe", "cx_map",
+		"cx_blame", "cx_tag", "cx_trace", "cx_dead",
+		"cx_test", "cx_guard",
 	}
 
 	for _, name := range expectedTools {
@@ -41,6 +43,9 @@ func TestToolSchemaParameters(t *testing.T) {
 		{"cx_show", "name"},
 		{"cx_find", "pattern"},
 		{"cx_safe", "target"},
+		{"cx_blame", "entity"},
+		{"cx_tag", "action"},
+		{"cx_trace", "from"},
 	}
 
 	for _, tt := range tests {
@@ -66,7 +71,7 @@ func TestToolSchemaParameters(t *testing.T) {
 
 func TestToolSchemaNoRequiredParams(t *testing.T) {
 	// These tools have no required params
-	noRequired := []string{"cx_diff", "cx_gaps", "cx_context", "cx_map"}
+	noRequired := []string{"cx_diff", "cx_gaps", "cx_context", "cx_map", "cx_dead", "cx_test", "cx_guard"}
 
 	for _, name := range noRequired {
 		schema := toolSchemaRegistry[name]

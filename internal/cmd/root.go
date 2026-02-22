@@ -27,50 +27,42 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "cx",
+	Use:   "cx [entity-or-file]",
 	Short: "Context graph CLI for codebase analysis",
 	Long: `cx is a codebase context tool that builds and queries a graph of code entities.
 
-Run 'cx' with no arguments for session recovery context (same as 'cx context').
+Five commands cover everything:
 
-It helps developers and AI agents understand code structure, find relevant context,
-and analyze dependencies across a codebase. cx scans source files, builds a graph
-of symbols and their relationships, and provides commands to explore and query
-this graph.
+  cx [target]       Understand code (auto-detects entity/file/query)
+  cx find <pattern> Search and discover entities
+  cx check [file]   Quality gate (safety, guard, tests)
+  cx scan           Build or rebuild the code graph
+  cx call           Machine gateway (MCP tools)
 
-Output Format:
-  All commands output YAML format by default with adjustable detail levels.
-  Use --format flag to switch to JSON or deprecated CGF format.
-  Use --density flag to control detail level (sparse|medium|dense|smart).
+The bare 'cx' command auto-detects what you need:
+  cx                           Session recovery context
+  cx LoginUser                 Show entity details
+  cx src/auth/login.go         Safety check on file
+  cx --smart "add auth"        Smart context for task
+  cx --map                     Project skeleton
+  cx --diff                    Context for uncommitted changes
+  cx --trace LoginUser         Trace call chains
+  cx --blame LoginUser         Entity commit history
 
-Main capabilities:
-  - Scan codebases to build a context graph
-  - Find symbols and their relationships
-  - Show detailed information about code entities
-  - Visualize dependency graphs in YAML format
-  - Find important symbols using PageRank
-  - Analyze impact of changes
-  - Verify graph consistency
-  - Export context for AI consumption
+Run 'cx admin' to see all administrative commands (db, tags, branches, etc.)
+
+For advanced trace/blame flags, use the full command:
+  cx trace Foo --callees --depth 3
+  cx blame Foo --limit 50 --deps
 
 Global Flags:
   --format    Output format: yaml (default) | json | cgf (deprecated)
-  --density   Output detail level: sparse | medium (default) | dense | smart
-
-Examples:
-  cx find LoginUser                  # Find entities by name
-  cx show sa-fn-a7f9b2-LoginUser     # Show entity details
-  cx find --keystones                # Find critical entities
-  cx safe src/auth/                  # Pre-flight safety check
-  cx context --smart "add auth"      # Gather task context
-
-See 'cx <command> --help' for command-specific options.`,
-	Version: Version,
-	// Run cx with no args → session recovery (same as 'cx context')
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Delegate to context command for session recovery
-		return contextCmd.RunE(contextCmd, []string{})
-	},
+  --density   Output detail level: sparse | medium (default) | dense | smart`,
+	Version:      Version,
+	SilenceUsage: true, // Don't dump usage text on errors — just print the error
+	// Allow bare args for auto-detection (entity names, file paths)
+	Args: cobra.ArbitraryArgs,
+	RunE: runCx,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -100,6 +92,14 @@ func init() {
 		}
 		originalHelp(cmd, args)
 	})
+
+	// Register bare-cx dispatcher flags (--map, --trace, --blame, --smart, etc.)
+	registerCxFlags()
+
+	// Hide old commands from help output.
+	// Setting Hidden on the command structs works regardless of init() order
+	// because Hidden is a property of the command, not its parent.
+	hideOldCommands()
 }
 
 // CommandInfo represents a command for agent discovery

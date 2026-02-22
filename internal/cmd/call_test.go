@@ -19,6 +19,12 @@ func TestNormalizeToolName(t *testing.T) {
 		{"gaps", "cx_gaps"},
 		{"safe", "cx_safe"},
 		{"map", "cx_map"},
+		{"blame", "cx_blame"},
+		{"tag", "cx_tag"},
+		{"trace", "cx_trace"},
+		{"dead", "cx_dead"},
+		{"test", "cx_test"},
+		{"guard", "cx_guard"},
 		{"nonexistent", "cx_nonexistent"},
 	}
 

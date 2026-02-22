@@ -119,6 +119,7 @@ var (
 	findChanged     bool   // Change tracking: show only modified entities
 	findRemoved     bool   // Change tracking: show only removed entities
 	findSemantic    bool   // Semantic search using embeddings
+	findDead        bool   // Dead code detection (dispatches to runDead)
 )
 
 func init() {
@@ -154,9 +155,23 @@ func init() {
 
 	// Semantic search flag
 	findCmd.Flags().BoolVar(&findSemantic, "semantic", false, "Use embedding-based semantic search (find by concept)")
+
+	// Dead code flag (dispatches to dead command)
+	findCmd.Flags().BoolVar(&findDead, "dead", false, "Find dead code (same as: cx dead)")
+	findCmd.Flags().IntVar(&deadTier, "tier", 1, "Dead code confidence tier: 1=definite, 2=+probable, 3=+suspicious (with --dead)")
+	findCmd.Flags().BoolVar(&deadChains, "chains", false, "Group dead chains together (with --dead)")
 }
 
 func runFind(cmd *cobra.Command, args []string) error {
+	// --dead dispatches to dead code detection
+	if findDead {
+		// Pass through type filter if set on find
+		if findType != "" && deadTypeFilter == "" {
+			deadTypeFilter = findType
+		}
+		return runDead(deadCmd, args)
+	}
+
 	// Get query if provided
 	query := ""
 	if len(args) > 0 {
