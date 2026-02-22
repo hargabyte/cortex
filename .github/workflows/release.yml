@@ -29,11 +29,11 @@ jobs:
             goarch: amd64
             artifact: cx-windows-amd64.exe
             cc: gcc
-          - os: macos-13
+          - os: macos-latest
             goos: darwin
             goarch: amd64
             artifact: cx-darwin-amd64
-            cc: clang
+            cc: "clang -arch x86_64"
           - os: macos-latest
             goos: darwin
             goarch: arm64
