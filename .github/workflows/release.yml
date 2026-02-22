@@ -11,24 +11,34 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             goos: linux
             goarch: amd64
             artifact: cx-linux-amd64
+            cc: gcc
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            artifact: cx-linux-arm64
+            cc: aarch64-linux-gnu-gcc
           - os: windows-latest
             goos: windows
             goarch: amd64
             artifact: cx-windows-amd64.exe
-          - os: macos-latest
+            cc: gcc
+          - os: macos-13
             goos: darwin
             goarch: amd64
             artifact: cx-darwin-amd64
+            cc: clang
           - os: macos-latest
             goos: darwin
             goarch: arm64
             artifact: cx-darwin-arm64
+            cc: clang
 
     runs-on: ${{ matrix.os }}
 
@@ -39,23 +49,41 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
+
+      - name: Install cross-compiler (Linux ARM64)
+        if: matrix.goarch == 'arm64' && matrix.goos == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 1
+          CC: ${{ matrix.cc }}
         shell: bash
         run: |
           VERSION=${GITHUB_REF_NAME}
           go build -ldflags="-s -w -X github.com/anthropics/cx/internal/cmd.Version=${VERSION}" -o ${{ matrix.artifact }} ./cmd/cx
 
+      - name: Generate checksum
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            shasum -a 256 ${{ matrix.artifact }} > ${{ matrix.artifact }}.sha256
+          else
+            sha256sum ${{ matrix.artifact }} > ${{ matrix.artifact }}.sha256
+          fi
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.artifact }}
+            ${{ matrix.artifact }}.sha256
 
   release:
     needs: build
@@ -67,12 +95,51 @@ jobs:
         with:
           path: artifacts
 
+      - name: Collect checksums
+        run: |
+          cd artifacts
+          cat */*.sha256 > ../checksums-sha256.txt
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/cx-linux-amd64/cx-linux-amd64
+            artifacts/cx-linux-arm64/cx-linux-arm64
             artifacts/cx-windows-amd64.exe/cx-windows-amd64.exe
             artifacts/cx-darwin-amd64/cx-darwin-amd64
             artifacts/cx-darwin-arm64/cx-darwin-arm64
+            checksums-sha256.txt
           generate_release_notes: true
+          body: |
+            ## Installation
+
+            Download the binary for your platform below, or use:
+
+            ```bash
+            # Linux (amd64)
+            curl -L https://github.com/hargabyte/cortex/releases/download/${{ github.ref_name }}/cx-linux-amd64 -o cx
+            chmod +x cx && sudo mv cx /usr/local/bin/
+
+            # macOS (Apple Silicon)
+            curl -L https://github.com/hargabyte/cortex/releases/download/${{ github.ref_name }}/cx-darwin-arm64 -o cx
+            chmod +x cx && sudo mv cx /usr/local/bin/
+
+            # macOS (Intel)
+            curl -L https://github.com/hargabyte/cortex/releases/download/${{ github.ref_name }}/cx-darwin-amd64 -o cx
+            chmod +x cx && sudo mv cx /usr/local/bin/
+            ```
+
+            Windows: Download `cx-windows-amd64.exe` and add to PATH.
+
+            ## Quick Start
+
+            ```bash
+            cd your-project
+            cx scan              # Build the code graph
+            cx --smart "task"    # Get task-focused context
+            cx find Login        # Search for entities
+            cx check file.go     # Safety check before editing
+            ```
+
+            See the [README](https://github.com/hargabyte/cortex#readme) for full documentation.
